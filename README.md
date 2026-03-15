@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+    # Exam Arena
 
-## Getting Started
+Exam Arena is a full-stack exam platform project built with Next.js, TypeScript, and Prisma.
 
-First, run the development server:
+This repository is now organized with dedicated documentation for setup, features, and contribution workflow.
+
+## Project Docs
+
+- [SETUP.md](SETUP.md) - local setup, environment, and run commands.
+- [FEATURES.md](FEATURES.md) - implemented features and roadmap.
+- [CONTRIBUTING.md](CONTRIBUTING.md) - contribution rules, PR process, and branch strategy.
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- React 19
+- TypeScript 5
+- Prisma 7 with PostgreSQL
+- ESLint 9
+
+## Quick Start
 
 ```bash
+npm install
+cp .env.example .env
+npx prisma generate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App runs at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For full setup, see [SETUP.md](SETUP.md).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Branch Architecture (GitHub)
 
-## Learn More
+This project follows a simple, team-friendly branching model:
 
-To learn more about Next.js, take a look at the following resources:
+- `main` - production-ready code only.
+- `deploy` - integration/staging branch.
+- `feature/*` - feature branches created from `deploy`.
+- `bugfix/*` - bug fix branches created from `deploy`.
+- `hotfix/*` - urgent production fixes created from `main`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```mermaid
+gitGraph
+	commit id: "main"
+	branch deploy
+	checkout deploy
+	branch feature/example-feature
+	commit id: "feature work"
+	checkout deploy
+	merge feature/example-feature
+	checkout main
+	merge deploy
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Detailed workflow is documented in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Deploy on Vercel
+## Folder Structure
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```text
+.
+|- prisma/
+|  |- schema.prisma
+|- public/
+|- src/
+|  |- app/
+|  |- components/
+|  |- generated/
+|  |- hooks/
+|  |- lib/
+|  |- store/
+|  |- types/
+|- FEATURES.md
+|- CONTRIBUTING.md
+|- SETUP.md
+|- README.md
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Status
+
+Current state: foundation setup is in place and ready for feature development.
