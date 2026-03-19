@@ -10,13 +10,47 @@ This repository is now organized with dedicated documentation for setup, feature
 - [FEATURES.md](FEATURES.md) - implemented features and roadmap.
 - [CONTRIBUTING.md](CONTRIBUTING.md) - contribution rules, PR process, and branch strategy.
 
-## Tech Stack
+## Tech Stack & Rationale
 
-- Next.js 16 (App Router)
-- React 19
-- TypeScript 5
-- Prisma 7 with PostgreSQL
-- ESLint 9
+**Frontend**
+- **Next.js & React**: Provides server-side rendering for fast initial loads, robust API routes if needed, and a component-based architecture perfect for building complex interactive dashboards for admins and students.
+- **Tailwind CSS**: Allows for rapid UI development with utility classes, ensuring a consistent design system without writing massive custom CSS files.
+- **Zustand**: Chosen for state management because it is much simpler and less boilerplate-heavy than Redux, perfect for managing the live state of an active exam (timers, current question).
+- **React Hook Form**: Handles complex form validation (like creating test papers with multiple options and categories) with high performance and minimal re-renders.
+- **Axios**: Used for making clean, promise-based HTTP requests to our FastAPI backend.
+
+**Backend (Python)**
+- **FastAPI**: Exceptionally fast, async-native Python framework. It natively supports Python data typing and integrates seamlessly with AI libraries (which are predominantly Python-based).
+- **Uvicorn**: An ASGI web server implementation used to run the async FastAPI application.
+- **Pydantic**: Enforces strict data validation for incoming API requests (e.g., ensuring a student's submitted answers match the required schema).
+
+**Database & ORM**
+- **PostgreSQL**: A highly reliable, relational database. Essential for mapping complex real-world relationships (Schools -> Classes -> Teachers -> Tests -> Student Results) safely and securely.
+- **Prisma**: The primary ORM used in this project to define the database schema, handle migrations smoothly, and provide a fully typed database client for the Next.js frontend and API.
+- **SQLAlchemy / SQLModel**: Used on the Python backend to securely interact with the same PostgreSQL database.
+
+**Authentication**
+- **JSON Web Token (JWT-based auth)**: Provides scalable, stateless authentication across the separate Next.js and FastAPI services without relying on shared server sessions.
+
+**Caching & Background Jobs**
+- **Redis**: An in-memory data store used to handle high-frequency reads/writes, such as securely tracking an active test's countdown timer or session state across multiple servers.
+- **Celery**: Offloads heavy AI/PDF background tasks so the web server doesn't freeze while evaluating an exam or generating a question paper.
+
+**Real-Time Communication**
+- **Socket.IO / WebSockets**: Enables real-time features like instant teacher-to-student test broadcasts, live proctoring alerts, or notifying a student if they have been disconnected.
+
+**Testing**
+- **Vitest**: Provides blazingly fast unit testing for the Next.js frontend components.
+- **Playwright**: Handles end-to-end (E2E) testing to ensure critical student exam flows work perfectly in real browsers.
+- **Pytest**: Used to rigorously test the FastAPI backend logic and AI integrations.
+
+**DevOps / Infrastructure**
+- **Docker & Docker Compose**: Containerizes the frontend, backend, database, and Redis so that any developer can run the entire complex stack on their local machine with a single command (`docker-compose up`), completely avoiding "it works on my machine" issues.
+- **GitHub & GitHub Actions**: Hosts the repository and automatically runs CI/CD pipelines (like unit tests and linters) every time code is pushed, ensuring production readiness.
+
+**Monitoring & Logging**
+- **Sentry**: Tracks runtime errors and bugs in production so developers can fix them before students notice.
+- **Python logging / loguru**: Provides structured, easy-to-read server logs for tracking backend AI evaluation processes and API requests.
 
 ## Quick Start
 

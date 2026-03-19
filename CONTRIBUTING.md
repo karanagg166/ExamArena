@@ -53,40 +53,51 @@ Examples:
 - `bugfix/timer-reset-issue`
 - `hotfix/login-token-expiry`
 
-## Development Workflow
+## GitHub Workflow
 
-1. Update your local branches:
+### 1. When to Create a New Branch
+Always create a new branch before starting any new work (features, bug fixes, document updates, etc.). **Never commit directly to the `main` or `deploy` branches.**
 
+### 2. How to Create a New Branch
+First, ensure your local integration branch (`deploy`) is up to date:
 ```bash
 git checkout deploy
 git pull origin deploy
 ```
 
-2. Create your working branch from `deploy`:
-
+Then, create and switch to your new branch using the appropriate prefix (`feature/`, `bugfix/`, etc.):
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
-3. Implement changes and run quality checks:
-
+### 3. Making Changes and Committing
+Implement your changes and run quality checks:
 ```bash
 npm run lint
 npm run build
 ```
 
-4. Commit using clear commit messages.
+Commit your changes with clear, descriptive commit messages:
+```bash
+git add .
+git commit -m "feat: add exam submission API"
+```
 
-Recommended format:
+### 4. How to Push the Branch
+Push your newly created branch to the remote repository on GitHub:
+```bash
+git push -u origin feature/your-feature-name
+```
 
-- `feat: add exam submission API`
-- `fix: correct question pagination`
-- `docs: update setup instructions`
+### 5. How to Merge
+1. Go to the GitHub repository in your browser.
+2. Click **"Compare & pull request"** for your recently pushed branch.
+3. Target the `deploy` branch as the base for your Pull Request.
+4. Fill out the **Pull Request Checklist** in the PR description.
+5. Once your PR is approved by at least one reviewer, click **"Squash and merge"** to keep the history clean.
+6. Delete the branch on GitHub after merging.
 
-5. Push and open PR:
-
-- PR 1: your branch -> `deploy`
-- PR 2 (release PR): `deploy` -> `main`
+*Note: Releases to production are done by opening a PR from `deploy` -> `main`.*
 
 ## Pull Request Checklist
 

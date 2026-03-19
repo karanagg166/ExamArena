@@ -1,55 +1,49 @@
-# Features and Roadmap
+# Project Goals & Features
 
-This document tracks what is already available and what is planned for Exam Arena.
+Exam Arena is a comprehensive, secure, and AI-powered examination platform designed to serve multiple schools, handle various educational roles, and provide a highly secure environment for conducting online tests.
 
-## Current Features
+## 🎯 End Goal & Vision
 
-### Platform Foundation
+The primary goal of Exam Arena is to provide a robust, scalable system that allows schools to administer exams (like JEE Mains, NEET, and standard school tests) securely. The platform aims to eliminate cheating through strict proctoring features while greatly reducing teacher workload through AI-driven automated question paper generation and short-answer evaluation.
 
-- Next.js 16 App Router project initialized.
-- TypeScript-enabled codebase.
-- React 19 setup.
+## 👥 User Roles
 
-### Data Layer
+1. **System Admin**
+   - The overarching administrator of the entire platform.
+   - Manages different schools, base configurations, and global settings.
+2. **Superadmin (Principals / Management)**
+   - Manages an individual school's operations.
+   - Oversees teachers, students, and overall statistics for their specific school.
+3. **Admin (Teachers)**
+   - Creates and manages classes, test papers, and grading.
+   - Views and exports student results.
+4. **Students**
+   - Takes tests tailored for them.
+   - Views their own scores and performance analytics securely.
 
-- Prisma configured with PostgreSQL datasource.
-- Prisma client generation configured to output under `src/generated/prisma`.
-- Shared Prisma client instance implemented in `src/lib/prisma.ts`.
+## 🚀 Core Features & To-Do List
 
-### Developer Experience
-
-- ESLint configured for code quality.
-- Central project docs for setup and contribution workflow.
-
-## Planned Features
-
-### Phase 1: Core Platform
-
-- [ ] Authentication (email/OAuth) and role-based access.
-- [ ] User profile and account settings.
-- [ ] Basic dashboard for student and admin views.
-
-### Phase 2: Exam Engine
-
+### 1. Test Creation & Management
+- [ ] Support for multiple exam types (JEE Mains, NEET, custom).
+- [ ] **Privacy Controls:** Test papers can be marked *Public* or *Private* (accessible via a unique secure key).
 - [ ] Question bank with categories and difficulty levels.
-- [ ] Exam creation flow for admins.
-- [ ] Timed exam attempts with autosave.
-- [ ] Result calculation and score breakdown.
+- [ ] AI Question Paper Generation: Teachers can upload a PDF with a question paper and an answer key. The system will automatically parse the document and generate the digital question paper and answer key within the platform.
 
-### Phase 3: Learning Experience
+### 2. Secure Exam Environment (Proctoring)
+- [ ] **Lockdown Mode:** Prevent screen switching or tab switching during the exam.
+- [ ] **Live Monitoring:** Camera and microphone tracking to detect suspicious activities.
+- [ ] Full-screen enforcement and disabling of copy-paste/keyboard shortcuts.
 
-- [ ] Detailed review mode with explanations.
-- [ ] Performance analytics by topic.
-- [ ] Leaderboard and progress tracking.
+### 3. Automated Grading & AI Evaluation
+- [ ] Automatic calculation of scores for Multiple Choice and standard questions.
+- [ ] **AI Short-Answer Evaluation:** Integration of AI models to contextually evaluate and score subjective/short-answer questions.
+- [ ] Result calculation, score breakdown, and negative marking handling (e.g., for JEE/NEET formats).
 
-### Phase 4: Operations and Scale
+### 4. Reporting & Analytics
+- [ ] Analytics dashboard for students to view their performance.
+- [ ] Dashboard for teachers to monitor aggregate class performance.
+- [ ] **Result Exporting:** Teachers can export exam results and analytics into various formats (Excel/Sheets, PDF, DOCX).
 
-- [ ] Admin moderation panel.
-- [ ] Audit logs for key actions.
-- [ ] CI/CD automation and deployment pipelines.
-
-## Feature Prioritization Rules
-
-- Build core exam experience before advanced analytics.
-- Favor shipping small vertical slices over large unfinished modules.
-- Every shipped feature should include documentation updates.
+### 5. Multi-Tenant Architecture
+- [ ] School segregation handling so multiple schools can use the platform securely and independently.
+- [ ] Class and batch management within each school.
