@@ -34,7 +34,10 @@ This repository is now organized with dedicated documentation for setup, feature
 
 **Caching & Background Jobs**
 - **Redis**: An in-memory data store used to handle high-frequency reads/writes, such as securely tracking an active test's countdown timer or session state across multiple servers.
-- **Celery**: Offloads heavy AI/PDF background tasks so the web server doesn't freeze while evaluating an exam or generating a question paper.
+- **ARQ (Async Redis Queue)**: A lightweight, async-native background job processor. It elegantly offloads heavy AI/PDF parsing tasks from FastAPI without the massive overhead and complex configuration of Celery.
+
+**File Storage**
+- **Cloudflare R2**: Used as an S3-compatible, exceptionally cheap object storage for storing uploaded PDFs (question papers, answer keys) and generated reports natively without bloating the PostgreSQL database.
 
 **Real-Time Communication**
 - **Socket.IO / WebSockets**: Enables real-time features like instant teacher-to-student test broadcasts, live proctoring alerts, or notifying a student if they have been disconnected.

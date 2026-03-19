@@ -41,12 +41,17 @@ pip install opencv-python face_recognition
 
 # Data processing & Exporting
 pip install pandas openpyxl reportlab
+
+# Storage & Background Tasks
+pip install boto3 arq
 ```
 **Rationale:**
 - `openai` & `langchain`: The core tools used to integrate ChatGPT/LLMs. They will analyze the "short answer" texts submitted by students and evaluate them against the teacher's rubric. They will also process syllabus guidelines to auto-generate question papers.
 - `PyPDF2` & `pdfplumber`: When a teacher uploads a PDF of a previous exam and an answer key, these libraries extract the raw text and images so the AI can understand and digitize it into the system.
 - `opencv-python` & `face_recognition`: If we want to do "smart proctoring" (e.g., detecting if a user looks away from the screen for 10 seconds, or if two faces appear in the webcam), OpenCV processes the video feed, and `face_recognition` flags rule violations.
 - `pandas`, `openpyxl`, `reportlab`: Powerful backend tools. If Excel/PDF reports are too massive for the frontend to generate, the backend can crunch thousands of student records at once using Pandas and return a clean download link.
+- `boto3`: The standard AWS SDK for Python. Because Cloudflare R2 is perfectly S3-compatible, we use `boto3` to instantly store and retrieve all PDF question papers from R2 seamlessly.
+- `arq`: An Async Redis job runner designed precisely for speed in FastAPI architectures. It prevents the server from freezing during complex AI background tasks (far easier to scale than Celery).
 
 ## 🛠 Required & Recommended VS Code Extensions
 
