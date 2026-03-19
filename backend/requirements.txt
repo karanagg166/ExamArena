@@ -1,0 +1,26 @@
+# FastAPI & Core Web Server
+fastapi==0.110.0
+uvicorn==0.27.1
+pydantic==2.6.4
+sqlalchemy==2.0.28
+python-dotenv==1.0.1
+
+# AI Integration & Document Parsing
+openai
+langchain
+PyPDF2
+pdfplumber
+
+# Proctoring (Computer Vision)
+opencv-python
+face_recognition
+
+# Data Processing & Exporting
+pandas
+openpyxl
+reportlab
+
+# Storage & Background Tasks
+boto3
+arq
+redis
