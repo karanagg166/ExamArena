@@ -10,7 +10,6 @@ generator pyclient {
 
 datasource db {
   provider = "postgresql"
-  
 }
 
 model User {

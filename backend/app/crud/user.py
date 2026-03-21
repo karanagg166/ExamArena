@@ -1,4 +1,4 @@
-from prisma import Prisma
+from app.main import Prisma
 from app.core.security import hash_password
 
 prisma = Prisma()
