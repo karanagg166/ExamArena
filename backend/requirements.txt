@@ -29,3 +29,23 @@ reportlab
 boto3
 arq
 redis
+
+# Real-Time Communication
+python-socketio
+
+# Monitoring & Logging
+sentry-sdk
+loguru
+
+# Database Validation & ORM
+sqlmodel
+python-multipart
+email-validator
+
+# Testing
+pytest
+httpx
+
+# Forms and Validation
+python-multipart
+email-validator
