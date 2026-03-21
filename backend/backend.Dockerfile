@@ -18,6 +18,8 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 # Generate Prisma client into image layer (preserved via named volume in dev)
 COPY ./prisma ./prisma
+# Inject url for Python Prisma 5.11 compatibility (Prisma 7 in Next.js drops it)
+RUN sed -i 's/provider = "postgresql"/provider = "postgresql"\n  url      = env("DATABASE_URL")/' ./prisma/schema.prisma
 ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 ENV DATABASE_URL=$DATABASE_URL
 RUN prisma generate --generator pyclient

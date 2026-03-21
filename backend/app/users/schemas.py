@@ -5,17 +5,28 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
-class SignupRequest(BaseModel):
-    """Request body for signup"""
+class UserRequest(BaseModel):
+    """Request body for signup and user creation"""
     email: EmailStr
-    fullName: str
+    name: str
     password: str
+    phoneNo: str
+    pincode: str
+    city: str
+    state: str
+    country: str
+    role: str
 
 class UserResponse(BaseModel):
     """User data in response"""
-    id: int
+    id: str
     email: str
-    fullName: str
+    name: str
+    phoneNo: str
+    pincode: str
+    city: str
+    state: str
+    country: str
     role: str
     
     class Config:

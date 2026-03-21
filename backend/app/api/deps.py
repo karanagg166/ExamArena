@@ -1,6 +1,6 @@
 from fastapi import Cookie, HTTPException, status
 from app.core.security import verify_token
-from app.crud.user import get_user_by_id
+from app.users.crud import get_user_by_id
 
 async def get_current_user(access_token: str = Cookie(None)):
     """Dependency to get current authenticated user"""
