@@ -31,9 +31,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-exam_arena}
       - REDIS_URL=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - backend/.env
     volumes:
       - ./backend:/app                 # ← mounts your source for hot reload
       - prisma_client:/app/prisma      # ← preserves generated Prisma client

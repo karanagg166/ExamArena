@@ -8,16 +8,16 @@ import { SignUpForm } from "@/types/user";
 
 const SignUpPage = () => {
     const [form, setForm] = useState<SignUpForm>({
-        name: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-        phoneNo: "",
+        name: "Test User",
+        email: "testuser" + Math.floor(Math.random() * 1000) + "@example.com",
+        password: "securepassword123",
+        confirmPassword: "securepassword123",
+        phoneNo: "+1234567890",
         role: "student",
-        pincode: "",
-        city: "",
-        state: "",
-        country: "",
+        pincode: "100001",
+        city: "New York",
+        state: "NY",
+        country: "USA",
     });
 
     const [error, setError] = useState("");
@@ -64,22 +64,28 @@ const SignUpPage = () => {
         setError("");
 
         try {
-            // Remove confirmPassword before sending
+            // The backend UserRequest now perfectly matches the frontend form 
             const { confirmPassword, ...payload } = form;
 
-            await api.post("/api/auth/signup", payload);
+            const data = await api.post("/api/v1/auth/signup", payload);
+            console.log("Signup response:", data);
 
             setSuccess(true);
 
 
-            router.push("/login");
+            // router.push("/login");
 
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
-                setError(
-                    err.response?.data?.detail ||
-                    "Something went wrong during signup."
-                );
+                const detail = err.response?.data?.detail;
+                if (Array.isArray(detail)) {
+                    // Handle FastAPI Pydantic validation errors (array of objects)
+                    setError(detail.map((errObj: any) => errObj.msg).join(", "));
+                } else if (typeof detail === "string") {
+                    setError(detail);
+                } else {
+                    setError("Something went wrong during signup.");
+                }
             } else {
                 setError("Unexpected error occurred");
             }
@@ -241,3 +247,7 @@ const SignUpPage = () => {
 };
 
 export default SignUpPage;
+
+function toast(arg0: string) {
+    throw new Error("Function not implemented.");
+}

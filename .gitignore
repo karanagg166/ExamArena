@@ -47,3 +47,6 @@ next-env.d.ts
 venv/
 backend/venv/
 .venv/
+
+# Sentry Config File
+.env.sentry-build-plugin

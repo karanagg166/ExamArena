@@ -19,7 +19,7 @@ if settings.SENTRY_DSN:
 from app.core.database import prisma  
 
 app = FastAPI(
-    title="ExamArena API",
+    titl="ExamArena API",
     description="Backend API for ExamArena",
     version="1.0.0",
 )
