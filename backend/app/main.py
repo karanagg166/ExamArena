@@ -15,6 +15,6 @@ app.add_middleware(
 def home():
     return {"message": "Hello from backend"}
 
-@app.get("/demo")
+@app.get("/health")
 def get_data():
-    return {"hi": "demo"}
+    return {"Server Status": "Healthy"}
