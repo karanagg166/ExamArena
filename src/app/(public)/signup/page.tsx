@@ -67,7 +67,7 @@ const SignUpPage = () => {
             // Remove confirmPassword before sending
             const { confirmPassword, ...payload } = form;
 
-            await api.post("/auth/signup", payload);
+            await api.post("/api/auth/signup", payload);
 
             setSuccess(true);
 
@@ -89,12 +89,12 @@ const SignUpPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-gray-100 px-4">
-            <div className="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-xl">
+        <div className="min-h-screen flex items-center justify-center bg-black px-4 text-white">
+            <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 p-8 rounded-2xl shadow-xl">
                 <h1 className="text-3xl font-bold text-center mb-2">
                     Create your account
                 </h1>
-                <p className="text-gray-500 text-center mb-6 text-sm">
+                <p className="text-zinc-400 text-center mb-6 text-sm">
                     Start your journey in seconds 🚀
                 </p>
 

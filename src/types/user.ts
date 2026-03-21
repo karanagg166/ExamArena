@@ -11,7 +11,7 @@ export type User = {
 };
 export type UserRole = "student" | "teacher " | "superAdmin" | "systemAdmin";
 
-export type SignUpForm = User & {
+export type SignUpForm = Omit<User, "id"> & {
     password: string;
     confirmPassword: string;
 };
