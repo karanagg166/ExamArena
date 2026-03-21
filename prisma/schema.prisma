@@ -1,10 +1,33 @@
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
-datasource db {
-  provider = "postgresql"
+generator pyclient {
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
 }
 
+datasource db {
+  provider = "postgresql"
+   url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  phoneNo   String
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+  SYSTEM_ADMIN
+  TEACHER
+  SUPER_ADMIN
+}

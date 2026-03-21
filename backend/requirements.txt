@@ -3,7 +3,10 @@ fastapi==0.110.0
 uvicorn==0.27.1
 pydantic==2.6.4
 sqlalchemy==2.0.28
+prisma
 python-dotenv==1.0.1
+passlib[bcrypt]
+python-jose[cryptography]
 
 # AI Integration & Document Parsing
 openai
@@ -24,3 +27,23 @@ reportlab
 boto3
 arq
 redis
+
+# Real-Time Communication
+python-socketio
+
+# Monitoring & Logging
+sentry-sdk
+loguru
+
+# Database Validation & ORM
+sqlmodel
+python-multipart
+email-validator
+
+# Testing
+pytest
+httpx
+
+# Forms and Validation
+python-multipart
+email-validator
