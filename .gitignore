@@ -42,3 +42,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Python Virtual Environments
+venv/
+backend/venv/
+.venv/
+
+# Sentry Config File
+.env.sentry-build-plugin

@@ -1,34 +1,37 @@
-# Base Image
-FROM python:3.11-slim
+FROM python:3.11-slim AS base
 
-# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    POETRY_VERSION=1.7.0
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
+    cmake \
     libpq-dev \
-    # Needed for OpenCV / Face Recognition for proctoring
     ffmpeg libsm6 libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependencies list
-# (Assuming requirements.txt for simplicity. If using Poetry, adjust accordingly)
-COPY requirements.txt .
-
-# Install dependencies
+COPY ./backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
-# Copy backend app code
-COPY . .
+# Generate Prisma client into image layer (preserved via named volume in dev)
+COPY ./prisma ./prisma
+# Inject url for Python Prisma 5.11 compatibility (Prisma 7 in Next.js drops it)
+RUN sed -i 's/provider = "postgresql"/provider = "postgresql"\n  url      = env("DATABASE_URL")/' ./prisma/schema.prisma
+ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+ENV DATABASE_URL=$DATABASE_URL
+RUN prisma generate --generator pyclient
 
-# Expose FastAPI port
+# ── Dev Stage (Hot Reload) ────────────────────────────────────────────────────
+FROM base AS dev
+COPY ./backend .
 EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-# Run Uvicorn dev server (for production, use multiple workers or gunicorn)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# ── Production Stage ──────────────────────────────────────────────────────────
+FROM base AS production
+COPY ./backend .
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

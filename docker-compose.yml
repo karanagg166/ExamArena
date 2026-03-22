@@ -1,10 +1,10 @@
-version: '3.8'
+name: exam-arena
 
 services:
   db:
     image: postgres:15-alpine
     container_name: exam_arena_db
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
@@ -17,38 +17,50 @@ services:
   redis:
     image: redis:7-alpine
     container_name: exam_arena_redis
-    restart: always
+    restart: unless-stopped
     ports:
       - "6379:6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/backend.Dockerfile
+      target: dev                      # ← swap to "production" for prod
+    container_name: exam_arena_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - backend/.env
+    volumes:
+      - ./backend:/app                 # ← mounts your source for hot reload
+      - ./prisma:/app/prisma           # ← shared Prisma schema folder
+    depends_on:
+      - db
+      - redis
 
   frontend:
     build:
       context: .
       dockerfile: frontend.Dockerfile
+      target: dev                      # ← swap to "runner" for prod
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
     container_name: exam_arena_frontend
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - .:/app                         # ← mounts source for hot reload
+      - /app/node_modules              # ← preserves container's node_modules
+      - /app/.next                     # ← preserves Next.js build cache
     depends_on:
       - backend
-
-  backend:
-    build:
-      context: ./backend
-      dockerfile: backend.Dockerfile
-    container_name: exam_arena_backend
-    restart: always
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-exam_arena}
-      - REDIS_URL=redis://redis:6379/0
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    depends_on:
-      - db
-      - redis
 
 volumes:
   postgres_data:
