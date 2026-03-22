@@ -1,8 +1,5 @@
 name: 🔍 Develop Branch Checks
 
-# ─────────────────────────────────────────────────────────────
-#  Runs on every push to develop AND every PR targeting develop
-# ─────────────────────────────────────────────────────────────
 on:
   push:
     branches: [develop]
@@ -17,13 +14,10 @@ jobs:
 
   # ╔══════════════════════════════════════════╗
   # ║  JOB 1 — Docker Build                    ║
-  # ║  backend.Dockerfile runs prisma generate ║
-  # ║  at build time — so this also tests it   ║
   # ╚══════════════════════════════════════════╝
   docker-build:
     name: 🐳 Docker Build (all services)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,8 +25,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # docker-compose reads root .env for variable substitution.
-      # We create it from GitHub Secrets so compose + env_file both work.
       - name: Create root .env from secrets
         run: |
           cat <<EOF > .env
@@ -49,25 +41,19 @@ jobs:
           CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
           EOF
 
-      # backend.Dockerfile passes DATABASE_URL as a build ARG for
-      # prisma generate — we use the real NeonDB URL here since
-      # generate only needs the schema, not an active connection.
       - name: Build all Docker images (dev targets)
         run: docker compose build --no-cache
         env:
-          DATABASE_URL:                    ${{ secrets.DATABASE_URL }}
-          NEXT_PUBLIC_API_URL:             http://localhost:8000
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_API_URL: http://localhost:8000
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
 
   # ╔══════════════════════════════════════════╗
   # ║  JOB 2 — Prisma Checks                   ║
-  # ║  validate schema · generate pyclient     ║
-  # ║  · db push → real NeonDB connectivity    ║
   # ╚══════════════════════════════════════════╝
   prisma-checks:
     name: 🗄️ Prisma Validate · Generate · DB Connect
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -91,15 +77,12 @@ jobs:
           CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
           EOF
 
-      # Build backend image (prisma generate runs during docker build)
       - name: Build backend image
         run: docker compose build backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-      # You use NeonDB (cloud Postgres) — no local db service needed!
-      # We start ONLY the backend container; it connects to NeonDB directly.
       - name: Start backend container
         run: docker compose up -d backend
         env:
@@ -108,39 +91,28 @@ jobs:
 
       - name: Wait for backend to be ready
         run: |
-          echo "Waiting for backend container..."
-          for i in $(seq 1 20); do
-            if docker compose exec -T backend echo "ready" > /dev/null 2>&1; then
-              echo "✅ Backend container ready"
+          echo "Waiting for backend..."
+          for i in $(seq 1 30); do
+            RESPONSE=$(curl --silent http://localhost:8000/health 2>/dev/null || true)
+            if echo "$RESPONSE" | grep -q '"healthy"'; then
+              echo "✅ Backend ready"
               exit 0
             fi
-            echo "  attempt $i/20 — waiting 3s..."
+            echo "  attempt $i/30 — $RESPONSE"
             sleep 3
           done
-          echo "❌ Backend container never became ready"
+          echo "❌ Backend never became ready"
           docker compose logs backend
           exit 1
 
-      # ── Step A: Schema syntax valid? ──
       - name: Prisma Validate
-        run: |
-          docker compose exec -T \
-            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            backend prisma validate
+        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma validate
 
-      # ── Step B: Python client generates? ──
       - name: Prisma Generate (pyclient)
-        run: |
-          docker compose exec -T \
-            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            backend prisma generate --generator pyclient
+        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma generate --generator pyclient
 
-      # ── Step C: Can we actually reach NeonDB and apply schema? ──
       - name: Prisma DB Push (NeonDB connectivity)
-        run: |
-          docker compose exec -T \
-            -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-            backend prisma db push --accept-data-loss
+        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma db push --accept-data-loss
 
       - name: Dump logs on failure
         if: failure()
@@ -153,10 +125,35 @@ jobs:
   # ╔══════════════════════════════════════════╗
   # ║  JOB 3 — Backend Lint (Ruff + Black)     ║
   # ╚══════════════════════════════════════════╝
-  
+  backend-lint:
+    name: 🐍 Backend Lint (Ruff + Black)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Ruff & Black
+        run: pip install ruff black
+
+      - name: Ruff — lint check
+        run: ruff check backend/
+
+      - name: Black — format check
+        run: black --check backend/
+
+  # ╔══════════════════════════════════════════╗
+  # ║  JOB 4 — Frontend (ESLint + TSC +        ║
+  # ║           Prettier)                      ║
+  # ╚══════════════════════════════════════════╝
+  frontend-checks:
     name: ⚡ Frontend Checks (ESLint · TSC · Prettier)
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
