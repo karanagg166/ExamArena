@@ -27,7 +27,7 @@ jobs:
 
       - name: Create root .env from secrets
         run: |
-          cat <<EOF > .env
+          cat <<'EOF' > .env
           DATABASE_URL=${{ secrets.DATABASE_URL }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           ALGORITHM=HS256
@@ -63,7 +63,7 @@ jobs:
 
       - name: Create root .env from secrets
         run: |
-          cat <<EOF > .env
+          cat <<'EOF' > .env
           DATABASE_URL=${{ secrets.DATABASE_URL }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
           ALGORITHM=HS256
