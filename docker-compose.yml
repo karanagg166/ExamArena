@@ -34,7 +34,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     env_file:
-      - backend/.env
+      - .env
     volumes:
       - ./backend:/app                 # ← mounts your source for hot reload
       - ./prisma:/app/prisma           # ← shared Prisma schema folder
