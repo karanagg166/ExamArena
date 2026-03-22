@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "ci": "docker compose build && docker compose up -d && sleep 5 && curl http://localhost:8000/health"
+    
   },
   "dependencies": {
     "@clerk/nextjs": "^7.0.6",

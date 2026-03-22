@@ -71,7 +71,7 @@ Start in background (`-d` = detached mode):
 docker compose up -d
 ```
 
-Start specific services only:
+Start specific segitrvices only:
 
 ```bash
 docker compose up -d db redis

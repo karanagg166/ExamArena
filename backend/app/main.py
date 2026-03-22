@@ -1,3 +1,4 @@
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -6,6 +7,7 @@ from app.core.config import settings
 from app.api.router import api_router
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
+from fastapi import Response
 
 if settings.SENTRY_DSN:
     sentry_sdk.init(
@@ -16,14 +18,13 @@ if settings.SENTRY_DSN:
         send_default_pii=True,
     )
 
-from app.core.database import prisma  
+from app.core.database import prisma
 
 app = FastAPI(
-    titl="ExamArena API",
+    title="ExamArena API",
     description="Backend API for ExamArena",
     version="1.0.0",
 )
-
 @app.on_event("startup")
 async def startup():
     await prisma.connect()
@@ -55,9 +56,14 @@ def root():
     }
 
 @app.get("/health")
-def health_check():
-    return {"status": "healthy"}
-
+async def health_check():
+    try:
+        # Don't connect/disconnect — just check if it's already connected
+        if not prisma.is_connected():
+            raise Exception("Prisma not connected")
+        return {"status": "healthy"}
+    except Exception:
+        raise HTTPException(status_code=503, detail="unhealthy")
 @app.get("/sentry-debug")
 async def trigger_error():
     # This intentionally causes a ZeroDivisionError which Sentry will intercept

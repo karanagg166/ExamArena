@@ -1,0 +1,123 @@
+name: CI Pipeline Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  prisma-db-checks:
+    name: Develop Checks (Prisma + DB)
+    if: github.base_ref == 'develop'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config
+
+      - name: Create CI Root Env File
+        env:
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          CI_DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
+        run: |
+          if [ -z "$SECRET_KEY" ]; then
+            echo "Missing required GitHub Secret: SECRET_KEY"
+            exit 1
+          fi
+
+          DB_URL="postgresql://postgres:password@db:5432/exam_arena"
+          if [ -n "$CI_DATABASE_URL" ]; then
+            DB_URL="$CI_DATABASE_URL"
+          fi
+
+          ORIGINS="http://localhost:3000"
+          if [ -n "$ALLOWED_ORIGINS" ]; then
+            ORIGINS="$ALLOWED_ORIGINS"
+          fi
+
+          API_KEY="dummy"
+          if [ -n "$OPENAI_API_KEY" ]; then
+            API_KEY="$OPENAI_API_KEY"
+          fi
+
+          {
+            printf 'SECRET_KEY=%s\n' "$SECRET_KEY"
+            printf 'ALGORITHM=HS256\n'
+            printf 'ACCESS_TOKEN_EXPIRE_MINUTES=30\n'
+            printf 'DATABASE_URL=%s\n' "$DB_URL"
+            printf 'ENVIRONMENT=development\n'
+            printf 'ALLOWED_ORIGINS=%s\n' "$ORIGINS"
+            printf 'OPENAI_API_KEY=%s\n' "$API_KEY"
+            printf 'SENTRY_DSN=%s\n' "$SENTRY_DSN"
+          } > .env
+
+      - name: Build And Start Backend Stack
+        run: docker compose up -d --build db redis backend
+
+      - name: Wait For Postgres
+        run: |
+          for i in {1..30}; do
+            if docker compose exec -T db pg_isready -U postgres -d exam_arena; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Postgres did not become ready in time"
+          exit 1
+
+      - name: Validate Prisma Schema
+        run: docker compose exec -T backend prisma validate --schema /app/prisma/schema.prisma
+
+      - name: Push Schema To DB
+        run: docker compose exec -T backend prisma db push --schema /app/prisma/schema.prisma --skip-generate
+
+      - name: Pull Schema Back (Sync Check)
+        run: docker compose exec -T backend prisma db pull --schema /app/prisma/schema.prisma
+
+      - name: Ensure Schema Is In Sync
+        run: git diff --exit-code prisma/schema.prisma
+
+      - name: Generate Python Prisma Client
+        run: docker compose exec -T backend prisma generate --schema /app/prisma/schema.prisma --generator pyclient
+
+      - name: Show Backend Logs On Failure
+        if: failure()
+        run: docker compose logs backend db --no-color
+
+      - name: Cleanup Containers
+        if: always()
+        run: docker compose down -v
+
+  frontend-strict-checks:
+    name: Main Checks (Lint + Type + Build)
+    if: github.base_ref == 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config
+
+      - name: Build Frontend Image
+        run: docker compose build frontend
+
+      - name: Run Frontend Strict Checks In Docker
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+        run: |
+          docker compose run --rm --no-deps \
+            -e NEXT_PUBLIC_API_URL=http://localhost:8000 \
+            frontend sh -lc "npm ci && npm run lint && npx tsc --noEmit && npm run build"
+
+      - name: Cleanup Containers
+        if: always()
+        run: docker compose down -v
