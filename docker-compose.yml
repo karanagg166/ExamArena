@@ -37,7 +37,7 @@ services:
       - backend/.env
     volumes:
       - ./backend:/app                 # ← mounts your source for hot reload
-      - prisma_client:/app/prisma      # ← preserves generated Prisma client
+      - ./prisma:/app/prisma           # ← shared Prisma schema folder
     depends_on:
       - db
       - redis
@@ -64,4 +64,3 @@ services:
 
 volumes:
   postgres_data:
-  prisma_client:                       # ← named volume for generated Prisma client

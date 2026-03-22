@@ -1,46 +1,194 @@
-# Prisma Docker Commands
+# Docker + Prisma Commands
 
-Since you are running everything through Docker in a monorepo (with both Python and JS generators), this cheatsheet lists the precise `docker compose exec` commands to manage your database and clients without ever needing to use your exact local Mac environment.
+Use this guide to run the full stack with Docker and manage Prisma from backend only.
 
-## 1. Pushing Schema Changes
+## 0. Where To Run Commands
 
-Because `/prisma` is shared by both your containers, hitting the DB from either container works. We usually use the `backend` container to push data.
+Run all commands from project root:
 
-**To push changes from `schema.prisma` to the live Database:**
+`/Users/karanagg/Desktop/Projects/exam-arena`
+
+If you run commands from another folder, Docker Compose may not find `docker-compose.yml`.
+
+## 1. Validate Setup (Before Starting)
+
+Validate compose file syntax:
+
 ```bash
-docker compose exec backend prisma db push
+docker compose config
 ```
-*(Note: You will likely see a `Generator "prisma-client" failed` warning at the end of this command. **This is completely normal!** It happens because the Python container doesn't have the JS client installed. Your database was still synced successfully.)*
 
-**If your schema changes conflict (e.g. dropping enums) and you need to force a reset:**
+See current status of containers:
+
 ```bash
-docker compose exec backend prisma db push --force-reset
+docker compose ps
 ```
 
-## 2. Manually Generating Clients
+Check logs if something fails:
 
-When you modify your `schema.prisma` file, you need to tell both your frontend and backend to update their code snippets (though a container rebuild usually does this automatically).
+```bash
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f db
+```
 
-**To update the Python Client (FastAPI):**
+## 2. Build Images (When To Use)
+
+Use build when:
+- Dockerfiles changed
+- `requirements.txt` changed
+- base dependencies changed
+
+Build all services:
+
+```bash
+docker compose build
+```
+
+Build only backend:
+
+```bash
+docker compose build backend
+```
+
+Rebuild without cache (if build is stuck/corrupted):
+
+```bash
+docker compose build --no-cache
+```
+
+## 3. Start Services (up / up -d)
+
+Start and keep terminal attached (best for debugging):
+
+```bash
+docker compose up
+```
+
+Start in background (`-d` = detached mode):
+
+```bash
+docker compose up -d
+```
+
+Start specific services only:
+
+```bash
+docker compose up -d db redis
+docker compose up -d backend frontend
+```
+
+Build and start in one command:
+
+```bash
+docker compose up --build
+docker compose up -d --build
+```
+
+## 4. Stop vs Down (When To Use)
+
+Stop containers but keep them for quick restart:
+
+```bash
+docker compose stop
+```
+
+Start again after stop:
+
+```bash
+docker compose start
+```
+
+Stop and remove containers/networks (keeps named volumes):
+
+```bash
+docker compose down
+```
+
+Full cleanup including volumes (deletes local DB data):
+
+```bash
+docker compose down -v
+```
+
+Use `down -v` only when you intentionally want a fresh database.
+
+## 5. Restart / Recreate Quick Commands
+
+Restart one service:
+
+```bash
+docker compose restart backend
+```
+
+Recreate backend after compose/env changes:
+
+```bash
+docker compose up -d --force-recreate backend
+```
+
+## 6. Run Commands Inside Containers (exec)
+
+Backend shell:
+
+```bash
+docker compose exec backend sh
+```
+
+Frontend shell:
+
+```bash
+docker compose exec frontend sh
+```
+
+Database shell:
+
+```bash
+docker compose exec db psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-exam_arena}
+```
+
+## 7. Prisma Commands (Backend Only)
+
+Because Prisma is backend-only now, run Prisma from backend container.
+
+Generate Python Prisma client:
+
 ```bash
 docker compose exec backend prisma generate --generator pyclient
 ```
 
-**To update the Javascript Client (Next.js):**
+Push schema to database:
+
 ```bash
-docker compose exec frontend npx prisma generate --generator client
+docker compose exec backend prisma db push
 ```
 
-## 3. Pulling Database Changes
+Force reset and push schema (destructive):
 
-If someone else changed the remote database and you want to pull those table structures down into your `schema.prisma`:
+```bash
+docker compose exec backend prisma db push --force-reset
+```
+
+Pull current database schema into `prisma/schema.prisma`:
+
 ```bash
 docker compose exec backend prisma db pull
 ```
 
-## 4. Prisma Studio
+Open Prisma Studio (from backend container):
 
-While everything else can run inside docker, Prisma Studio exposes a web interface on port 5555. Unless you mapped port 5555 in your `docker-compose.yml`, it's much easier to run this specific command natively on your Mac terminal:
 ```bash
-npx prisma studio
+docker compose exec backend prisma studio --port 5555
 ```
+
+If Studio is not reachable from browser, map `5555:5555` under backend ports in `docker-compose.yml`.
+
+## 8. Recommended Daily Flow
+
+1. `docker compose up -d`
+2. `docker compose ps`
+3. Run your code changes
+4. If Prisma schema changed, run `docker compose exec backend prisma db push`
+5. Then run `docker compose exec backend prisma generate --generator pyclient`
+6. Check logs if needed: `docker compose logs -f backend`
+7. End work with `docker compose stop` (or `docker compose down` if you want cleanup)
