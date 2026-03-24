@@ -1,12 +1,16 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
+
 
 class LoginRequest(BaseModel):
     """Request body for login"""
+
     email: EmailStr
     password: str
 
+
 class UserRequest(BaseModel):
     """Request body for signup and user creation"""
+
     email: EmailStr
     name: str
     password: str
@@ -17,8 +21,10 @@ class UserRequest(BaseModel):
     country: str
     role: str
 
+
 class UserResponse(BaseModel):
     """User data in response"""
+
     id: str
     email: str
     name: str
@@ -28,6 +34,5 @@ class UserResponse(BaseModel):
     state: str
     country: str
     role: str
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)

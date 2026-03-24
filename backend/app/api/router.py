@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from app.auth.router import router as auth_router
 from app.students.router import router as students_router
 from app.teachers.router import router as teachers_router
