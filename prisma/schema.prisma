@@ -21,37 +21,37 @@ model User {
   country   String
   pincode   String
   state     String
+  principal Principal?
   student   Student?
   teacher   Teacher?
-  principal Principal?
 }
 
 model Student {
   id          String   @id @default(cuid())
   userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rollNo      String   @unique
   dob         DateTime
   class_      String
   parentName  String
   parentEmail String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Teacher {
   id            String @id @default(cuid())
   userId        String @unique
-  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   qualification String
   experience    Int
   department    String
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Principal {
   id            String @id @default(cuid())
   userId        String @unique
-  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   qualification String
   experience    Int
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
