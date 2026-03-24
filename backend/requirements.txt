@@ -37,15 +37,12 @@ python-socketio
 sentry-sdk
 loguru
 
-# Database Validation & ORM
+# Database & Forms
 sqlmodel
 python-multipart
-email-validator
 
 # Testing
 pytest
+pytest-mock
+pytest-asyncio
 httpx
-
-# Forms and Validation
-python-multipart
-email-validator

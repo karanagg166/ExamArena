@@ -192,3 +192,7 @@ If Studio is not reachable from browser, map `5555:5555` under backend ports in 
 5. Then run `docker compose exec backend prisma generate --generator pyclient`
 6. Check logs if needed: `docker compose logs -f backend`
 7. End work with `docker compose stop` (or `docker compose down` if you want cleanup)
+
+
+tree -I 'node_modules|.next|__pycache__|.git|.venv|*.pyc|postgres_data' --dirsfirst 
+# for seeing your project structure

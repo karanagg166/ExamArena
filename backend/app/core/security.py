@@ -27,9 +27,9 @@ def verify_token(token: str) -> str:
     """Extract user_id from token"""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id: str = payload.get("sub")
+        user_id: str = payload.get("sub") # type: ignore
         if user_id is None:
             return None
         return user_id
     except JWTError:
-        return None
+        return None # type: ignore

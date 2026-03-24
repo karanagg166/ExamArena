@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import Response
-from prisma import Prisma
 from app.users.schemas import LoginRequest, UserRequest, UserResponse
 from app.core.security import verify_password, create_access_token
 from app.core.config import settings
@@ -30,13 +29,13 @@ async def signup(user_data: UserRequest, response: Response):
     
     # Generate token
     access_token = create_access_token(new_user.id)
-    
+    print("created user token is here",access_token) # type: ignore
     # Set cookie
     response.set_cookie(
         key="access_token",
         value=access_token,
-        httponly=True,
-        secure=settings.ENVIRONMENT == "production",
+        httponly=False,
+        secure=False,
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
