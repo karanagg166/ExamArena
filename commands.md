@@ -1,4 +1,4 @@
-# Docker + Prisma Commands
+# Docker + Prisma + Lint Commands
 
 Use this guide to run the full stack with Docker and manage Prisma from backend only.
 
@@ -71,7 +71,7 @@ Start in background (`-d` = detached mode):
 docker compose up -d
 ```
 
-Start specific segitrvices only:
+Start specific services only:
 
 ```bash
 docker compose up -d db redis
@@ -183,12 +183,248 @@ docker compose exec backend prisma studio --port 5555
 
 If Studio is not reachable from browser, map `5555:5555` under backend ports in `docker-compose.yml`.
 
-## 8. Recommended Daily Flow
+## 8. Backend Lint + Type Commands (FastAPI)
+
+### Check lint errors (Ruff):
+
+```bash
+docker compose exec backend ruff check app/
+```
+
+### Fix lint errors automatically (Ruff):
+
+```bash
+docker compose exec backend ruff check app/ --fix
+```
+
+### Check formatting errors (Black):
+
+```bash
+docker compose exec backend black --check app/
+```
+
+### Fix formatting errors automatically (Black):
+
+```bash
+docker compose exec backend black app/
+```
+
+### Check type errors (mypy):
+
+```bash
+docker compose exec backend mypy app/
+```
+
+Type errors cannot be auto-fixed — mypy tells you what is wrong and you fix them manually.
+
+### Run all three in order (recommended before every push):
+
+```bash
+docker compose exec backend black app/
+docker compose exec backend ruff check app/ --fix
+docker compose exec backend mypy app/
+```
+
+## 9. Frontend Lint + Type Commands (Next.js)
+
+### Check lint errors (ESLint):
+
+```bash
+ docker compose exec frontend npm run lint
+```
+
+### Fix lint errors automatically (ESLint):
+
+```bash
+docker compose exec frontend npm run lint -- --fix
+```
+
+### Check formatting errors (Prettier):
+
+```bash
+docker compose exec frontend npx prettier --check src/
+```
+
+### Fix formatting errors automatically (Prettier):
+
+```bash
+docker compose exec frontend npx prettier --write src/
+```
+
+### Check type errors (TypeScript):
+
+```bash
+docker compose exec frontend npx tsc --noEmit
+```
+
+Type errors cannot be auto-fixed — tsc tells you what is wrong and you fix them manually.
+
+### Run all three in order (recommended before every push):
+
+```bash
+docker compose exec frontend npx prettier --write src/
+docker compose exec frontend npx next lint --fix
+docker compose exec frontend npx tsc --noEmit
+```
+
+## 10. Recommended Daily Flow
 
 1. `docker compose up -d`
 2. `docker compose ps`
 3. Run your code changes
-4. If Prisma schema changed, run `docker compose exec backend prisma db push`
-5. Then run `docker compose exec backend prisma generate --generator pyclient`
-6. Check logs if needed: `docker compose logs -f backend`
+4. If Prisma schema changed:
+   ```bash
+   docker compose exec backend prisma db push
+   docker compose exec backend prisma generate --generator pyclient
+   ```
+5. Before pushing code, run lint + type checks:
+   ```bash
+   # Backend
+   docker compose exec backend black app/
+   docker compose exec backend ruff check app/ --fix
+   docker compose exec backend mypy app/
+
+   # Frontend
+   docker compose exec frontend npx prettier --write src/
+   docker compose exec frontend npx next lint --fix
+   docker compose exec frontend npx tsc --noEmit
+   ```
+6. Check logs if needed:
+   ```bash
+   docker compose logs -f backend
+   ```
 7. End work with `docker compose stop` (or `docker compose down` if you want cleanup)
+
+## 11. Makefile Commands
+
+There are two Makefiles in the project. Each command and what it does is listed below.
+
+---
+
+### `Makefile` — Base CI (no lint / type checks)
+
+Run commands from this file normally without any flag:
+
+```bash
+make ci
+```
+Runs the full pipeline before pushing code — builds Docker images, starts containers, waits for backend to be healthy, runs all Prisma steps (validate → generate → db push), runs pytest tests, then stops everything. Use this before every `git push`.
+
+```bash
+make test
+```
+Runs only backend pytest tests inside the container. Skips build, prisma, everything else. Use this while writing code to quickly check if tests pass.
+
+```bash
+make db-push
+```
+Runs only the three Prisma steps — validate schema, generate Python client, push schema to database. Use this after editing `schema.prisma`.
+
+```bash
+make up
+```
+Starts all services in the background (`docker compose up -d`). Use this to spin up your local dev environment.
+
+```bash
+make down
+```
+Stops and removes all running containers (`docker compose down`). Volumes are kept so your database data is safe.
+
+---
+
+### `Makefile.full-ci` — Full CI (with lint + type checks)
+
+Run commands from this file using the `-f` flag:
+
+```bash
+make -f Makefile.full-ci ci
+```
+Runs the full pipeline in 7 steps — build → start containers → health check → lint → type check → prisma → tests → stop. Use this before every `git push` when you want the strictest check.
+
+```bash
+make -f Makefile.full-ci lint
+```
+Runs lint checks on both backend and frontend together — Ruff + Black check on FastAPI, ESLint + Prettier check on Next.js. Only checks, does not fix anything.
+
+```bash
+make -f Makefile.full-ci lint-backend
+```
+Runs only Ruff + Black check on the FastAPI backend. Does not touch frontend.
+
+```bash
+make -f Makefile.full-ci lint-frontend
+```
+Runs only ESLint + Prettier check on the Next.js frontend. Does not touch backend.
+
+```bash
+make -f Makefile.full-ci type-check
+```
+Runs type checks on both backend and frontend — mypy on FastAPI, tsc on Next.js. Only checks, does not fix anything.
+
+```bash
+make -f Makefile.full-ci type-backend
+```
+Runs only mypy type check on the FastAPI backend.
+
+```bash
+make -f Makefile.full-ci type-frontend
+```
+Runs only TypeScript compiler check (`tsc --noEmit`) on the Next.js frontend.
+
+```bash
+make -f Makefile.full-ci format
+```
+Auto-formats and auto-fixes both backend and frontend — Black + Ruff fix on FastAPI, Prettier write on Next.js. This rewrites your files. Run this first before checking lint.
+
+```bash
+make -f Makefile.full-ci format-backend
+```
+Auto-formats and auto-fixes only the FastAPI backend using Black and Ruff.
+
+```bash
+make -f Makefile.full-ci format-frontend
+```
+Auto-formats only the Next.js frontend using Prettier.
+
+```bash
+make -f Makefile.full-ci test
+```
+Runs only backend pytest tests. Same as `make test` in the base Makefile.
+
+```bash
+make -f Makefile.full-ci db-push
+```
+Runs only the three Prisma steps. Same as `make db-push` in the base Makefile.
+
+```bash
+make -f Makefile.full-ci up
+```
+Starts all services in the background. Same as `make up` in the base Makefile.
+
+```bash
+make -f Makefile.full-ci down
+```
+Stops and removes all containers. Same as `make down` in the base Makefile.
+
+---
+
+### Quick reference — which Makefile to use
+
+| Situation | Command |
+|---|---|
+| Quick check before push (no lint) | `make ci` |
+| Strict check before push (with lint) | `make -f Makefile.full-ci ci` |
+| Auto-fix all formatting issues | `make -f Makefile.full-ci format` |
+| Check lint only | `make -f Makefile.full-ci lint` |
+| Check types only | `make -f Makefile.full-ci type-check` |
+| Run tests only | `make test` |
+| Start dev environment | `make up` |
+| Stop dev environment | `make down` |
+
+## 12. Project Structure
+
+View your project structure (excluding noise folders):
+
+```bash
+tree -I 'node_modules|.next|__pycache__|.git|.venv|*.pyc|postgres_data' --dirsfirst
+```

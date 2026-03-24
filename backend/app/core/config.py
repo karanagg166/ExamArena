@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+
 
 class Settings(BaseSettings):
     SECRET_KEY: str
@@ -12,9 +12,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str | None = None
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
+
 
 settings = Settings()

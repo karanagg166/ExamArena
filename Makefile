@@ -1,44 +1,79 @@
 # =============================================================
-#  Exam Arena — Local Dev Checks
-#  Usage:  make ci
+#  Exam Arena — Local Dev Checks (No Lint / Type Checks)
+#  Usage:
+#    make ci          → full pipeline (build + checks + tests)
+#    make up          → start all services
+#    make down        → stop all services
+#    make test        → run backend tests only
+#    make db-push     → run prisma db push
 # =============================================================
 
-.PHONY: ci
+.PHONY: ci up down test db-push wait-backend
 
-ci:
-	@echo "🐳 Building Docker images..."
-	docker compose build
+# ── Config ────────────────────────────────────────────────────
+BACKEND_CONTAINER := backend
+COMPOSE            := docker compose
 
-	@echo "🚀 Starting DB, Redis and backend..."
-	docker compose up -d db redis backend
-
-	@echo "⏳ Waiting for backend + DB to be ready (max 60s)..."
-	@for i in $$(seq 1 30); do \
+# ── Helpers ───────────────────────────────────────────────────
+wait-backend:
+	@echo "⏳ Waiting for backend + DB to be ready (max 180s)..."
+	@for i in $$(seq 1 60); do \
 		RESPONSE=$$(curl --silent http://localhost:8000/health 2>/dev/null); \
 		if echo "$$RESPONSE" | grep -q '"healthy"'; then \
-			echo "✅ Backend and DB are ready (took ~$$(($$i * 2))s)"; \
+			echo "✅ Backend and DB are ready (took ~$$(($$i * 3))s)"; \
 			break; \
 		fi; \
-		if [ $$i -eq 30 ]; then \
+		if [ $$i -eq 60 ]; then \
 			echo "❌ Backend never became ready — logs:"; \
-			docker compose logs backend; \
-			docker compose down; \
+			$(COMPOSE) logs $(BACKEND_CONTAINER); \
+			$(COMPOSE) down; \
 			exit 1; \
 		fi; \
-		echo "Waiting... ($$i/30) — response: $$RESPONSE"; \
-		sleep 2; \
+		echo "   Waiting... ($$i/60) response: $$RESPONSE"; \
+		sleep 3; \
 	done
 
+# ── Service control ───────────────────────────────────────────
+up:
+	@echo "🚀 Starting all services..."
+	$(COMPOSE) up -d
+
+down:
+	@echo "🧹 Stopping containers..."
+	$(COMPOSE) down
+
+# ── Prisma ────────────────────────────────────────────────────
+db-push:
 	@echo "📦 Prisma validate..."
-	docker compose exec backend prisma validate
+	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma validate
 
 	@echo "📦 Prisma generate (pyclient)..."
-	docker compose exec backend prisma generate --generator pyclient
+	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma generate --generator pyclient
 
 	@echo "📦 Prisma DB push..."
-	docker compose exec backend prisma db push --accept-data-loss
+	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma db push --accept-data-loss
 
-	@echo "🧹 Stopping containers..."
-	docker compose down
+# ── Tests ─────────────────────────────────────────────────────
+test:
+	@echo "🧪 Running backend tests..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
 
+# ── Main CI pipeline ──────────────────────────────────────────
+ci:
+	@echo "🐳 Building Docker images..."
+	$(COMPOSE) build
+
+	@echo "🚀 Starting DB, Redis and backend..."
+	$(COMPOSE) up -d db redis $(BACKEND_CONTAINER)
+
+	$(MAKE) wait-backend
+
+	$(MAKE) db-push
+
+	@echo "🧪 Running backend tests..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
+
+	$(MAKE) down
+
+	@echo ""
 	@echo "✅ All checks passed — safe to push!"
