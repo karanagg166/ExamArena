@@ -73,7 +73,7 @@ const SignUpPage = () => {
             setSuccess(true);
 
 
-            // router.push("/login");
+            router.push("/login");
 
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
