@@ -46,3 +46,8 @@ pytest
 pytest-mock
 pytest-asyncio
 httpx
+
+# Linting and Formatting
+ruff
+black
+mypy

@@ -1,8 +1,9 @@
 # backend/tests/auth/conftest.py
+from unittest.mock import AsyncMock
+
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 
@@ -67,15 +68,15 @@ async def real_db():
     import app.core.database as db_module
     from prisma import Prisma
 
-    original = db_module.prisma          # save the original
+    original = db_module.prisma  # save the original
     fresh = Prisma()
     await fresh.connect()
-    db_module.prisma = fresh             # patch the global
+    db_module.prisma = fresh  # patch the global
 
     yield fresh
 
     await fresh.disconnect()
-    db_module.prisma = original          # restore
+    db_module.prisma = original  # restore
 
 
 @pytest_asyncio.fixture
@@ -95,6 +96,4 @@ async def real_client(real_db):
 async def cleanup_real_user(real_db):
     """Deletes the test user from real DB after each integration test."""
     yield
-    await real_db.user.delete_many(
-        where={"email": TEST_USER_PAYLOAD["email"]}
-    )
+    await real_db.user.delete_many(where={"email": TEST_USER_PAYLOAD["email"]})

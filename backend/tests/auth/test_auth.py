@@ -1,23 +1,22 @@
 # backend/tests/auth/test_auth.py
 import pytest
-from tests.dummy_data.users import TEST_USER_PAYLOAD
 
+from tests.dummy_data.users import TEST_USER_PAYLOAD
 
 # ═════════════════════════════════════════════════════════════
 #  UNIT TESTS — everything mocked, no real DB
 # ═════════════════════════════════════════════════════════════
+
 
 class TestSignupUnit:
     """Tests for POST /api/v1/auth/signup — all mocked."""
 
     @pytest.mark.asyncio
     async def test_signup_success(self, client, mock_db, fake_user):
-        mock_db["get_user_by_email"].return_value = None   
-        mock_db["create_user"].return_value = fake_user    
+        mock_db["get_user_by_email"].return_value = None
+        mock_db["create_user"].return_value = fake_user
 
-        response = await client.post(
-            "/api/v1/auth/signup", json=TEST_USER_PAYLOAD
-        )
+        response = await client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
 
         assert response.status_code == 200
         data = response.json()
@@ -31,18 +30,14 @@ class TestSignupUnit:
         mock_db["get_user_by_email"].return_value = None
         mock_db["create_user"].return_value = fake_user
 
-        response = await client.post(
-            "/api/v1/auth/signup", json=TEST_USER_PAYLOAD
-        )
+        response = await client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
         assert "access_token" in response.cookies
 
     @pytest.mark.asyncio
     async def test_signup_duplicate_email(self, client, mock_db, fake_user):
-        mock_db["get_user_by_email"].return_value = fake_user 
+        mock_db["get_user_by_email"].return_value = fake_user
 
-        response = await client.post(
-            "/api/v1/auth/signup", json=TEST_USER_PAYLOAD
-        )
+        response = await client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
 
         assert response.status_code == 400
         assert "already registered" in response.json()["detail"].lower()
@@ -52,7 +47,7 @@ class TestSignupUnit:
     async def test_signup_missing_required_fields(self, client, mock_db):
         response = await client.post(
             "/api/v1/auth/signup",
-            json={"email": "x@x.com", "password": "pass"},  
+            json={"email": "x@x.com", "password": "pass"},
         )
         assert response.status_code == 422
         mock_db["get_user_by_email"].assert_not_called()
@@ -108,7 +103,7 @@ class TestLoginUnit:
 
     @pytest.mark.asyncio
     async def test_login_wrong_email(self, client, mock_db):
-        mock_db["get_user_by_email"].return_value = None  
+        mock_db["get_user_by_email"].return_value = None
 
         response = await client.post(
             "/api/v1/auth/login",
@@ -122,7 +117,7 @@ class TestLoginUnit:
     @pytest.mark.asyncio
     async def test_login_wrong_password(self, client, mock_db, fake_user):
         mock_db["get_user_by_email"].return_value = fake_user
-        mock_db["verify_password"].return_value = False  
+        mock_db["verify_password"].return_value = False
 
         response = await client.post(
             "/api/v1/auth/login",
@@ -177,7 +172,7 @@ class TestMeUnit:
         mock_db["get_user_by_id"].return_value = fake_user
 
         client.cookies.set("access_token", "mocked.jwt.token")
-        
+
         # Then make the request without the cookies= parameter
         response = await client.get("/api/v1/auth/me")
 
@@ -193,7 +188,7 @@ class TestMeUnit:
 
     @pytest.mark.asyncio
     async def test_me_invalid_token(self, client, mock_db):
-        mock_db["verify_token"].return_value = None  
+        mock_db["verify_token"].return_value = None
 
         response = await client.get(
             "/api/v1/auth/me",
@@ -204,7 +199,7 @@ class TestMeUnit:
     @pytest.mark.asyncio
     async def test_me_user_not_found(self, client, mock_db, fake_user):
         mock_db["verify_token"].return_value = fake_user.id
-        mock_db["get_user_by_id"].return_value = None  
+        mock_db["get_user_by_id"].return_value = None
 
         response = await client.get(
             "/api/v1/auth/me",
@@ -217,16 +212,13 @@ class TestMeUnit:
 #  INTEGRATION TESTS — hit real NeonDB, minimal set
 # ═════════════════════════════════════════════════════════════
 
+
 @pytest.mark.integration
 class TestAuthIntegration:
 
     @pytest.mark.asyncio
-    async def test_signup_writes_to_db(
-        self, real_client, real_db, cleanup_real_user
-    ):
-        response = await real_client.post(
-            "/api/v1/auth/signup", json=TEST_USER_PAYLOAD
-        )
+    async def test_signup_writes_to_db(self, real_client, real_db, cleanup_real_user):
+        response = await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
 
         assert response.status_code == 200
         user_in_db = await real_db.user.find_unique(
@@ -240,21 +232,13 @@ class TestAuthIntegration:
     async def test_signup_unique_email_enforced(
         self, real_client, real_db, cleanup_real_user
     ):
-        await real_client.post(
-            "/api/v1/auth/signup", json=TEST_USER_PAYLOAD
-        )
-        response = await real_client.post(
-            "/api/v1/auth/signup", json=TEST_USER_PAYLOAD
-        )
+        await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
+        response = await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_login_reads_from_db(
-        self, real_client, real_db, cleanup_real_user
-    ):
-        await real_client.post(
-            "/api/v1/auth/signup", json=TEST_USER_PAYLOAD
-        )
+    async def test_login_reads_from_db(self, real_client, real_db, cleanup_real_user):
+        await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
         response = await real_client.post(
             "/api/v1/auth/login",
             json={
