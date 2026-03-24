@@ -9,14 +9,14 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   name      String
-  email     String   @unique
+  email     String     @unique
   password  String
   phoneNo   String
-  role      String   @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      String     @default("USER")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   city      String
   country   String
   pincode   String
@@ -32,7 +32,7 @@ model Student {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rollNo      String   @unique
   dob         DateTime
-  class_       String
+  class_      String
   parentName  String
   parentEmail String
 }
