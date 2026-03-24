@@ -193,6 +193,8 @@ const SignUpPage = () => {
                             >
                                 <option value="student">Student</option>
                                 <option value="teacher">Teacher</option>
+                                <option value="admin">Admin</option>
+                                <option value="principal">Principal</option>
                             </select>
                         </div>
                     </div>
@@ -247,7 +249,3 @@ const SignUpPage = () => {
 };
 
 export default SignUpPage;
-
-function toast(arg0: string) {
-    throw new Error("Function not implemented.");
-}

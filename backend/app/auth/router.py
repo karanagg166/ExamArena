@@ -4,8 +4,9 @@ from prisma import Prisma
 from app.users.schemas import LoginRequest, UserRequest, UserResponse
 from app.core.security import verify_password, create_access_token
 from app.core.config import settings
-from app.users.crud import get_user_by_email, create_user as crud_create_user
+from app.users.crud import get_user_by_email, create_user as crud_create_user, update_user
 from app.api.deps import get_current_user
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -88,3 +89,21 @@ async def logout(response: Response):
 async def get_current_user_info(current_user = Depends(get_current_user)):
     """Get current authenticated user"""
     return current_user
+
+class UserUpdate(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    phoneNo: str | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str | None = None
+    pincode: str | None = None
+
+@router.put("/me", response_model=UserResponse)
+async def update_current_user_info(
+    user_data: UserUpdate,
+    current_user = Depends(get_current_user)
+):
+    """Update current authenticated user"""
+    updated_user = await update_user(current_user.id, user_data)
+    return updated_user

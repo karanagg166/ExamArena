@@ -21,12 +21,42 @@ model User {
   country   String
   pincode   String
   state     String
+  student   Student?
+  teacher   Teacher?
+  principal Principal?
+}
+
+model Student {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rollNo      String   @unique
+  dob         DateTime
+  class_       String
+  parentName  String
+  parentEmail String
+}
+
+model Teacher {
+  id            String @id @default(cuid())
+  userId        String @unique
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  qualification String
+  experience    Int
+  department    String
+}
+
+model Principal {
+  id            String @id @default(cuid())
+  userId        String @unique
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  qualification String
+  experience    Int
 }
 
 enum Role {
-  USER
-  ADMIN
-  SYSTEM_ADMIN
+  STUDENT
   TEACHER
-  SUPER_ADMIN
+  ADMIN
+  PRINCIPAL
 }

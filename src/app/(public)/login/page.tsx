@@ -20,7 +20,25 @@ export default function LoginPage() {
         try {
             const response = await api.post("/api/v1/auth/login", { email, password });
             if (response.status === 200) {
-                router.push("/dashboard");
+                const user = response.data;
+
+                // Redirect based on role
+                switch (user.role.toLowerCase()) {
+                    case "student":
+                        router.push("/student/profile");
+                        break;
+                    case "teacher":
+                        router.push("/teacher/profile");
+                        break;
+                    case "principal":
+                        router.push("/principal/profile");
+                        break;
+                    case "admin":
+                        router.push("/admin/profile");
+                        break;
+                    default:
+                        router.push("/");
+                }
             } else {
                 setError("Invalid credentials. Please try again.");
             }
