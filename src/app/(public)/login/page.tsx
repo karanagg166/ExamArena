@@ -13,35 +13,46 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const response = await api.post("/api/v1/auth/login", {
-        email,
-        password,
-      });
-      if (response.status === 200) {
-        router.push("/dashboard");
-      } else {
-        setError("Invalid credentials. Please try again.");
-      }
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        setError(
-          err.response?.data?.detail ||
-            "Invalid credentials. Please try again.",
-        );
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An error occurred. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+        try {
+            const response = await api.post("/api/v1/auth/login", { email, password });
+            if (response.status === 200) {
+                const user = response.data;
+
+                // Redirect based on role
+                switch (user.role.toLowerCase()) {
+                    case "student":
+                        router.push("/student/profile");
+                        break;
+                    case "teacher":
+                        router.push("/teacher/profile");
+                        break;
+                    case "principal":
+                        router.push("/principal/profile");
+                        break;
+                    case "admin":
+                        router.push("/admin/profile");
+                        break;
+                    default:
+                        router.push("/");
+                }
+            } else {
+                setError("Invalid credentials. Please try again.");
+            }
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                setError(err.response?.data?.detail || "Invalid credentials. Please try again.");
+            } else if (err instanceof Error) {
+                setError(err.message);
+            } else {
+                setError("An error occurred. Please try again.");
+            }
+        } finally {
+            setLoading(false);
+        }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black px-4 text-white relative overflow-hidden">

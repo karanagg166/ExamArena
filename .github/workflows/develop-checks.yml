@@ -108,6 +108,9 @@ jobs:
       - name: Clear Prisma CLI cache (prevents ENOTEMPTY errors)
         run: docker compose exec -T backend sh -c 'rm -rf /root/.cache/prisma-python'
 
+      - name: Prisma Format
+        run: docker compose exec -T backend prisma format
+
       - name: Prisma Validate
         run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma validate
 

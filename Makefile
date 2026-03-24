@@ -51,7 +51,7 @@ db-push:
 	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma generate --generator pyclient
 
 	@echo "📦 Prisma DB push..."
-	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma db push --accept-data-loss
+	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma db pull
 
 # ── Tests ─────────────────────────────────────────────────────
 test:

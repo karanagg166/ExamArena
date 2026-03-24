@@ -9,24 +9,54 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   name      String
-  email     String   @unique
+  email     String     @unique
   password  String
   phoneNo   String
-  role      String   @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      String     @default("USER")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   city      String
   country   String
   pincode   String
   state     String
+  principal Principal?
+  student   Student?
+  teacher   Teacher?
+}
+
+model Student {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  rollNo      String   @unique
+  dob         DateTime
+  class_      String
+  parentName  String
+  parentEmail String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Teacher {
+  id            String @id @default(cuid())
+  userId        String @unique
+  qualification String
+  experience    Int
+  department    String
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Principal {
+  id            String @id @default(cuid())
+  userId        String @unique
+  qualification String
+  experience    Int
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
-  USER
-  ADMIN
-  SYSTEM_ADMIN
+  STUDENT
   TEACHER
-  SUPER_ADMIN
+  ADMIN
+  PRINCIPAL
 }

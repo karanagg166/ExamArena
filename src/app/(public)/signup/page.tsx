@@ -325,6 +325,8 @@ const SignUpPage = () => {
                             >
                                 <option value="student">Student</option>
                                 <option value="teacher">Teacher</option>
+                                <option value="admin">Admin</option>
+                                <option value="principal">Principal</option>
                             </select>
                         </div>
                     </div>
