@@ -1,10 +1,8 @@
+from app.users.schemas import UserResponse 
 from pydantic import BaseModel, EmailStr, Field
-from datetime import datetime
-from app.users.schemas import UserResponse
 
 class StudentBase(BaseModel):
     rollNo: str
-    dob: datetime
     class_: str = Field(alias="class")  # Map 'class' from DB to 'class_' in Python
     parentName: str
     parentEmail: EmailStr
@@ -24,7 +22,6 @@ class UserUpdateNested(BaseModel):
 class StudentUpdate(BaseModel):
     user: UserUpdateNested | None = None
     rollNo: str | None = None
-    dob: datetime | None = None
     class_: str | None = None
     parentName: str | None = None
     parentEmail: EmailStr | None = None

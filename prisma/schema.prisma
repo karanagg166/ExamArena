@@ -9,49 +9,190 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  name      String
-  email     String     @unique
-  password  String
-  phoneNo   String
-  role      String     @default("USER")
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  city      String
-  country   String
-  pincode   String
-  state     String
-  principal Principal?
-  student   Student?
-  teacher   Teacher?
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  phoneNo       String
+  role          Role           @default(STUDENT)
+  dateOfBirth   DateTime
+  city          String
+  country       String
+  pincode       String
+  state         String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  notifications Notification[]
+  principal     Principal?
+  student       Student?
+  teacher       Teacher?
 }
 
 model Student {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  rollNo      String   @unique
-  dob         DateTime
-  class_      String
-  parentName  String
-  parentEmail String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String        @id @default(cuid())
+  userId          String        @unique
+  rollNo          String        @unique
+  dob             DateTime
+  parentName      String
+  parentEmail     String
+  dateOfAdmission DateTime
+  classId         String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  schoolClass     SchoolClass   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentExams    StudentExam[]
+
+  @@index([classId])
+  @@index([userId])
 }
 
 model Teacher {
-  id            String @id @default(cuid())
-  userId        String @unique
+  id            String         @id @default(cuid())
+  userId        String         @unique
   qualification String
   experience    Int
   department    String
-  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  exams         Exam[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teaches       TeacherClass[]
+
+  @@index([userId])
+}
+
+model TeacherClass {
+  id          String      @id @default(cuid())
+  teacherId   String
+  classId     String
+  subject     Subject
+  schoolClass SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacher     Teacher     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classId])
+  @@index([teacherId])
+  @@index([classId])
+}
+
+model SchoolClass {
+  id        String         @id @default(cuid())
+  name      String
+  schoolId  String
+  teacherId String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  school    School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students  Student[]
+  teachers  TeacherClass[]
+
+  @@index([schoolId])
+  @@index([teacherId])
 }
 
 model Principal {
-  id            String @id @default(cuid())
-  userId        String @unique
-  qualification String
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  qualification Qualification
   experience    Int
-  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolId      String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model School {
+  id         String        @id @default(cuid())
+  name       String
+  address    String
+  city       String
+  state      String
+  country    String
+  pincode    String
+  schoolCode String        @unique
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  principals Principal[]
+  classes    SchoolClass[]
+}
+
+model Exam {
+  id           String        @id @default(cuid())
+  name         String
+  description  String
+  date         DateTime
+  duration     Int
+  maxMarks     Int
+  type         ExamType
+  teacherId    String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  teacher      Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  questions    Question[]
+  studentExams StudentExam[]
+
+  @@index([teacherId])
+}
+
+model StudentExam {
+  id            String              @id @default(cuid())
+  studentId     String
+  examId        String
+  marksObtained Int
+  givenAt       DateTime            @default(now())
+  exam          Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers       StudentExamAnswer[]
+
+  @@index([studentId])
+  @@index([examId])
+}
+
+model StudentExamAnswer {
+  id            String      @id @default(cuid())
+  studentExamId String
+  questionId    String
+  answer        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studentExam   StudentExam @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
+
+  @@unique([studentExamId, questionId])
+  @@index([studentExamId])
+  @@index([questionId])
+}
+
+model Question {
+  id            String              @id @default(cuid())
+  text          String
+  options       String[]
+  correctAnswer String?
+  marks         Int
+  imageUrl      String?
+  questionType  QuestionType        @default(MULTIPLE_CHOICE)
+  examId        String
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  exam          Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  answers       StudentExamAnswer[]
+
+  @@index([examId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum Role {
@@ -59,4 +200,37 @@ enum Role {
   TEACHER
   ADMIN
   PRINCIPAL
+}
+
+enum Subject {
+  MATHS
+  SCIENCE
+  HISTORY
+  LITERATURE
+  ART
+  MUSIC
+  PHYSICAL_EDUCATION
+}
+
+enum ExamType {
+  MIDTERM
+  FINAL
+  QUIZ
+  ASSIGNMENT
+  MOCK
+}
+
+enum Qualification {
+  BACHELORS
+  MASTERS
+  PHD
+  OTHER
+  BACHELORS_WITH_HONORS
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
 }

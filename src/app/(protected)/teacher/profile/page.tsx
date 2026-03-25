@@ -25,9 +25,10 @@ export default function TeacherDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch teacher data (includes user data)
-                const response = await api.get("/api/v1/teachers/me",{
-                    withCredentials: true});
+
+                const response = await api.get("/api/v1/teachers/me", {
+                    withCredentials: true
+                });
                 const data = response.data;
 
                 setFormData({
@@ -68,7 +69,7 @@ export default function TeacherDashboard() {
                 qualification: formData.qualification,
                 experience: formData.experience,
                 department: formData.department,
-            },{withCredentials: true});
+            }, { withCredentials: true });
 
             setIsEditing(false);
             alert("Profile updated successfully!");

@@ -169,6 +169,11 @@ Force reset and push schema (destructive):
 docker compose exec backend prisma db push --force-reset
 ```
 
+format schema
+```bash
+docker compose exec backend prisma format
+```
+
 Pull current database schema into `prisma/schema.prisma`:
 
 ```bash
@@ -303,8 +308,6 @@ There are two Makefiles in the project. Each command and what it does is listed 
 
 ### `Makefile` — Base CI (no lint / type checks)
 
-Run commands from this file normally without any flag:
-
 ```bash
 make ci
 ```
@@ -332,92 +335,13 @@ Stops and removes all running containers (`docker compose down`). Volumes are ke
 
 ---
 
-### `Makefile.full-ci` — Full CI (with lint + type checks)
-
-Run commands from this file using the `-f` flag:
-
-```bash
-make -f Makefile.full-ci ci
-```
-Runs the full pipeline in 7 steps — build → start containers → health check → lint → type check → prisma → tests → stop. Use this before every `git push` when you want the strictest check.
-
-```bash
-make -f Makefile.full-ci lint
-```
-Runs lint checks on both backend and frontend together — Ruff + Black check on FastAPI, ESLint + Prettier check on Next.js. Only checks, does not fix anything.
-
-```bash
-make -f Makefile.full-ci lint-backend
-```
-Runs only Ruff + Black check on the FastAPI backend. Does not touch frontend.
-
-```bash
-make -f Makefile.full-ci lint-frontend
-```
-Runs only ESLint + Prettier check on the Next.js frontend. Does not touch backend.
-
-```bash
-make -f Makefile.full-ci type-check
-```
-Runs type checks on both backend and frontend — mypy on FastAPI, tsc on Next.js. Only checks, does not fix anything.
-
-```bash
-make -f Makefile.full-ci type-backend
-```
-Runs only mypy type check on the FastAPI backend.
-
-```bash
-make -f Makefile.full-ci type-frontend
-```
-Runs only TypeScript compiler check (`tsc --noEmit`) on the Next.js frontend.
-
-```bash
-make -f Makefile.full-ci format
-```
-Auto-formats and auto-fixes both backend and frontend — Black + Ruff fix on FastAPI, Prettier write on Next.js. This rewrites your files. Run this first before checking lint.
-
-```bash
-make -f Makefile.full-ci format-backend
-```
-Auto-formats and auto-fixes only the FastAPI backend using Black and Ruff.
-
-```bash
-make -f Makefile.full-ci format-frontend
-```
-Auto-formats only the Next.js frontend using Prettier.
-
-```bash
-make -f Makefile.full-ci test
-```
-Runs only backend pytest tests. Same as `make test` in the base Makefile.
-
-```bash
-make -f Makefile.full-ci db-push
-```
-Runs only the three Prisma steps. Same as `make db-push` in the base Makefile.
-
-```bash
-make -f Makefile.full-ci up
-```
-Starts all services in the background. Same as `make up` in the base Makefile.
-
-```bash
-make -f Makefile.full-ci down
-```
-Stops and removes all containers. Same as `make down` in the base Makefile.
-
----
-
 ### Quick reference — which Makefile to use
 
 | Situation | Command |
 |---|---|
 | Quick check before push (no lint) | `make ci` |
-| Strict check before push (with lint) | `make -f Makefile.full-ci ci` |
-| Auto-fix all formatting issues | `make -f Makefile.full-ci format` |
-| Check lint only | `make -f Makefile.full-ci lint` |
-| Check types only | `make -f Makefile.full-ci type-check` |
 | Run tests only | `make test` |
+| Push Prisma schema changes | `make db-push` |
 | Start dev environment | `make up` |
 | Stop dev environment | `make down` |
 

@@ -127,5 +127,5 @@ Before requesting review, confirm:
 If you change architecture, setup steps, or roadmap status, update:
 
 - `README.md`
-- `SETUP.md`
-- `FEATURES.md`
+- `docs/SETUP.md`
+- `docs/FEATURES.md`

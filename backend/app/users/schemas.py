@@ -1,3 +1,6 @@
+from datetime import datetime
+from enum import Enum
+
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 
@@ -7,7 +10,11 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
-
+class Roles(str, Enum):
+    STUDENT = "STUDENT"
+    TEACHER = "TEACHER"
+    PRINCIPAL = "PRINCIPAL"
+    SYSTEM_ADMIN = "SYSTEM_ADMIN"
 class UserRequest(BaseModel):
     """Request body for signup and user creation"""
 
@@ -19,7 +26,8 @@ class UserRequest(BaseModel):
     city: str
     state: str
     country: str
-    role: str
+    dateOfBirth: datetime
+    role: Roles
 
 
 class UserResponse(BaseModel):
@@ -32,7 +40,8 @@ class UserResponse(BaseModel):
     pincode: str
     city: str
     state: str
+    dateOfBirth: datetime
     country: str
-    role: str
+    role: Roles
 
     model_config = ConfigDict(from_attributes=True)

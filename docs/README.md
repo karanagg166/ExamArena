@@ -6,9 +6,11 @@ This repository is now organized with dedicated documentation for setup, feature
 
 ## Project Docs
 
-- [SETUP.md](SETUP.md) - local setup, environment, and run commands.
-- [FEATURES.md](FEATURES.md) - implemented features and roadmap.
-- [CONTRIBUTING.md](CONTRIBUTING.md) - contribution rules, PR process, and branch strategy.
+- [feature_list.md](feature_list.md) - feature backlog split for team development.
+- [docs/SETUP.md](docs/SETUP.md) - local setup, environment, and run commands.
+- [docs/FEATURES.md](docs/FEATURES.md) - implemented features and roadmap.
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) - contribution rules, PR process, and branch strategy.
+- [docs/commands.md](docs/commands.md) - Docker, Prisma, lint, and Makefile command reference.
 
 ## Tech Stack & Rationale
 
