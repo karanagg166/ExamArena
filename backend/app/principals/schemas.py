@@ -1,31 +1,23 @@
 from pydantic import BaseModel
 from app.users.schemas import UserResponse
+from app.teachers.schemas import TeacherResponse
 
-class PrincipalBase(BaseModel):
-    qualification: str
+
+class PrincipalCreateRequest(BaseModel):
+    """Frontend sends schoolId + experience. Teacher record must already exist."""
+    schoolId: str
     experience: int
 
-class PrincipalCreate(PrincipalBase):
-    userId: str
-
-class UserUpdateNested(BaseModel):
-    name: str | None = None
-    email: str | None = None
-    phoneNo: str | None = None
-    city: str | None = None
-    state: str | None = None
-    country: str | None = None
-    pincode: str | None = None
 
 class PrincipalUpdate(BaseModel):
-    user: UserUpdateNested | None = None
-    qualification: str | None = None
     experience: int | None = None
 
-class PrincipalResponse(PrincipalBase):
+
+class PrincipalResponse(BaseModel):
     id: str
-    userId: str
-    user: UserResponse
-    
+    teacherId: str | None = None
+    schoolId: str
+    experience: int
+
     class Config:
         from_attributes = True

@@ -23,7 +23,7 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   notifications Notification[]
-  principal     Principal?
+  school        School[]
   student       Student?
   teacher       Teacher?
 }
@@ -32,7 +32,6 @@ model Student {
   id              String        @id @default(cuid())
   userId          String        @unique
   rollNo          String        @unique
-  dob             DateTime
   parentName      String
   parentEmail     String
   dateOfAdmission DateTime
@@ -53,9 +52,11 @@ model Teacher {
   qualification String
   experience    Int
   department    String
+  subjects      String         @default("[]")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   exams         Exam[]
+  principal     Principal?
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   teaches       TeacherClass[]
 
@@ -91,22 +92,23 @@ model SchoolClass {
 }
 
 model Principal {
-  id            String        @id @default(cuid())
-  userId        String        @unique
-  qualification Qualification
-  experience    Int
-  schoolId      String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  school        School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  experience Int
+  schoolId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  teacherId  String   @unique
+  school     School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([schoolId])
+  @@index([teacherId])
 }
 
 model School {
   id         String        @id @default(cuid())
   name       String
+  createdBy  String
   address    String
   city       String
   state      String
@@ -116,6 +118,7 @@ model School {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   principals Principal[]
+  user       User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   classes    SchoolClass[]
 }
 
