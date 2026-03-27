@@ -10,6 +10,7 @@ class StudentCreateRequest(BaseModel):
     parentName: str
     parentEmail: EmailStr
     dateOfAdmission: datetime
+    schoolId: str
     classId: str   # ID of the SchoolClass the student joins
 
 
@@ -34,6 +35,8 @@ class StudentUpdate(BaseModel):
     dob: datetime | None = None
     parentName: str | None = None
     parentEmail: EmailStr | None = None
+    schoolId: str | None = None
+    classId: str | None = None
 
 
 class StudentResponse(BaseModel):
@@ -44,6 +47,7 @@ class StudentResponse(BaseModel):
     parentName: str
     parentEmail: str
     dateOfAdmission: datetime
+    schoolId: str
     classId: str
     user: UserResponse
 

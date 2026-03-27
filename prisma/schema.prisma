@@ -41,6 +41,8 @@ model Student {
   schoolClass     SchoolClass   @relation(fields: [classId], references: [id], onDelete: Cascade)
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   studentExams    StudentExam[]
+  schoolId        String
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([classId])
   @@index([userId])
@@ -49,16 +51,18 @@ model Student {
 model Teacher {
   id            String         @id @default(cuid())
   userId        String         @unique
-  qualification String
+  qualification String         @default("[]")
   experience    Int
   department    String
   subjects      String         @default("[]")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   exams         Exam[]
+  schoolId      String?
   principal     Principal?
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   teaches       TeacherClass[]
+  school        School?        @relation(fields: [schoolId], references: [id], onDelete: SetNull)
 
   @@index([userId])
 }
@@ -118,8 +122,10 @@ model School {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   principals Principal[]
+  teachers   Teacher[]
   user       User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   classes    SchoolClass[]
+  Student    Student[]
 }
 
 model Exam {

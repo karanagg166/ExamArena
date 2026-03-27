@@ -27,13 +27,10 @@ export default function StudentDashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch student data (includes user data)
-                console.log("error : 1")
-                const response = await api.get("/api/v1/students/me",{
-                    withCredentials: true});
-                console.log("error : 2")
+                const response = await api.get("/api/v1/students/me", {
+                    withCredentials: true
+                });
                 const data = response.data;
-                console.log("error : 3")
 
                 setFormData({
                     name: data.user.name || "",
@@ -45,11 +42,10 @@ export default function StudentDashboard() {
                     pincode: data.user.pincode || "",
                     rollNo: data.rollNo || "",
                     dob: data.dob ? data.dob.split('T')[0] : "",
-                    class: data.class_ || "",
+                    class: data.classId || "",
                     parentName: data.parentName || "",
                     parentEmail: data.parentEmail || "",
                 });
-                console.log("error : 4")
             } catch (error) {
                 router.push("/login");
             } finally {
@@ -75,7 +71,7 @@ export default function StudentDashboard() {
                 },
                 rollNo: formData.rollNo,
                 dob: formData.dob,
-                class_: formData.class,
+                classId: formData.class,
                 parentName: formData.parentName,
                 parentEmail: formData.parentEmail,
             },{withCredentials: true});

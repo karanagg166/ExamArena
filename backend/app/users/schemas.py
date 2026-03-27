@@ -10,11 +10,14 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+
 class Roles(str, Enum):
     STUDENT = "STUDENT"
     TEACHER = "TEACHER"
     PRINCIPAL = "PRINCIPAL"
     SYSTEM_ADMIN = "SYSTEM_ADMIN"
+
+
 class UserRequest(BaseModel):
     """Request body for signup and user creation"""
 
@@ -45,6 +48,8 @@ class UserResponse(BaseModel):
     role: Roles
 
     model_config = ConfigDict(from_attributes=True)
+
+
 class UserUpdate(BaseModel):
     name: str | None = None
     email: EmailStr | None = None
@@ -52,7 +57,7 @@ class UserUpdate(BaseModel):
     city: str | None = None
     state: str | None = None
     country: str | None = None
-    pincode: str | None = None  
+    pincode: str | None = None
     dateOfBirth: datetime | None = None
     role: Roles | None = None
     password: str | None = None

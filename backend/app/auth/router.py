@@ -2,13 +2,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
-from prisma import Prisma
-from app.users.schemas import LoginRequest, UserRequest, UserResponse
-from app.core.security import verify_password, create_access_token
-from app.core.config import settings
-from app.users.crud import get_user_by_email, create_user as crud_create_user, update_user
 from app.api.deps import get_current_user
-from pydantic import BaseModel
+from app.core.config import settings
+from app.core.security import create_access_token, verify_password
+from app.users.crud import (
+    create_user as crud_create_user,
+    get_user_by_email,
+    update_user,
+)
+from app.users.schemas import LoginRequest, UserRequest, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -38,8 +40,8 @@ async def signup(user_data: UserRequest, response: Response):
     response.set_cookie(
         key="access_token",
         value=access_token,
-        httponly=False,
-        secure=False,
+        httponly=True,
+        secure=settings.ENVIRONMENT == "production",
         samesite="lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -95,20 +97,10 @@ async def get_current_user_info(
     """Get current authenticated user"""
     return current_user
 
-class UserUpdate(BaseModel):
-    name: str | None = None
-    email: str | None = None
-    phoneNo: str | None = None
-    city: str | None = None
-    state: str | None = None
-    country: str | None = None
-    pincode: str | None = None
-
 @router.put("/me", response_model=UserResponse)
 async def update_current_user_info(
     user_data: UserUpdate,
-    current_user = Depends(get_current_user)
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Update current authenticated user"""
-    updated_user = await update_user(current_user.id, user_data)
-    return updated_user
+    return await update_user(current_user.id, user_data)

@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { api } from "@/lib/axios";
-import { Student} from "@/types/student";
-type School = { id: string; name: string; city: string };
+import { Student } from "@/types/student";
+import { School } from "@/types/school";
+import { useAuthStore } from "@/stores";
 type SchoolClass = { id: string; name: string };
 
 const INPUT_CLS = "w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all";
@@ -14,6 +15,8 @@ export default function SignupStudentPage() {
     const router = useRouter();
     const [schools, setSchools] = useState<School[]>([]);
     const [classes, setClasses] = useState<SchoolClass[]>([]);
+    const user = useAuthStore((s) => s.user);
+    console.log("Current user in signup page:", user);
     const [form, setForm] = useState({
         rollNo: "",
         dob: "",
@@ -27,7 +30,7 @@ export default function SignupStudentPage() {
     const [error, setError] = useState("");
 
     useEffect(() => {
-        api.get("/api/v1/schools/").then((r) => setSchools(r.data)).catch(() => {});
+        api.get("/api/v1/schools/").then((r) => setSchools(r.data)).catch(() => { });
     }, []);
 
     useEffect(() => {
@@ -55,6 +58,7 @@ export default function SignupStudentPage() {
                 parentName: form.parentName,
                 parentEmail: form.parentEmail,
                 dateOfAdmission: new Date(form.dateOfAdmission).toISOString(),
+                schoolId: form.schoolId,
                 classId: form.classId,
             });
             router.push("/dashboard");

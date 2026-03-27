@@ -19,6 +19,7 @@ async def create_student(student_data: StudentCreate):
         "parentName": student_data.parentName,
         "parentEmail": student_data.parentEmail,
         "dateOfAdmission": student_data.dateOfAdmission,
+        "schoolId": student_data.schoolId,
         "classId": student_data.classId,
     })
     return await get_student_by_user_id(student_data.userId)

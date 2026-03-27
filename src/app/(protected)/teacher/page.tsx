@@ -8,12 +8,12 @@ import { Save } from "lucide-react";
 import { Teacher } from "@/types/teacher";
 
 const INPUT_CLS = "w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50";
+type TeacherForm = Pick<Teacher, "qualifications" | "experience" | "department" | "subjects">;
 
 export default function ProfileTeacherPage() {
     const router = useRouter();
 
-    // Using Omit to exclude 'id' since we don't need to edit it in the form state
-    const [form, setForm] = useState<Omit<Teacher, "id">>({
+    const [form, setForm] = useState<TeacherForm>({
         qualifications: [],
         experience: 0,
         department: "",

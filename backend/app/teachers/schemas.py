@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 from app.users.schemas import UserResponse
 import json
 
@@ -19,6 +19,17 @@ class TeacherCreateRequest(BaseModel):
     def subjects_str(self) -> str:
         """Serialize subjects list → JSON string for DB storage"""
         return json.dumps(self.subjects)
+
+    @model_validator(mode="before")
+    @classmethod
+    def support_singular_qualification_field(cls, data):
+        if isinstance(data, dict) and "qualifications" not in data and "qualification" in data:
+            singular = data.get("qualification")
+            if isinstance(singular, str):
+                data["qualifications"] = [item.strip() for item in singular.split(",") if item.strip()]
+            elif isinstance(singular, list):
+                data["qualifications"] = singular
+        return data
 
 
 class TeacherCreate(TeacherCreateRequest):
@@ -43,11 +54,22 @@ class TeacherUpdate(BaseModel):
     department: str | None = None
     subjects: list[str] | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def support_singular_qualification_field(cls, data):
+        if isinstance(data, dict) and "qualifications" not in data and "qualification" in data:
+            singular = data.get("qualification")
+            if isinstance(singular, str):
+                data["qualifications"] = [item.strip() for item in singular.split(",") if item.strip()]
+            elif isinstance(singular, list):
+                data["qualifications"] = singular
+        return data
+
 
 class TeacherResponse(BaseModel):
     id: str
     userId: str
-    qualifications: list[str] = []
+    qualifications: list[str] = Field(default_factory=list, validation_alias=AliasChoices("qualifications", "qualification"))
     experience: int
     department: str
     subjects: list[str] = []

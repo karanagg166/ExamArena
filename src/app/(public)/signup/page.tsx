@@ -5,21 +5,22 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { api } from "@/lib/axios";
 import { SignUpForm } from "@/types/user";
-
+import { useAuthStore } from "@/stores";
 type ValidationError = {
     msg: string;
 };
 
 const SignUpPage = () => {
     const router = useRouter();
+    const { login } = useAuthStore();
     const [form, setForm] = useState<SignUpForm>({
-        name: "Test User",
-        email: "testuser" + Math.floor(Math.random() * 1000) + "@example.com",
-        password: "securepassword123",
-        confirmPassword: "securepassword123",
+        name: "karan",
+        email: "karan@gmail.com",
+        password: "karan166",
+        confirmPassword: "karan166",
         phoneNo: "+1234567890",
         dateOfBirth: "2000-01-01",
-        role: "STUDENT",
+        role: "TEACHER",
         pincode: "100001",
         city: "New York",
         state: "NY",
@@ -81,6 +82,7 @@ const SignUpPage = () => {
 
             setSuccess(true);
             // Redirect to role-specific profile setup
+            login(form.email, form.password);
             router.push(`/signup/${form.role.toLowerCase()}`);
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {

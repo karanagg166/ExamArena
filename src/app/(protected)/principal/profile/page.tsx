@@ -29,16 +29,18 @@ export default function PrincipalDashboard() {
                     withCredentials: true
                 });
                 const data = response.data;
+                const teacher = data.teacher ?? {};
+                const teacherUser = teacher.user ?? {};
 
                 setFormData({
-                    name: data.user.name || "",
-                    email: data.user.email || "",
-                    phoneNo: data.user.phoneNo || "",
-                    city: data.user.city || "",
-                    state: data.user.state || "",
-                    country: data.user.country || "",
-                    pincode: data.user.pincode || "",
-                    qualification: data.qualification || "",
+                    name: teacherUser.name || "",
+                    email: teacherUser.email || "",
+                    phoneNo: teacherUser.phoneNo || "",
+                    city: teacherUser.city || "",
+                    state: teacherUser.state || "",
+                    country: teacherUser.country || "",
+                    pincode: teacherUser.pincode || "",
+                    qualification: (teacher.qualifications || []).join(", "),
                     experience: data.experience || 0,
                 });
             } catch (error: unknown) {
@@ -53,8 +55,7 @@ export default function PrincipalDashboard() {
 
     const handleSave = async () => {
         try {
-            // Update principal data (includes user data)
-            await api.put("/api/v1/principals/me", {
+            await api.put("/api/v1/teachers/me", {
                 user: {
                     name: formData.name,
                     email: formData.email,
@@ -64,7 +65,13 @@ export default function PrincipalDashboard() {
                     country: formData.country,
                     pincode: formData.pincode,
                 },
-                qualification: formData.qualification,
+                qualifications: formData.qualification
+                    .split(",")
+                    .map((item: string) => item.trim())
+                    .filter(Boolean),
+            }, { withCredentials: true });
+
+            await api.put("/api/v1/principals/me", {
                 experience: formData.experience,
             }, { withCredentials: true });
 

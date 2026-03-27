@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/axios";
 import axios from "axios";
-import { School } from "@/types/school";
 
 const initialForm = {
     name: "",
@@ -15,6 +15,7 @@ const initialForm = {
 };
 
 const SchoolProfile = () => {
+    const router = useRouter();
     const [form, setForm] = useState(initialForm);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ text: string; type: string }>({ text: "", type: "" });
@@ -38,6 +39,7 @@ const SchoolProfile = () => {
             if (response.status === 200 || response.status === 201) {
                 setMessage({ text: "School created successfully!", type: "success" });
                 setForm(initialForm);
+                router.push("/principal");
             }
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
