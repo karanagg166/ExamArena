@@ -49,7 +49,7 @@ async def delete_school(school_id: str) -> SchoolResponse | None:
 
 async def get_school_by_id(school_id: str) -> SchoolResponse | None:
     """Get school by ID"""
-    school = await db.prisma.school.find_first(where={"schoolCode": school_id})
+    school = await db.prisma.school.find_first(where={"id": school_id})
     return SchoolResponse.model_validate(school) if school else None
 
 
