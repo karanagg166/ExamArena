@@ -25,8 +25,9 @@ export default function PrincipalDashboard() {
         const fetchData = async () => {
             try {
                 // Fetch principal data (includes user data)
-                const response = await api.get("/api/v1/principals/me",{
-                    withCredentials: true});
+                const response = await api.get("/api/v1/principals/me", {
+                    withCredentials: true
+                });
                 const data = response.data;
 
                 setFormData({
@@ -40,7 +41,7 @@ export default function PrincipalDashboard() {
                     qualification: data.qualification || "",
                     experience: data.experience || 0,
                 });
-            } catch (error) {
+            } catch (error: unknown) {
                 router.push("/login");
             } finally {
                 setLoading(false);
@@ -65,7 +66,7 @@ export default function PrincipalDashboard() {
                 },
                 qualification: formData.qualification,
                 experience: formData.experience,
-            },{withCredentials: true});
+            }, { withCredentials: true });
 
             setIsEditing(false);
             alert("Profile updated successfully!");

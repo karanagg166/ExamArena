@@ -1,41 +1,69 @@
-from app.core.database import prisma
+import json
+import app.core.database as db
 from app.teachers.schemas import TeacherCreate, TeacherUpdate
+from prisma.enums import Qualification, Subject  # type: ignore
+
 
 async def get_teacher_by_user_id(user_id: str):
     """Get teacher by user ID with user data"""
-    return await prisma.teacher.find_unique(
+    return await db.prisma.teacher.find_unique(
         where={"userId": user_id},
         include={"user": True}
     )
 
+
 async def create_teacher(teacher_data: TeacherCreate):
-    """Create teacher record"""
-    return await prisma.teacher.create(data=teacher_data.model_dump())
+    """Create teacher record — serialize qualifications/subjects lists to JSON strings"""
+    await db.prisma.teacher.create(data={
+        "userId": teacher_data.userId,
+        "qualification": json.dumps(teacher_data.qualifications),
+        "experience": teacher_data.experience,
+        "department": teacher_data.department,
+        "subjects": json.dumps(teacher_data.subjects),
+    })
+    # Re-fetch with user relation included for the response
+    return await get_teacher_by_user_id(teacher_data.userId)
+
 
 async def update_teacher(user_id: str, teacher_data: TeacherUpdate):
     """Update teacher record and associated user data"""
     update_dict = teacher_data.model_dump(exclude_unset=True)
-    
-    # Extract user data if present
+
     user_data = update_dict.pop("user", None)
-    
-    # Update user data if provided
+
     if user_data:
-        await prisma.user.update(
+        await db.prisma.user.update(
             where={"id": user_id},
             data=user_data
         )
-    
-    # Update teacher data if any teacher-specific fields are provided
-    if update_dict:
-        await prisma.teacher.update(
+
+    # Serialize list fields to JSON strings for DB storage
+    teacher_fields = {}
+    if "qualifications" in update_dict:
+        teacher_fields["qualification"] = json.dumps(update_dict.pop("qualifications"))
+    if "subjects" in update_dict:
+        teacher_fields["subjects"] = json.dumps(update_dict.pop("subjects"))
+
+    # Remaining scalar fields (experience, department)
+    teacher_fields.update(update_dict)
+
+    if teacher_fields:
+        await db.prisma.teacher.update(
             where={"userId": user_id},
-            data=update_dict
+            data=teacher_fields
         )
-    
-    # Return updated teacher with user data
+
     return await get_teacher_by_user_id(user_id)
+
 
 async def delete_teacher(user_id: str):
     """Delete teacher record"""
-    return await prisma.teacher.delete(where={"userId": user_id})
+    return await db.prisma.teacher.delete(where={"userId": user_id})
+
+
+async def get_all_qualifications():
+    return [q.value for q in Qualification]
+
+
+async def get_all_subjects():
+    return [s.value for s in Subject]

@@ -45,3 +45,14 @@ class UserResponse(BaseModel):
     role: Roles
 
     model_config = ConfigDict(from_attributes=True)
+class UserUpdate(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    phoneNo: str | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str | None = None
+    pincode: str | None = None  
+    dateOfBirth: datetime | None = None
+    role: Roles | None = None
+    password: str | None = None
