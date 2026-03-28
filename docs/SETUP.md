@@ -76,7 +76,6 @@ npm install
 
 **Backend:**
 ```bash
-# (Assuming backend is placed in a /backend folder)
 cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -98,7 +97,7 @@ npx prisma generate
 
 ## 4. Starting the Application (Using Docker)
 
-Since we have a frontend, a Python backend, a database, and potentially Redis for background tasks, **using Docker is highly recommended**. 
+Since we have a frontend, a Python backend, a database, and potentially Redis for background tasks, **using Docker is highly recommended**.
 Please refer to the `docker-compose.yml` file in the root directory.
 
 To start everything simultaneously:

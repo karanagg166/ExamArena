@@ -12,7 +12,9 @@
 
 # testing
 /coverage
-
+# pnpm
+.pnpm-store/
+.pnpm-debug.log*
 # next.js
 /.next/
 /out/
@@ -42,6 +44,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+/src/generated/
 
 # Python Virtual Environments
 venv/

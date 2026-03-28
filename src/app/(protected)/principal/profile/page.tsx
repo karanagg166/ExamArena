@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Award, Edit2, Save, X } from "lucide-react";
 import { api } from "@/lib/axios";
+import { toast } from "sonner";
+import { Spinner } from "@/components/ui/loading";
 
 export default function PrincipalDashboard() {
     const [loading, setLoading] = useState(true);
@@ -25,22 +27,25 @@ export default function PrincipalDashboard() {
         const fetchData = async () => {
             try {
                 // Fetch principal data (includes user data)
-                const response = await api.get("/api/v1/principals/me",{
-                    withCredentials: true});
+                const response = await api.get("/api/v1/principals/me", {
+                    withCredentials: true
+                });
                 const data = response.data;
+                const teacher = data.teacher ?? {};
+                const teacherUser = teacher.user ?? {};
 
                 setFormData({
-                    name: data.user.name || "",
-                    email: data.user.email || "",
-                    phoneNo: data.user.phoneNo || "",
-                    city: data.user.city || "",
-                    state: data.user.state || "",
-                    country: data.user.country || "",
-                    pincode: data.user.pincode || "",
-                    qualification: data.qualification || "",
+                    name: teacherUser.name || "",
+                    email: teacherUser.email || "",
+                    phoneNo: teacherUser.phoneNo || "",
+                    city: teacherUser.city || "",
+                    state: teacherUser.state || "",
+                    country: teacherUser.country || "",
+                    pincode: teacherUser.pincode || "",
+                    qualification: (teacher.qualifications || []).join(", "),
                     experience: data.experience || 0,
                 });
-            } catch (error) {
+            } catch (error: unknown) {
                 router.push("/login");
             } finally {
                 setLoading(false);
@@ -52,8 +57,7 @@ export default function PrincipalDashboard() {
 
     const handleSave = async () => {
         try {
-            // Update principal data (includes user data)
-            await api.put("/api/v1/principals/me", {
+            await api.put("/api/v1/teachers/me", {
                 user: {
                     name: formData.name,
                     email: formData.email,
@@ -63,28 +67,34 @@ export default function PrincipalDashboard() {
                     country: formData.country,
                     pincode: formData.pincode,
                 },
-                qualification: formData.qualification,
+                qualifications: formData.qualification
+                    .split(",")
+                    .map((item: string) => item.trim())
+                    .filter(Boolean),
+            }, { withCredentials: true });
+
+            await api.put("/api/v1/principals/me", {
                 experience: formData.experience,
-            },{withCredentials: true});
+            }, { withCredentials: true });
 
             setIsEditing(false);
-            alert("Profile updated successfully!");
+            toast.success("Profile updated successfully!");
         } catch (error) {
             console.error("Error saving data:", error);
-            alert("Failed to update profile. Please try again.");
+            toast.error("Failed to update profile. Please try again.");
         }
     };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-black">
-                <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="flex min-h-screen items-center justify-center">
+                <Spinner className="h-8 w-8 border-4" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-6">
+        <div className="page-shell text-white">
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
                     <div>

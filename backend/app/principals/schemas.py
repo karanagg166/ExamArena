@@ -1,31 +1,25 @@
 from pydantic import BaseModel
-from app.users.schemas import UserResponse
 
-class PrincipalBase(BaseModel):
-    qualification: str
+from app.teachers.schemas import TeacherResponse
+
+
+class PrincipalCreateRequest(BaseModel):
+    """Request body for creating a principal profile."""
+    schoolId: str | None = None
     experience: int
 
-class PrincipalCreate(PrincipalBase):
-    userId: str
-
-class UserUpdateNested(BaseModel):
-    name: str | None = None
-    email: str | None = None
-    phoneNo: str | None = None
-    city: str | None = None
-    state: str | None = None
-    country: str | None = None
-    pincode: str | None = None
 
 class PrincipalUpdate(BaseModel):
-    user: UserUpdateNested | None = None
-    qualification: str | None = None
     experience: int | None = None
+    schoolId: str | None = None
 
-class PrincipalResponse(PrincipalBase):
+
+class PrincipalResponse(BaseModel):
     id: str
-    userId: str
-    user: UserResponse
-    
+    teacherId: str
+    schoolId: str | None = None
+    experience: int
+    teacher: TeacherResponse | None = None
+
     class Config:
         from_attributes = True

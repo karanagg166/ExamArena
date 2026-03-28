@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User, Shield, Edit2, Save, X } from "lucide-react";
 import { api } from "@/lib/axios";
+import { toast } from "sonner";
+import { Spinner } from "@/components/ui/loading";
 
 export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
@@ -22,8 +24,9 @@ export default function AdminDashboard() {
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const response = await api.get("/api/v1/auth/me",{
-                    withCredentials: true});
+                const response = await api.get("/api/v1/auth/me", {
+                    withCredentials: true
+                });
                 const userData = response.data;
                 setFormData({
                     name: userData.name || "",
@@ -55,26 +58,26 @@ export default function AdminDashboard() {
                 state: formData.state,
                 country: formData.country,
                 pincode: formData.pincode,
-            },{withCredentials: true});
+            }, { withCredentials: true });
 
             setIsEditing(false);
-            alert("Profile updated successfully!");
+            toast.success("Profile updated successfully!");
         } catch (error) {
             console.error("Error saving data:", error);
-            alert("Failed to update profile. Please try again.");
+            toast.error("Failed to update profile. Please try again.");
         }
     };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-black">
-                <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <div className="flex min-h-screen items-center justify-center">
+                <Spinner className="h-8 w-8 border-4" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black text-white p-6">
+        <div className="page-shell text-white">
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
                     <div>

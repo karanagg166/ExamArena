@@ -1,225 +1,132 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { api } from "@/lib/axios";
 import { SignUpForm } from "@/types/user";
-
+import { useAuthStore } from "@/stores";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { FormMessage } from "@/components/ui/form-message";
 type ValidationError = {
-  msg: string;
+    msg: string;
 };
 
 const SignUpPage = () => {
-  const [form, setForm] = useState<SignUpForm>({
-    name: "Test User",
-    email: "testuser" + Math.floor(Math.random() * 1000) + "@example.com",
-    password: "securepassword123",
-    confirmPassword: "securepassword123",
-    phoneNo: "+1234567890",
-    role: "student",
-    pincode: "100001",
-    city: "New York",
-    state: "NY",
-    country: "USA",
-  });
+    const router = useRouter();
+    const { login } = useAuthStore();
+    const [form, setForm] = useState<SignUpForm>({
+        name: "karan",
+        email: "karan@gmail.com",
+        password: "karan166",
+        confirmPassword: "karan166",
+        phoneNo: "+1234567890",
+        dateOfBirth: "2000-01-01",
+        role: "TEACHER",
+        pincode: "100001",
+        city: "New York",
+        state: "NY",
+        country: "USA",
+    });
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-  // Handle input change
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    const { name, value } = e.target;
+    // NEW: State for toggling password visibility
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+    // Handle input change
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    ) => {
+        const { name, value } = e.target;
 
-  // Submit handler
-  const onSubmit = async () => {
-    if (loading) return;
+        setForm((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
 
-    const { name, email, password, confirmPassword } = form;
+    // Submit handler
+    const onSubmit = async () => {
+        if (loading) return;
 
-    // Validation
-    if (!name || !email || !password) {
-      setError("Please fill all required fields");
-      return;
-    }
+        const { name, email, password, confirmPassword } = form;
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
-    try {
-      // The backend UserRequest now perfectly matches the frontend form
-      const { confirmPassword, ...payload } = form;
-      void confirmPassword;
-
-      const data = await api.post("/api/v1/auth/signup", payload);
-      console.log("Signup response:", data);
-
-      setSuccess(true);
-
-      // router.push("/login");
-    } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const detail = err.response?.data?.detail;
-        if (Array.isArray(detail)) {
-          // Handle FastAPI Pydantic validation errors (array of objects)
-          const messages = detail
-            .filter(
-              (item): item is ValidationError =>
-                typeof item === "object" &&
-                item !== null &&
-                "msg" in item &&
-                typeof (item as { msg?: unknown }).msg === "string",
-            )
-            .map((errObj) => errObj.msg);
-          setError(messages.length ? messages.join(", ") : "Validation failed");
-        } else if (typeof detail === "string") {
-          setError(detail);
-        } else {
-          setError("Something went wrong during signup.");
+        // Validation
+        if (!name || !email || !password) {
+            const message = "Please fill all required fields";
+            setError(message);
+            toast.error(message);
+            return;
         }
-      } else {
-        setError("Unexpected error occurred");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4 text-white">
-      <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 p-8 rounded-2xl shadow-xl">
-        <h1 className="text-3xl font-bold text-center mb-2">
-          Create your account
-        </h1>
-        <p className="text-zinc-400 text-center mb-6 text-sm">
-          Start your journey in seconds 🚀
-        </p>
+        if (password.length < 6) {
+            const message = "Password must be at least 6 characters";
+            setError(message);
+            toast.error(message);
+            return;
+        }
 
-        {error && (
-          <div className="bg-red-100 text-red-600 text-sm p-2 rounded mb-3 text-center">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="bg-green-100 text-green-600 text-sm p-2 rounded mb-3 text-center">
-            Signup successful!
-          </div>
-        )}
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit();
-          }}
-          className="space-y-4"
-        >
-          {/* Name */}
-          <div>
-            <label className="label">Full Name</label>
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              className="input"
-            />
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="label">Email</label>
-            <input
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={handleChange}
-              className="input"
-            />
-          </div>
-
-          {/* Password Row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Password</label>
-              <input
-                name="password"
-                type="password"
-                value={form.password}
-                onChange={handleChange}
-                className="input"
-              />
-            </div>
-
-            <div>
-              <label className="label">Confirm</label>
-              <input
-                name="confirmPassword"
-                type="password"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                className="input"
-              />
-            </div>
-          </div>
-
-          {/* Phone + Role */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Phone</label>
-              <input
-                name="phoneNo"
-                value={form.phoneNo}
-                onChange={handleChange}
-                className="input"
-              />
-            </div>
+        if (password !== confirmPassword) {
+            const message = "Passwords do not match";
+            setError(message);
+            toast.error(message);
+            return;
+        }
 
         setLoading(true);
         setError("");
 
         try {
-            // The backend UserRequest now perfectly matches the frontend form 
+            // The backend UserRequest now perfectly matches the frontend form
             const { confirmPassword, ...payload } = form;
+            void confirmPassword; // To prevent unused variable warning
 
             const data = await api.post("/api/v1/auth/signup", payload);
             console.log("Signup response:", data);
 
             setSuccess(true);
-
-
-            router.push("/login");
-
+            toast.success("Account created successfully");
+            // Redirect to role-specific profile setup
+            login(form.email, form.password);
+            router.push(`/signup/${form.role.toLowerCase()}`);
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
                 const detail = err.response?.data?.detail;
                 if (Array.isArray(detail)) {
                     // Handle FastAPI Pydantic validation errors (array of objects)
-                    setError(detail.map((errObj: any) => errObj.msg).join(", "));
+                    const messages = detail
+                        .filter(
+                            (item): item is ValidationError =>
+                                typeof item === "object" &&
+                                item !== null &&
+                                "msg" in item &&
+                                typeof (item as { msg?: unknown }).msg === "string",
+                        )
+                        .map((errObj) => errObj.msg);
+                    const message = messages.length ? messages.join(", ") : "Validation failed";
+                    setError(message);
+                    toast.error(message);
                 } else if (typeof detail === "string") {
                     setError(detail);
+                    toast.error(detail);
                 } else {
-                    setError("Something went wrong during signup.");
+                    const message = "Something went wrong during signup.";
+                    setError(message);
+                    toast.error(message);
                 }
             } else {
-                setError("Unexpected error occurred");
+                const message = "Unexpected error occurred";
+                setError(message);
+                toast.error(message);
             }
         } finally {
             setLoading(false);
@@ -227,204 +134,114 @@ const SignUpPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-black px-4 text-white">
-            <div className="w-full max-w-2xl bg-zinc-950 border border-zinc-800 p-8 rounded-2xl shadow-xl">
-                <h1 className="text-3xl font-bold text-center mb-2">
-                    Create your account
-                </h1>
-                <p className="text-zinc-400 text-center mb-6 text-sm">
-                    Start your journey in seconds 🚀
-                </p>
-
-                {error && (
-                    <div className="bg-red-100 text-red-600 text-sm p-2 rounded mb-3 text-center">
-                        {error}
-                    </div>
-                )}
-
-                {success && (
-                    <div className="bg-green-100 text-green-600 text-sm p-2 rounded mb-3 text-center">
-                        Signup successful!
-                    </div>
-                )}
-
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        onSubmit();
-                    }}
-                    className="space-y-4"
-                >
-                    {/* Name */}
-                    <div>
-                        <label className="label">Full Name</label>
-                        <input
-                            name="name"
-                            value={form.name}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                        <label className="label">Email</label>
-                        <input
-                            name="email"
-                            type="email"
-                            value={form.email}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                    </div>
-
-                    {/* Password Row */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="label">Password</label>
-                            <input
-                                name="password"
-                                type="password"
-                                value={form.password}
-                                onChange={handleChange}
-                                className="input"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="label">Confirm</label>
-                            <input
-                                name="confirmPassword"
-                                type="password"
-                                value={form.confirmPassword}
-                                onChange={handleChange}
-                                className="input"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Phone + Role */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="label">Phone</label>
-                            <input
-                                name="phoneNo"
-                                value={form.phoneNo}
-                                onChange={handleChange}
-                                className="input"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="label">Role</label>
-                            <select
-                                name="role"
-                                value={form.role}
-                                onChange={handleChange}
-                                className="input"
-                            >
-                                <option value="student">Student</option>
-                                <option value="teacher">Teacher</option>
-                                <option value="admin">Admin</option>
-                                <option value="principal">Principal</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* Location */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <input
-                            name="pincode"
-                            placeholder="Pincode"
-                            value={form.pincode}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                        <input
-                            name="city"
-                            placeholder="City"
-                            value={form.city}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <input
-                            name="state"
-                            placeholder="State"
-                            value={form.state}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                        <input
-                            name="country"
-                            placeholder="Country"
-                            value={form.country}
-                            onChange={handleChange}
-                            className="input"
-                        />
-                    </div>
-
-                    {/* Button */}
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-all active:scale-[0.98] disabled:opacity-50"
+        <div className="page-shell flex min-h-screen items-center justify-center py-12 text-white">
+            <Card className="w-full max-w-2xl shadow-2xl shadow-indigo-950/20">
+                <CardHeader className="text-center">
+                    <Badge className="mx-auto">Step 1 of 2</Badge>
+                    <CardTitle className="text-3xl">Create your account</CardTitle>
+                    <CardDescription>Start your journey in seconds.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            onSubmit();
+                        }}
+                        className="space-y-4"
                     >
-                        {loading ? "Creating account..." : "Create Account"}
-                    </button>
-                </form>
-            </div>
-          </div>
+                        <FormMessage message={error} type="error" className="text-center" />
+                        <FormMessage message={success ? "Signup successful!" : ""} type="success" className="text-center" />
 
-          {/* Location */}
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              name="pincode"
-              placeholder="Pincode"
-              value={form.pincode}
-              onChange={handleChange}
-              className="input"
-            />
-            <input
-              name="city"
-              placeholder="City"
-              value={form.city}
-              onChange={handleChange}
-              className="input"
-            />
-          </div>
+                        <div>
+                            <Label className="mb-1.5 ml-1 block">Full Name</Label>
+                            <Input name="name" value={form.name} onChange={handleChange} />
+                        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              name="state"
-              placeholder="State"
-              value={form.state}
-              onChange={handleChange}
-              className="input"
-            />
-            <input
-              name="country"
-              placeholder="Country"
-              value={form.country}
-              onChange={handleChange}
-              className="input"
-            />
-          </div>
+                        <div>
+                            <Label className="mb-1.5 ml-1 block">Email</Label>
+                            <Input name="email" type="email" value={form.email} onChange={handleChange} />
+                        </div>
 
-          {/* Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-all active:scale-[0.98] disabled:opacity-50"
-          >
-            {loading ? "Creating account..." : "Create Account"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <Label className="mb-1.5 ml-1 block">Password</Label>
+                                <div className="relative">
+                                    <Input
+                                        name="password"
+                                        type={showPassword ? "text" : "password"}
+                                        value={form.password}
+                                        onChange={handleChange}
+                                        className="pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute inset-y-0 right-0 pr-3 text-zinc-500 transition-colors hover:text-zinc-300"
+                                    >
+                                        {showPassword ? "Hide" : "Show"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <Label className="mb-1.5 ml-1 block">Confirm</Label>
+                                <div className="relative">
+                                    <Input
+                                        name="confirmPassword"
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        value={form.confirmPassword}
+                                        onChange={handleChange}
+                                        className="pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute inset-y-0 right-0 pr-3 text-zinc-500 transition-colors hover:text-zinc-300"
+                                    >
+                                        {showConfirmPassword ? "Hide" : "Show"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <Label className="mb-1.5 ml-1 block">Phone</Label>
+                                <Input name="phoneNo" value={form.phoneNo} onChange={handleChange} />
+                            </div>
+
+                            <div>
+                                <Label className="mb-1.5 ml-1 block">Role</Label>
+                                <select
+                                    name="role"
+                                    value={form.role}
+                                    onChange={handleChange}
+                                    className="flex h-10 w-full appearance-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                                >
+                                    <option value="STUDENT">Student</option>
+                                    <option value="TEACHER">Teacher</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <Input name="pincode" placeholder="Pincode" value={form.pincode} onChange={handleChange} />
+                            <Input name="city" placeholder="City" value={form.city} onChange={handleChange} />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <Input name="state" placeholder="State" value={form.state} onChange={handleChange} />
+                            <Input name="country" placeholder="Country" value={form.country} onChange={handleChange} />
+                        </div>
+
+                        <Button type="submit" disabled={loading} className="mt-2 w-full">
+                            {loading ? "Creating account..." : "Create Account"}
+                        </Button>
+                    </form>
+                </CardContent>
+            </Card>
+        </div>
+    );
 };
 
 export default SignUpPage;

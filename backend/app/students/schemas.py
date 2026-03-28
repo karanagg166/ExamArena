@@ -1,16 +1,23 @@
-from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from app.users.schemas import UserResponse
+from pydantic import BaseModel, EmailStr
 
-class StudentBase(BaseModel):
+
+class StudentCreateRequest(BaseModel):
+    """What the frontend sends — no userId (injected from JWT)"""
     rollNo: str
     dob: datetime
-    class_: str = Field(alias="class")  # Map 'class' from DB to 'class_' in Python
     parentName: str
     parentEmail: EmailStr
+    dateOfAdmission: datetime
+    schoolId: str
+    classId: str   # ID of the SchoolClass the student joins
 
-class StudentCreate(StudentBase):
+
+class StudentCreate(StudentCreateRequest):
+    """Internal use — includes userId injected server-side"""
     userId: str
+
 
 class UserUpdateNested(BaseModel):
     name: str | None = None
@@ -21,19 +28,29 @@ class UserUpdateNested(BaseModel):
     country: str | None = None
     pincode: str | None = None
 
+
 class StudentUpdate(BaseModel):
     user: UserUpdateNested | None = None
     rollNo: str | None = None
     dob: datetime | None = None
-    class_: str | None = None
     parentName: str | None = None
     parentEmail: EmailStr | None = None
+    schoolId: str | None = None
+    classId: str | None = None
 
-class StudentResponse(StudentBase):
+
+class StudentResponse(BaseModel):
     id: str
     userId: str
+    rollNo: str
+    dob: datetime
+    parentName: str
+    parentEmail: str
+    dateOfAdmission: datetime
+    schoolId: str
+    classId: str
     user: UserResponse
-    
+
     class Config:
         from_attributes = True
-        populate_by_name = True  # Allow both 'class' and 'class_' as field names
+        populate_by_name = True

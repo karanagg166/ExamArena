@@ -1,73 +1,43 @@
+from app.users.schemas import UserRequest, UserUpdate
 import app.core.database as db
 from app.core.security import hash_password
-from datetime import datetime
-from app.users.schemas import UserRequest
-
 
 async def get_user_by_email(email: str):
-    """Get user by email"""
+    """Retrieve a user by their email address."""
     return await db.prisma.user.find_unique(where={"email": email})
 
-
 async def get_user_by_id(user_id: str):
-    """Get user by ID"""
-    return await db.prisma.user.find_unique(where={"id": user_id})  # type: ignore
-
+    """Retrieve a user by their unique database ID."""
+    return await db.prisma.user.find_unique(where={"id": user_id})
 
 async def create_user(user_data: UserRequest):
-    """Create new user"""
+    """
+    Creates ONLY the base User account. 
+    Role-specific profiles (Student, Teacher) must be created in a later step.
+    """
+    # 1. Hash the password
     hashed_password = hash_password(user_data.password)
 
-    # Dump Pydantic object, replace raw password with hashed
-    data_dict = user_data.model_dump(exclude={"password"})
+    # 2. Extract data and inject the hashed password and raw role string
+    data_dict = user_data.model_dump(exclude={"password", "role"})
     data_dict["password"] = hashed_password
-    
-    user = await prisma.user.create(data=data_dict)
+    data_dict["role"] = user_data.role.value 
 
-    role = user.role.upper()
-
-    if role == "STUDENT":
-        await prisma.student.create(
-            data={
-                "userId": user.id,
-                "rollNo": "NA",  
-                "dob": datetime.utcnow(),      
-                "class_": "NA",                 
-                "parentName": "NA",
-                "parentEmail": "na@example.com",
-            }
-        )
-
-    elif role == "TEACHER":
-        await prisma.teacher.create(
-            data={
-                "userId": user.id,
-                "qualification": "NA",
-                "experience": 0,
-                "department": "General",
-            }
-        )
-
-    elif role == "PRINCIPAL":
-        await prisma.principal.create(
-            data={
-                "userId": user.id,
-                "qualification": "NA",
-                "experience": 0,
-            }
-        )
+    # 3. Create ONLY the base user record
+    user = await db.prisma.user.create(
+        data=data_dict # type: ignore
+    )
 
     return user
 
-async def update_user(user_id: str, user_data):
-    """Update user data"""
+async def update_user(user_id: str, user_data: UserUpdate):
+    """Safely updates only the fields the user provided."""
     update_dict = user_data.model_dump(exclude_unset=True)
     
     if not update_dict:
-        # No data to update, return current user
-        return await prisma.user.find_unique(where={"id": user_id})
+        return await db.prisma.user.find_unique(where={"id": user_id})
     
-    return await prisma.user.update(
+    return await db.prisma.user.update(
         where={"id": user_id},
-        data=update_dict
+        data=update_dict # type: ignore
     )
