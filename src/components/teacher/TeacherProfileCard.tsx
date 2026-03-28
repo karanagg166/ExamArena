@@ -11,7 +11,11 @@ import {
   User,
 } from "lucide-react";
 
-export default function TeacherProfileCard({ teacher }: { teacher: TeacherProfileResponse }) {
+export default function TeacherProfileCard({
+  teacher,
+}: {
+  teacher: TeacherProfileResponse;
+}) {
   const { user } = teacher;
 
   return (
@@ -31,7 +35,8 @@ export default function TeacherProfileCard({ teacher }: { teacher: TeacherProfil
               </h1>
               <p className="text-indigo-600 dark:text-indigo-400 font-medium flex items-center justify-center md:justify-start gap-2 mt-1">
                 <Briefcase size={16} />
-                {teacher.department} Department • {teacher.experience} Years Experience
+                {teacher.department} Department • {teacher.experience} Years
+                Experience
               </p>
             </div>
           </div>
@@ -76,12 +81,18 @@ export default function TeacherProfileCard({ teacher }: { teacher: TeacherProfil
                 <div className="flex flex-wrap gap-2">
                   {teacher.qualifications?.length > 0 ? (
                     teacher.qualifications.map((qual, i) => (
-                      <Badge key={i} variant="neutral" className="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-none">
+                      <Badge
+                        key={i}
+                        variant="neutral"
+                        className="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 border-none"
+                      >
                         {qual}
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-slate-400 text-sm italic">Not specified</span>
+                    <span className="text-slate-400 text-sm italic">
+                      Not specified
+                    </span>
                   )}
                 </div>
               </div>
@@ -94,12 +105,17 @@ export default function TeacherProfileCard({ teacher }: { teacher: TeacherProfil
                 <div className="flex flex-wrap gap-2">
                   {teacher.subjects?.length > 0 ? (
                     teacher.subjects.map((sub, i) => (
-                      <Badge key={i} className="px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 border-none">
+                      <Badge
+                        key={i}
+                        className="px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 border-none"
+                      >
                         {sub}
                       </Badge>
                     ))
                   ) : (
-                    <span className="text-slate-400 text-sm italic">Not specified</span>
+                    <span className="text-slate-400 text-sm italic">
+                      Not specified
+                    </span>
                   )}
                 </div>
               </div>

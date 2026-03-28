@@ -1,14 +1,17 @@
-from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
-from app.users.schemas import UserResponse
 import json
+
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
+
+from app.users.schemas import UserResponse
 
 
 class TeacherCreateRequest(BaseModel):
     """What the frontend sends — no userId (injected from JWT)"""
-    qualifications: list[str] = []   # stored as JSON string in DB column
+
+    qualifications: list[str] = []  # stored as JSON string in DB column
     experience: int
     department: str
-    subjects: list[str] = []         # stored as JSON string in DB column
+    subjects: list[str] = []  # stored as JSON string in DB column
 
     @property
     def qualification(self) -> str:
@@ -23,10 +26,16 @@ class TeacherCreateRequest(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def support_singular_qualification_field(cls, data):
-        if isinstance(data, dict) and "qualifications" not in data and "qualification" in data:
+        if (
+            isinstance(data, dict)
+            and "qualifications" not in data
+            and "qualification" in data
+        ):
             singular = data.get("qualification")
             if isinstance(singular, str):
-                data["qualifications"] = [item.strip() for item in singular.split(",") if item.strip()]
+                data["qualifications"] = [
+                    item.strip() for item in singular.split(",") if item.strip()
+                ]
             elif isinstance(singular, list):
                 data["qualifications"] = singular
         return data
@@ -34,6 +43,7 @@ class TeacherCreateRequest(BaseModel):
 
 class TeacherCreate(TeacherCreateRequest):
     """Internal use — includes userId injected server-side"""
+
     userId: str
 
 
@@ -57,10 +67,16 @@ class TeacherUpdate(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def support_singular_qualification_field(cls, data):
-        if isinstance(data, dict) and "qualifications" not in data and "qualification" in data:
+        if (
+            isinstance(data, dict)
+            and "qualifications" not in data
+            and "qualification" in data
+        ):
             singular = data.get("qualification")
             if isinstance(singular, str):
-                data["qualifications"] = [item.strip() for item in singular.split(",") if item.strip()]
+                data["qualifications"] = [
+                    item.strip() for item in singular.split(",") if item.strip()
+                ]
             elif isinstance(singular, list):
                 data["qualifications"] = singular
         return data
@@ -69,7 +85,10 @@ class TeacherUpdate(BaseModel):
 class TeacherResponse(BaseModel):
     id: str
     userId: str
-    qualifications: list[str] = Field(default_factory=list, validation_alias=AliasChoices("qualifications", "qualification"))
+    qualifications: list[str] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("qualifications", "qualification"),
+    )
     experience: int
     department: str
     subjects: list[str] = []

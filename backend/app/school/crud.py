@@ -1,20 +1,20 @@
 import app.core.database as db
 from app.school.schemas import (
     SchoolCreateRequest,
-    SchoolResponse,
     SchoolFilterParams,
+    SchoolResponse,
     SchoolUpdateRequest,
 )
 
 
-async def create_school(school_data: SchoolCreateRequest, user_id: str) -> SchoolResponse:
+async def create_school(
+    school_data: SchoolCreateRequest, user_id: str
+) -> SchoolResponse:
     """Create a school owned by the authenticated user."""
     data_dict = school_data.model_dump()
     data_dict["createdBy"] = user_id
 
-    school = await db.prisma.school.create(
-        data=data_dict  # type: ignore
-    )
+    school = await db.prisma.school.create(data=data_dict)  # type: ignore
     return SchoolResponse.model_validate(school)
 
 
@@ -35,8 +35,7 @@ async def update_school(
         return SchoolResponse.model_validate(school) if school else None
 
     updated_school = await db.prisma.school.update(
-        where={"id": school_id},
-        data=update_dict  # type: ignore
+        where={"id": school_id}, data=update_dict  # type: ignore
     )
     return SchoolResponse.model_validate(updated_school)
 
@@ -75,7 +74,7 @@ async def get_schools(filters: SchoolFilterParams) -> list[SchoolResponse]:
     if filters.website:
         where["website"] = {"contains": filters.website, "mode": "insensitive"}
     if filters.school_type:
-        where["type"] = filters.school_type   # exact match — enum
+        where["type"] = filters.school_type  # exact match — enum
 
     schools = await db.prisma.school.find_many(where=where)
     return [SchoolResponse.model_validate(school) for school in schools]

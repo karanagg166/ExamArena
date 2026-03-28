@@ -3,7 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user
-from app.principals.crud import create_principal, get_principal_by_teacher_id, update_principal
+from app.principals.crud import (
+    create_principal,
+    get_principal_by_teacher_id,
+    update_principal,
+)
 from app.principals.schemas import (
     PrincipalCreateRequest,
     PrincipalResponse,

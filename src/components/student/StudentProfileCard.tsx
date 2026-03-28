@@ -1,24 +1,26 @@
 import { StudentProfileResponse } from "@/types/student";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  User,
-  Hash,
-  Users
-} from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, User, Hash, Users } from "lucide-react";
 
-export default function StudentProfileCard({ student }: { student: StudentProfileResponse }) {
+export default function StudentProfileCard({
+  student,
+}: {
+  student: StudentProfileResponse;
+}) {
   const { user } = student;
 
   const formatDate = (ds: string) => {
     try {
       if (!ds) return "N/A";
-      const formatOptions: Intl.DateTimeFormatOptions = { month: 'short', day: '2-digit', year: 'numeric' };
-      return new Intl.DateTimeFormat('en-US', formatOptions).format(new Date(ds));
+      const formatOptions: Intl.DateTimeFormatOptions = {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      };
+      return new Intl.DateTimeFormat("en-US", formatOptions).format(
+        new Date(ds),
+      );
     } catch {
       return "Invalid date";
     }
@@ -41,7 +43,8 @@ export default function StudentProfileCard({ student }: { student: StudentProfil
               </h1>
               <p className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center md:justify-start gap-2 mt-1">
                 <Hash size={16} />
-                Roll No: {student.rollNo} • Admitted {formatDate(student.dateOfAdmission)}
+                Roll No: {student.rollNo} • Admitted{" "}
+                {formatDate(student.dateOfAdmission)}
               </p>
             </div>
             <div className="mb-2 hidden md:block">
@@ -96,11 +99,18 @@ export default function StudentProfileCard({ student }: { student: StudentProfil
               <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-500">Parent Name</span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200">{student.parentName}</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200">
+                    {student.parentName}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-500">Parent Email</span>
-                  <a href={`mailto:${student.parentEmail}`} className="font-medium text-emerald-600 hover:underline">{student.parentEmail}</a>
+                  <a
+                    href={`mailto:${student.parentEmail}`}
+                    className="font-medium text-emerald-600 hover:underline"
+                  >
+                    {student.parentEmail}
+                  </a>
                 </div>
               </div>
             </div>

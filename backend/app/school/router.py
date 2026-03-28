@@ -1,17 +1,21 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
 from app.api.deps import get_current_user
-from app.principals.crud import create_principal, get_principal_by_teacher_id, update_principal
+from app.principals.crud import (
+    create_principal,
+    get_principal_by_teacher_id,
+    update_principal,
+)
 from app.principals.schemas import PrincipalUpdate
 from app.school import crud
 from app.school.schemas import (
     SchoolCreateRequest,
-    SchoolResponse,
-    SchoolUpdateRequest,
     SchoolFilterParams,
+    SchoolResponse,
     SchoolType,
+    SchoolUpdateRequest,
 )
 from app.schoolClass.crud import get_school_classes_by_school_id
 from app.schoolClass.schemas import SchoolClassResponse
@@ -20,8 +24,11 @@ from app.users.schemas import UserResponse
 
 router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
 
+
 @router.get("/me", response_model=SchoolResponse)
-async def get_current_user_school(current_user: Annotated[UserResponse, Depends(get_current_user)]) -> SchoolResponse:
+async def get_current_user_school(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+) -> SchoolResponse:
     school = await crud.get_school_by_user_id(current_user.id)
     print("Current school:", school)
     if not school:
@@ -54,10 +61,6 @@ async def create_school(
             )
 
     return school
-
-
-
-
 
 
 @router.get("/profile", response_model=SchoolResponse)
@@ -96,15 +99,15 @@ async def delete_my_school_profile(
 
 @router.get("/", response_model=list[SchoolResponse])
 async def fetch_schools(
-    name: Optional[str] = Query(None),
-    city: Optional[str] = Query(None),
-    state: Optional[str] = Query(None),
-    country: Optional[str] = Query(None),
-    pincode: Optional[str] = Query(None),
-    school_code: Optional[str] = Query(None, alias="schoolCode"),
-    school_type: Optional[SchoolType] = Query(None, alias="schoolType"),
-    email: Optional[str] = Query(None),
-    website: Optional[str] = Query(None),
+    name: str | None = Query(None),
+    city: str | None = Query(None),
+    state: str | None = Query(None),
+    country: str | None = Query(None),
+    pincode: str | None = Query(None),
+    school_code: str | None = Query(None, alias="schoolCode"),
+    school_type: SchoolType | None = Query(None, alias="schoolType"),
+    email: str | None = Query(None),
+    website: str | None = Query(None),
     current_user=Depends(get_current_user),
 ):
     filters = SchoolFilterParams(
@@ -119,7 +122,6 @@ async def fetch_schools(
         website=website,
     )
     return await crud.get_schools(filters)
-
 
 
 @router.get("/search", response_model=SchoolResponse)

@@ -1,6 +1,7 @@
+from prisma.enums import Role  # type: ignore
+
 import app.core.database as db
 from app.principals.schemas import PrincipalUpdate
-from prisma.enums import Role  # type: ignore
 
 
 async def get_principal_by_teacher_id(teacher_id: str):

@@ -2,11 +2,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
+
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.security import create_access_token, verify_password
 from app.users.crud import (
     create_user as crud_create_user,
+)
+from app.users.crud import (
     get_user_by_email,
     update_user,
 )
@@ -96,6 +99,7 @@ async def get_current_user_info(
 ):
     """Get current authenticated user"""
     return current_user
+
 
 @router.put("/me", response_model=UserResponse)
 async def update_current_user_info(

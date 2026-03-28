@@ -1,5 +1,5 @@
 // @/app/schools/page.tsx
-'use client';
+"use client";
 import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/axios";
 import type { School } from "@/types/school";
@@ -48,13 +48,11 @@ export default function SchoolsPage() {
     try {
       // Only send filters that have a value
       const query = new URLSearchParams(
-        Object.fromEntries(
-          Object.entries(params).filter(([_, v]) => v !== "")
-        )
+        Object.fromEntries(Object.entries(params).filter(([_, v]) => v !== "")),
       ).toString();
 
       const { data } = await api.get<School[]>(
-        `/api/v1/schools${query ? `?${query}` : ""}`
+        `/api/v1/schools${query ? `?${query}` : ""}`,
       );
       console.log("Fetched schools:", query); // Debug log
       setSchools(data);
@@ -76,9 +74,12 @@ export default function SchoolsPage() {
   }, [filters, fetchSchools]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleFilterChange = useCallback((key: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const handleFilterChange = useCallback(
+    (key: keyof Filters, value: string) => {
+      setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   const handleReset = useCallback(() => {
     setFilters(INITIAL_FILTERS);
@@ -89,7 +90,6 @@ export default function SchoolsPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
-
       {/* Page Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -117,7 +117,6 @@ export default function SchoolsPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-6">
-
         {/* Filter Panel */}
         {filtersOpen && (
           <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
@@ -215,7 +214,9 @@ export default function SchoolsPage() {
         {!loading && !error && schools.length === 0 && (
           <div className="text-center py-20 text-gray-400">
             <p className="text-4xl mb-3">🏫</p>
-            <p className="text-lg font-medium text-gray-600">No schools found</p>
+            <p className="text-lg font-medium text-gray-600">
+              No schools found
+            </p>
             <p className="text-sm mt-1">Try adjusting your filters</p>
           </div>
         )}
@@ -224,11 +225,16 @@ export default function SchoolsPage() {
         {!loading && !error && schools.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {schools.map((school) => (
-              <SchoolCard key={school.id} school={school} onClick={() => { router.push(`/school/${school.id}`) }} />
+              <SchoolCard
+                key={school.id}
+                school={school}
+                onClick={() => {
+                  router.push(`/school/${school.id}`);
+                }}
+              />
             ))}
           </div>
         )}
-
       </div>
     </div>
   );
@@ -287,8 +293,19 @@ function SkeletonCard() {
 
 function FilterIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M1 3h13M3 7h9M5 11h5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 15 15"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M1 3h13M3 7h9M5 11h5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

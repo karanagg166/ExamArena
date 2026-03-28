@@ -12,21 +12,21 @@ async def create_school_class(
 ) -> SchoolClassResponse | None:
     """Create a class for the authenticated user's school."""
     data_dict = class_data.model_dump()
-   
+
     school = await get_school_by_user_id(user_id)
-    if not school :
+    if not school:
         return None
     data_dict["schoolId"] = school.id
-    school_class = await db.prisma.schoolclass.create(
-        data=data_dict  # type: ignore
-    )
+    school_class = await db.prisma.schoolclass.create(data=data_dict)  # type: ignore
     return SchoolClassResponse.model_validate(school_class)
 
 
 async def get_school_classes_by_school_id(school_id: str) -> list[SchoolClassResponse]:
     """Get all classes for a school."""
     classes = await db.prisma.schoolclass.find_many(where={"schoolId": school_id})
-    return [SchoolClassResponse.model_validate(school_class) for school_class in classes]
+    return [
+        SchoolClassResponse.model_validate(school_class) for school_class in classes
+    ]
 
 
 async def get_school_class_by_id(class_id: str) -> SchoolClassResponse | None:
@@ -54,8 +54,7 @@ async def update_school_class(
         return None
 
     updated_class = await db.prisma.schoolclass.update(
-        where={"id": class_id},
-        data=update_dict  # type: ignore
+        where={"id": class_id}, data=update_dict  # type: ignore
     )
     return SchoolClassResponse.model_validate(updated_class)
 

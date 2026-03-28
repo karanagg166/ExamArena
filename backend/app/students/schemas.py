@@ -1,21 +1,25 @@
 from datetime import datetime
-from app.users.schemas import UserResponse
+
 from pydantic import BaseModel, EmailStr
+
+from app.users.schemas import UserResponse
 
 
 class StudentCreateRequest(BaseModel):
     """What the frontend sends — no userId (injected from JWT)"""
+
     rollNo: str
     dob: datetime
     parentName: str
     parentEmail: EmailStr
     dateOfAdmission: datetime
     schoolId: str
-    classId: str   # ID of the SchoolClass the student joins
+    classId: str  # ID of the SchoolClass the student joins
 
 
 class StudentCreate(StudentCreateRequest):
     """Internal use — includes userId injected server-side"""
+
     userId: str
 
 

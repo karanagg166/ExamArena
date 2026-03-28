@@ -2,7 +2,9 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from app.students.schemas import StudentResponse, StudentUpdate, StudentCreate, StudentCreateRequest
 from app.students.crud import get_student_by_user_id, update_student, create_student, get_student_by_id
 from app.api.deps import get_current_user
-
+from prisma.enums import Role
+from app.teachers.crud import get_teacher_by_user_id
+from app.principals.crud import get_principal_by_teacher_id
 
 router = APIRouter(prefix="/api/v1/students", tags=["students"])
 
@@ -60,6 +62,20 @@ async def get_student_by_id_endpoint(student_id: str, current_user=Depends(get_c
             detail="Student not found"
         )
 
-
+    # Authorization checks
+    if current_user.role == Role.STUDENT:
+        if student.userId != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. You can only view your own profile.")
+    elif current_user.role == Role.TEACHER:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher or teacher.schoolId != student.schoolId:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. You must be a teacher at this student's school.")
+    elif current_user.role == Role.PRINCIPAL:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
+        principal = await get_principal_by_teacher_id(teacher.id)
+        if not principal or principal.schoolId != student.schoolId:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied. You must be the principal of this student's school.")
 
     return student

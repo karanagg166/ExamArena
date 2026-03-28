@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import type { School } from "@/types/school";
 
 interface SchoolCardProps {
@@ -25,10 +25,14 @@ export default function SchoolCard({ school, onClick }: SchoolCardProps) {
           <h3 className="text-base font-semibold text-gray-900 truncate leading-snug">
             {school.name}
           </h3>
-          <p className="text-xs text-indigo-600 font-mono mt-0.5">{school.schoolCode}</p>
+          <p className="text-xs text-indigo-600 font-mono mt-0.5">
+            {school.schoolCode}
+          </p>
         </div>
         <span className="shrink-0 text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full border border-indigo-100">
-          {school.type ? school.type.charAt(0) + school.type.slice(1).toLowerCase() : "Public"}
+          {school.type
+            ? school.type.charAt(0) + school.type.slice(1).toLowerCase()
+            : "Public"}
         </span>
       </div>
 
@@ -55,13 +59,25 @@ export default function SchoolCard({ school, onClick }: SchoolCardProps) {
   );
 }
 
-function Detail({ icon, label, value }: { icon: string; label: string; value?: string }) {
+function Detail({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value?: string;
+}) {
   return (
     <div className="flex items-start gap-1.5 min-w-0">
       <span className="text-sm shrink-0 mt-0.5">{icon}</span>
       <div className="min-w-0">
-        <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">{label}</p>
-        <p className="text-gray-700 font-medium truncate text-xs">{value || "—"}</p>
+        <p className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">
+          {label}
+        </p>
+        <p className="text-gray-700 font-medium truncate text-xs">
+          {value || "—"}
+        </p>
       </div>
     </div>
   );

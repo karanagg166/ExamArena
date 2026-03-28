@@ -5,6 +5,7 @@ from app.teachers.schemas import TeacherResponse
 
 class PrincipalCreateRequest(BaseModel):
     """Request body for creating a principal profile."""
+
     schoolId: str | None = None
     experience: int
 
