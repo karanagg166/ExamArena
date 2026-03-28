@@ -2,33 +2,43 @@ from app.core.database import prisma
 from .schema import ExamInfoCreate, QuestionCreate
 from typing import List
 
-async def create_exam_info(data: ExamInfoCreate, teacher_id: str):
-    exam = await prisma.exam.create(
-        data={
-            "name": data.name,
-            "description": data.description,
-            "date": data.date,
-            "duration": data.duration,
-            "maxMarks": data.maxMarks,
-            "type": data.type,
-            "teacherId": teacher_id,
-        }
-    )
-    return exam
-
-async def create_exam_questions(questions: List[QuestionCreate]):
-    created = []
-    for q in questions:
-        question = await prisma.question.create(
+async def create_exam_atomic(
+    data: ExamInfoCreate,
+    questions: List[QuestionCreate],
+    teacher_id: str
+):
+    async with prisma.tx() as tx:
+        # Create exam
+        exam = await tx.exam.create(
             data={
-                "text": q.text,
-                "options": q.options,
-                "correctAnswer": q.correctAnswer,
-                "marks": q.marks,
-                "examId": q.examId,
-                "imageUrl": q.imageUrl,
-                "questionType": q.questionType,
+                "name": data.name,
+                "description": data.description,
+                "date": data.date,
+                "duration": data.duration,
+                "maxMarks": data.maxMarks,
+                "type": data.type,
+                "teacherId": teacher_id,
             }
         )
-        created.append(question)
-    return created
+
+        created_questions = []
+
+        for q in questions:
+            
+            question = await tx.question.create(
+                data={
+                    "text": q.text,
+                    "options": q.options,
+                    "correctAnswer": q.correctAnswer,
+                    "marks": q.marks,
+                    "examId": exam.id,
+                    "imageUrl": q.imageUrl,
+                    "questionType": q.questionType,
+                }
+            )
+            created_questions.append(question)
+
+        return {
+            "exam": exam,
+            "questions": created_questions
+        }

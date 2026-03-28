@@ -15,6 +15,10 @@ class QuestionCreate(BaseModel):
     options: List[str]
     correctAnswer: Optional[str]
     marks: int
-    examId: str
     imageUrl: Optional[str] = None
     questionType: Optional[str] = "MULTIPLE_CHOICE"
+    
+class ExamAtomicCreate(BaseModel):
+    examInfo: ExamInfoCreate
+    questions: List[QuestionCreate]
+

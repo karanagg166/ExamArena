@@ -37,14 +37,16 @@ const StepsPage: React.FC<StepsPageProps> = ({ step, onStepChange }) => {
   // Submission state
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Handler for final submit
+  // Handler for final submit (atomic)
   const handleSubmitExam = async () => {
     setIsSubmitting(true);
     try {
-      const response1 = await api.post("/api/v1/createExamInfo", examInfo);
-      console.log('Exam Info Response:', response1.data);
-      const response2 = await api.post("/api/v1/createExamQuestions", questions.map(q => ({ ...q, examId: response1.data.examId })));
-      console.log('Exam Questions Response:', response2.data);
+      const payload = {
+        examInfo,
+        questions,
+      };
+      const response = await api.post("/api/v1/createExamAtomic", payload);
+      console.log('Exam Atomic Response:', response.data);
       alert('Exam created successfully!');
       router.push('/teacher/exams');
     } catch (err) {
