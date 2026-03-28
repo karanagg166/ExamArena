@@ -1,36 +1,38 @@
+'use client';
+
 import React from 'react';
+
 
 interface UpperBarProps {
   step: number;
+  onStepChange?: (step: number) => void;
 }
 
 const steps = [1, 2, 3];
 
-const UpperBar: React.FC<UpperBarProps> = ({ step }) => {
+
+const UpperBar: React.FC<UpperBarProps> = ({ step, onStepChange }) => {
   return (
-    <div className="exam-upperbar" style={{ display: 'flex', justifyContent: 'center', margin: '24px 0' }}>
-      {steps.map((num) => (
-        <div
-          key={num}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: num === step ? '#0070f3' : '#e0e0e0',
-            color: num === step ? '#fff' : '#333',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 'bold',
-            fontSize: 20,
-            margin: '0 12px',
-            transition: 'background 0.2s, color 0.2s',
-            boxShadow: num === step ? '0 0 8px #0070f3' : 'none',
-            border: num === step ? '2px solid #0070f3' : '2px solid #e0e0e0',
-          }}
-        >
-          {num}
-        </div>
+    <div className="exam-upperbar flex justify-center items-center my-6">
+      {steps.map((num, idx) => (
+        <React.Fragment key={num}>
+          <button
+            type="button"
+            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-colors border-2 focus:outline-none ${
+              num === step
+                ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
+                : 'bg-gray-200 text-gray-700 border-gray-200 hover:bg-blue-100 hover:text-blue-700'
+            }`}
+            onClick={() => onStepChange && onStepChange(num)}
+          >
+            {num}
+          </button>
+          {idx < steps.length - 1 && (
+            <div className="w-16 h-1 flex items-center mx-2">
+              <div className="border-t-2 border-dashed border-gray-400 w-full"></div>
+            </div>
+          )}
+        </React.Fragment>
       ))}
     </div>
   );

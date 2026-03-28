@@ -8,7 +8,7 @@ const MainPage = () => {
 
   return (
     <div className="exam-create-mainpage">
-      <UpperBar step={currentStep} />
+      <UpperBar step={currentStep} onStepChange={setCurrentStep} />
       <div className="exam-create-content">
         <StepsPage step={currentStep} />
       </div>

@@ -22,6 +22,9 @@ export default function TeacherNavbar() {
                 <div className="flex flex-wrap items-center gap-2">
                     <Link href="/dashboard" className={linkClass(pathname === "/dashboard")}>Dashboard</Link>
                     <Link href="/teacher" className={linkClass(pathname.startsWith("/teacher"))}>Profile</Link>
+                    <Link href="/teacher/exam/create" className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-500 transition-colors">
+                        Create Exam
+                    </Link>
                     <Link href="/school" className="px-3 py-2 rounded-lg text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-colors">
                         Start a School
                     </Link>
