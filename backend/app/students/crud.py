@@ -10,6 +10,14 @@ async def get_student_by_user_id(user_id: str):
     )
 
 
+async def get_student_by_id(student_id: str):
+    """Get student by primary ID with user data"""
+    return await db.prisma.student.find_unique(
+        where={"id": student_id},
+        include={"user": True}
+    )
+
+
 async def create_student(student_data: StudentCreate):
     """Create student record"""
     await db.prisma.student.create(data={

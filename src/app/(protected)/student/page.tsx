@@ -5,8 +5,12 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { api } from "@/lib/axios";
 import { Save } from "lucide-react";
-
-const INPUT_CLS = "w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormMessage } from "@/components/ui/form-message";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/loading";
 
 export default function ProfileStudentPage() {
     const router = useRouter();
@@ -55,57 +59,73 @@ export default function ProfileStudentPage() {
     };
 
     if (loading) return (
-        <div className="min-h-screen flex items-center justify-center bg-black">
-            <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex min-h-screen items-center justify-center">
+            <Spinner className="h-8 w-8 border-4" />
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-black text-white p-6">
-            <div className="max-w-2xl mx-auto">
+        <div className="page-shell text-white">
+            <div className="mx-auto max-w-2xl">
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold">Student Profile</h1>
-                    <p className="text-zinc-400 mt-1 text-sm">Update your student-specific details.</p>
+                    <h1 className="page-title">Student Profile</h1>
+                    <p className="page-subtitle">Update your student-specific details.</p>
                 </div>
 
-                {message && (
-                    <div className={`p-3 rounded-xl mb-5 text-sm text-center border ${message.ok
-                        ? "bg-green-500/10 text-green-400 border-green-500/20"
-                        : "bg-red-500/10 text-red-400 border-red-500/20"}`}>
-                        {message.text}
-                    </div>
-                )}
+                <FormMessage message={message?.text} type={message?.ok ? "success" : "error"} className="mb-5 text-center" />
 
-                <form onSubmit={handleSubmit} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 space-y-4">
-                    <div>
-                        <label className="text-sm text-zinc-400 block mb-1">Roll Number</label>
-                        <input value={form.rollNo} onChange={(e) => setForm(p => ({ ...p, rollNo: e.target.value }))} required className={INPUT_CLS} />
-                    </div>
-                    <div>
-                        <label className="text-sm text-zinc-400 block mb-1">Date of Birth</label>
-                        <input type="date" value={form.dob} onChange={(e) => setForm(p => ({ ...p, dob: e.target.value }))} required className={INPUT_CLS} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-sm text-zinc-400 block mb-1">Parent Name</label>
-                            <input value={form.parentName} onChange={(e) => setForm(p => ({ ...p, parentName: e.target.value }))} className={INPUT_CLS} />
-                        </div>
-                        <div>
-                            <label className="text-sm text-zinc-400 block mb-1">Parent Email</label>
-                            <input type="email" value={form.parentEmail} onChange={(e) => setForm(p => ({ ...p, parentEmail: e.target.value }))} className={INPUT_CLS} />
-                        </div>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                        <button type="submit" disabled={saving}
-                            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-semibold transition-all disabled:opacity-50">
-                            <Save className="w-4 h-4" />
-                            {saving ? "Saving…" : "Save Changes"}
-                        </button>
-                        <a href="/profile" className="flex items-center px-5 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm font-medium transition-all">
-                            ← Account Settings
-                        </a>
-                    </div>
-                </form>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Profile Details</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <Label className="mb-1 block">Roll Number</Label>
+                                <Input
+                                    value={form.rollNo}
+                                    onChange={(e) => setForm((p) => ({ ...p, rollNo: e.target.value }))}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <Label className="mb-1 block">Date of Birth</Label>
+                                <Input
+                                    type="date"
+                                    value={form.dob}
+                                    onChange={(e) => setForm((p) => ({ ...p, dob: e.target.value }))}
+                                    required
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <Label className="mb-1 block">Parent Name</Label>
+                                    <Input
+                                        value={form.parentName}
+                                        onChange={(e) => setForm((p) => ({ ...p, parentName: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <Label className="mb-1 block">Parent Email</Label>
+                                    <Input
+                                        type="email"
+                                        value={form.parentEmail}
+                                        onChange={(e) => setForm((p) => ({ ...p, parentEmail: e.target.value }))}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-3 pt-2">
+                                <Button type="submit" disabled={saving} className="gap-2">
+                                    <Save className="h-4 w-4" />
+                                    {saving ? "Saving..." : "Save Changes"}
+                                </Button>
+                                <Button asChild variant="secondary">
+                                    <a href="/profile">Account Settings</a>
+                                </Button>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

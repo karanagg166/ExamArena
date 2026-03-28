@@ -1,12 +1,18 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from typing import Optional
 from app.api.deps import get_current_user
 from app.principals.crud import create_principal, get_principal_by_teacher_id, update_principal
 from app.principals.schemas import PrincipalUpdate
 from app.school import crud
-from app.school.schemas import SchoolCreateRequest, SchoolResponse, SchoolUpdateRequest
+from app.school.schemas import (
+    SchoolCreateRequest,
+    SchoolResponse,
+    SchoolUpdateRequest,
+    SchoolFilterParams,
+    SchoolType,
+)
 from app.schoolClass.crud import get_school_classes_by_school_id
 from app.schoolClass.schemas import SchoolClassResponse
 from app.teachers.crud import get_teacher_by_user_id
@@ -14,9 +20,10 @@ from app.users.schemas import UserResponse
 
 router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
 
-
-async def get_current_user_school(current_user: UserResponse) -> SchoolResponse:
+@router.get("/me", response_model=SchoolResponse)
+async def get_current_user_school(current_user: Annotated[UserResponse, Depends(get_current_user)]) -> SchoolResponse:
     school = await crud.get_school_by_user_id(current_user.id)
+    print("Current school:", school)
     if not school:
         raise HTTPException(status_code=404, detail="School profile not found.")
 
@@ -49,7 +56,10 @@ async def create_school(
     return school
 
 
-@router.get("/me", response_model=SchoolResponse)
+
+
+
+
 @router.get("/profile", response_model=SchoolResponse)
 async def get_my_school_profile(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
@@ -85,12 +95,31 @@ async def delete_my_school_profile(
 
 
 @router.get("/", response_model=list[SchoolResponse])
-async def get_all_schools(
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
+async def fetch_schools(
+    name: Optional[str] = Query(None),
+    city: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    pincode: Optional[str] = Query(None),
+    school_code: Optional[str] = Query(None, alias="schoolCode"),
+    school_type: Optional[SchoolType] = Query(None, alias="schoolType"),
+    email: Optional[str] = Query(None),
+    website: Optional[str] = Query(None),
+    current_user=Depends(get_current_user),
 ):
-    """Get all schools."""
-    del current_user
-    return await crud.get_all_schools()
+    filters = SchoolFilterParams(
+        name=name,
+        city=city,
+        state=state,
+        country=country,
+        pincode=pincode,
+        school_code=school_code,
+        school_type=school_type,
+        email=email,
+        website=website,
+    )
+    return await crud.get_schools(filters)
+
 
 
 @router.get("/search", response_model=SchoolResponse)
@@ -126,6 +155,7 @@ async def get_school_by_id(
     school_id: str,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
+    print("Fetching school with ID:", school_id)  # Debug log
     """Get a school by database ID."""
     del current_user
     school = await crud.get_school_by_id(school_id)

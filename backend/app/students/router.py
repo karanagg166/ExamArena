@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.students.schemas import StudentResponse, StudentUpdate, StudentCreate, StudentCreateRequest
-from app.students.crud import get_student_by_user_id, update_student, create_student
+from app.students.crud import get_student_by_user_id, update_student, create_student, get_student_by_id
 from app.api.deps import get_current_user
+
 
 router = APIRouter(prefix="/api/v1/students", tags=["students"])
 
@@ -49,13 +50,16 @@ async def update_my_student_data(
     return await update_student(current_user.id, student_data)
 
 
-@router.get("/{user_id}", response_model=StudentResponse)
-async def get_student_by_id(user_id: str, current_user=Depends(get_current_user)):
-    """Get student data by user ID (admin/teacher access)"""
-    student = await get_student_by_user_id(user_id)
+@router.get("/{student_id}", response_model=StudentResponse)
+async def get_student_by_id_endpoint(student_id: str, current_user=Depends(get_current_user)):
+    """Get student data by primary ID (admin/teacher access)"""
+    student = await get_student_by_id(student_id)
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Student not found"
         )
+
+
+
     return student

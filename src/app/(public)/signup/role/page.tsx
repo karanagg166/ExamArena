@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/axios";
+import { Spinner } from "@/components/ui/loading";
 
 export default function SignupRoleRedirect() {
     const router = useRouter();
@@ -12,8 +13,8 @@ export default function SignupRoleRedirect() {
             .catch(() => router.replace("/login"));
     }, [router]);
     return (
-        <div className="min-h-screen flex items-center justify-center bg-black">
-            <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex min-h-screen items-center justify-center">
+            <Spinner className="h-8 w-8 border-4" />
         </div>
     );
 }

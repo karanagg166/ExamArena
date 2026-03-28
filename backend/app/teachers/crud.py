@@ -12,6 +12,14 @@ async def get_teacher_by_user_id(user_id: str):
     )
 
 
+async def get_teacher_by_id(teacher_id: str):
+    """Get teacher by primary ID with user data"""
+    return await db.prisma.teacher.find_unique(
+        where={"id": teacher_id},
+        include={"user": True}
+    )
+
+
 async def create_teacher(teacher_data: TeacherCreate):
     """Create teacher record — serialize qualifications/subjects lists to JSON strings"""
     await db.prisma.teacher.create(data={

@@ -1,3 +1,5 @@
+export type SchoolType = "PUBLIC" | "PRIVATE" | "CHARTER" | "INTERNATIONAL";
+
 export type School = {
     id: string;
     name: string;
@@ -9,4 +11,9 @@ export type School = {
     createdAt: string;
     updatedAt: string;
     schoolCode: string;
+    type: SchoolType;
+    email?: string;
+    website?: string;
+    phone?: string;
+    principalName?: string;
 };

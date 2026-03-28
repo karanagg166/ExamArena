@@ -31,13 +31,16 @@ export const useSchoolClassStore = create<SchoolClassState>((set) => ({
     },
 
     createClass: async (data) => {
-        set({ loading: true, error: "" })
+        set({ loading: true, error: "" });
+        console.log("Creating class with data:", data);
         try {
-            const res = await api.post("/api/v1/classes/", data)
+            const res = await api.post("/api/v1/classes/", data);
+            console.log("Create class response:", res);
             set((state) => ({ classes: [...state.classes, res.data] }))
             return true
-        } catch {
-            set({ error: "Failed to create class" })
+        } catch (error:unknown){
+            set({ error: "Failed to create class" });
+            console.error("Error creating class:", error);
             return false
         } finally {
             set({ loading: false })

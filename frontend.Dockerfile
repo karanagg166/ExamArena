@@ -1,22 +1,23 @@
 FROM node:20-alpine AS base
+RUN npm install -g pnpm
 
 # ── Dev Stage (Hot Reload) ────────────────────────────────────────────────────
 FROM base AS dev
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install
 ENV WATCHPACK_POLLING=true
 ENV NEXT_TELEMETRY_DISABLED=1
 EXPOSE 3000
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "dev"]
 
 # ── Deps ──────────────────────────────────────────────────────────────────────
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install
 
 # ── Builder ───────────────────────────────────────────────────────────────────
 FROM base AS builder
@@ -26,7 +27,7 @@ COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN pnpm build
 
 # ── Runner (Production) ───────────────────────────────────────────────────────
 FROM base AS runner

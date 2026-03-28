@@ -1,5 +1,10 @@
 import app.core.database as db
-from app.school.schemas import SchoolCreateRequest, SchoolResponse, SchoolUpdateRequest
+from app.school.schemas import (
+    SchoolCreateRequest,
+    SchoolResponse,
+    SchoolFilterParams,
+    SchoolUpdateRequest,
+)
 
 
 async def create_school(school_data: SchoolCreateRequest, user_id: str) -> SchoolResponse:
@@ -48,9 +53,31 @@ async def get_school_by_id(school_id: str) -> SchoolResponse | None:
     return SchoolResponse.model_validate(school) if school else None
 
 
-async def get_all_schools() -> list[SchoolResponse]:
-    """Get all schools."""
-    schools = await db.prisma.school.find_many()
+async def get_schools(filters: SchoolFilterParams) -> list[SchoolResponse]:
+    """Get all schools with optional filters."""
+
+    where = {}
+
+    if filters.name:
+        where["name"] = {"contains": filters.name, "mode": "insensitive"}
+    if filters.city:
+        where["city"] = {"contains": filters.city, "mode": "insensitive"}
+    if filters.state:
+        where["state"] = {"contains": filters.state, "mode": "insensitive"}
+    if filters.country:
+        where["country"] = {"contains": filters.country, "mode": "insensitive"}
+    if filters.pincode:
+        where["pincode"] = {"contains": filters.pincode, "mode": "insensitive"}
+    if filters.school_code:
+        where["schoolCode"] = {"contains": filters.school_code, "mode": "insensitive"}
+    if filters.email:
+        where["email"] = {"contains": filters.email, "mode": "insensitive"}
+    if filters.website:
+        where["website"] = {"contains": filters.website, "mode": "insensitive"}
+    if filters.school_type:
+        where["type"] = filters.school_type   # exact match — enum
+
+    schools = await db.prisma.school.find_many(where=where)
     return [SchoolResponse.model_validate(school) for school in schools]
 
 

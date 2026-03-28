@@ -18,11 +18,14 @@ export const useSchoolStore = create<SchoolState>((set) => ({
     ...initial,
 
     fetchSchool: async () => {
-        set({ loading: true, error: "" })
+        set({ loading: true, error: "" });
+        console.log("Fetching school data...");
         try {
-            const res = await api.get("/api/v1/schools/me")
+            const res = await api.get("/api/v1/schools/me");
+            console.log("Fetched school data:", res.data);
             set({ school: res.data })
-        } catch {
+        } catch (error: unknown) {
+            console.error("Error fetching school data:", error);
             set({ error: "Failed to load school" })
         } finally {
             set({ loading: false })

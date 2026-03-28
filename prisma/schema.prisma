@@ -110,7 +110,7 @@ model Principal {
 }
 
 model School {
-  id         String        @id @default(cuid())
+  id         String      @id @default(cuid())
   name       String
   createdBy  String
   address    String
@@ -118,12 +118,15 @@ model School {
   state      String
   country    String
   pincode    String
-  schoolCode String        @unique
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  schoolCode String      @unique
+  type       SchoolType  @default(PUBLIC)
+  email      String?     // ← add
+  website    String?     // ← add
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
   principals Principal[]
   teachers   Teacher[]
-  user       User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   classes    SchoolClass[]
   Student    Student[]
 }
@@ -242,4 +245,11 @@ enum QuestionType {
   TRUE_FALSE
   SHORT_ANSWER
   ESSAY
+}
+
+enum SchoolType {
+  PUBLIC
+  PRIVATE
+  CHARTER
+  INTERNATIONAL
 }

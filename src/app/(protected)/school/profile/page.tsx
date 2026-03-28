@@ -12,7 +12,15 @@ const initialForm = {
     country: "",
     pincode: "",
     schoolCode: "",
+    type: "PUBLIC",
 };
+
+const SCHOOL_TYPES = [
+    { value: "PUBLIC", label: "Public" },
+    { value: "PRIVATE", label: "Private" },
+    { value: "CHARTER", label: "Charter" },
+    { value: "INTERNATIONAL", label: "International" }
+];
 
 const SchoolProfile = () => {
     const router = useRouter();
@@ -102,6 +110,21 @@ const SchoolProfile = () => {
                             className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                             required
                         />
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium text-zinc-300 ml-1 block mb-1.5">School Type</label>
+                        <select
+                            name="type"
+                            value={form.type}
+                            onChange={(e) => handleChange(e as any)}
+                            className="w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
+                            required
+                        >
+                            {SCHOOL_TYPES.map((t) => (
+                                <option key={t.value} value={t.value}>{t.label}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

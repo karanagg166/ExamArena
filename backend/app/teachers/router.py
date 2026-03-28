@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.teachers.schemas import TeacherResponse, TeacherUpdate, TeacherCreate, TeacherCreateRequest
-from app.teachers.crud import get_teacher_by_user_id, update_teacher, create_teacher, get_all_qualifications,get_all_subjects
+from app.teachers.crud import get_teacher_by_user_id, update_teacher, create_teacher, get_all_qualifications,get_all_subjects, get_teacher_by_id as crud_get_teacher_by_id
 from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/api/v1/teachers", tags=["teachers"])
@@ -60,10 +60,10 @@ async def get_teacher_subjects():
     """Get all possible subjects for teachers"""
     return await get_all_subjects()
 
-@router.get("/{user_id}", response_model=TeacherResponse)
-async def get_teacher_by_id(user_id: str, current_user=Depends(get_current_user)):
-    """Get teacher data by user ID (admin access)"""
-    teacher = await get_teacher_by_user_id(user_id)
+@router.get("/{teacher_id}", response_model=TeacherResponse)
+async def get_teacher_by_id(teacher_id: str, current_user=Depends(get_current_user)):
+    """Get teacher data by primary ID"""
+    teacher = await crud_get_teacher_by_id(teacher_id)
     if not teacher:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

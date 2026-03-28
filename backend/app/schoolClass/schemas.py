@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class SchoolClassBase(BaseModel):
     name: str
-    schoolId: str
+    
 
 
 class SchoolClassCreateRequest(SchoolClassBase):

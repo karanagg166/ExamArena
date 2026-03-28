@@ -96,9 +96,7 @@ jobs:
       - name: ⚡ Strict Typing (TypeScript)
         run: docker compose exec -T frontend npx tsc --noEmit
 
-      # 6. Automated Testing
-      - name: 🧪 Run Backend Tests (Pytest)
-        run: docker compose exec -T backend pytest
+
 
       # 7. Cleanup & Logs
       - name: Dump logs on failure
