@@ -1,5 +1,5 @@
 [build]
-dockerfilePath = "backend.Dockerfile"
+dockerfilePath = "backend/backend.Dockerfile"
 dockerTarget = "production"
 
 [deploy]
