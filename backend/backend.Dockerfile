@@ -20,8 +20,6 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 COPY ./prisma ./prisma
-ARG DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
-ENV DATABASE_URL=$DATABASE_URL
 
 # ── Dev Stage ─────────────────────────────────────────────────
 FROM base AS dev
@@ -33,4 +31,4 @@ CMD ["sh", "-c", "prisma generate --generator pyclient && uvicorn app.main:app -
 FROM base AS production
 COPY ./backend .
 EXPOSE 8000
-CMD ["sh", "-c", "prisma generate --generator pyclient && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "prisma generate --generator pyclient && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
