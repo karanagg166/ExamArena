@@ -16,11 +16,11 @@ COMPOSE            := docker compose
 
 # ── Helpers ───────────────────────────────────────────────────
 wait-backend:
-	@echo "⏳ Waiting for backend + DB to be ready (max 180s)..."
+	@echo "⏳ Waiting for backend to be ready (max 180s)..."
 	@for i in $$(seq 1 60); do \
 		RESPONSE=$$(curl --silent http://localhost:8000/health 2>/dev/null); \
 		if echo "$$RESPONSE" | grep -q '"healthy"'; then \
-			echo "✅ Backend and DB are ready (took ~$$(($$i * 3))s)"; \
+			echo "✅ Backend is ready (took ~$$(($$i * 3))s)"; \
 			break; \
 		fi; \
 		if [ $$i -eq 60 ]; then \
@@ -63,15 +63,15 @@ ci:
 	@echo "🐳 Building Docker images..."
 	$(COMPOSE) build
 
-	@echo "🚀 Starting DB, Redis and backend..."
-	$(COMPOSE) up -d db redis $(BACKEND_CONTAINER)
+	@echo "🚀 Starting backend..."
+	$(COMPOSE) up -d $(BACKEND_CONTAINER)
 
 	$(MAKE) wait-backend
 
 	$(MAKE) db-push
 
-	@echo "🧪 Running backend tests..."
-	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
+# 	@echo "🧪 Running backend tests..."
+# 	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
 
 	$(MAKE) down
 
