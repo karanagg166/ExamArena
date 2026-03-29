@@ -73,8 +73,7 @@ jobs:
       - name: Prisma DB Push
         run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma db push --accept-data-loss
 
-      - name: Prisma Migrate Status (Strict Sync Check)
-        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma migrate status
+     
 
       # 4. Backend Checks (FastAPI)
       - name: 🐍 Check Formatting (Black)

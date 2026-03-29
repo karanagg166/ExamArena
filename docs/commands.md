@@ -350,5 +350,5 @@ Stops and removes all running containers (`docker compose down`). Volumes are ke
 View your project structure (excluding noise folders):
 
 ```bash
-tree -I 'node_modules|.next|__pycache__|.git|.venv|*.pyc|postgres_data' --dirsfirst
+tree -I 'node_modules|.next|__pycache__|.git|.venv|*.pyc|postgres_data|generated' --dirsfirst
 ```
