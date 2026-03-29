@@ -57,14 +57,12 @@ def root():
         "docs": "/docs",
     }
 
-
 @app.get("/health")
 async def health_check():
     try:
-        # Don't connect/disconnect — just check if it's already connected
         if not db.prisma.is_connected():
             raise Exception("Prisma not connected")
-        return {"status": "healthy"}
+        return {"status": "healthy"}  # ✅ this is fine for Railway
     except Exception as exc:
         raise HTTPException(status_code=503, detail="unhealthy") from exc
 

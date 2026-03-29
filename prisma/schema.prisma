@@ -253,3 +253,151 @@ enum SchoolType {
   CHARTER
   INTERNATIONAL
 }
+
+
+// model Exam {
+//   id           String        @id @default(cuid())
+//   name         String
+//   description  String
+//   date         DateTime
+//   duration     Int           // in minutes
+//   maxMarks     Int
+//   type         ExamType
+//   teacherId    String
+//   classId      String?       // optional: target a specific class
+//   subject      Subject?      // optional: subject of the exam
+//   instructions String?       // exam instructions shown to students
+//   isPublished  Boolean       @default(false) // draft vs published
+//   createdAt    DateTime      @default(now())
+//   updatedAt    DateTime      @updatedAt
+//   teacher      Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+//   class        SchoolClass?  @relation(fields: [classId], references: [id])
+//   questions    Question[]
+//   studentExams StudentExam[]
+
+//   @@index([teacherId])
+//   @@index([classId])
+// }
+
+// model Question {
+//   id             String               @id @default(cuid())
+//   text           String               // question text
+//   questionType   QuestionType         @default(MULTIPLE_CHOICE)
+//   marks          Int
+//   imageUrl       String?              // optional image attachment
+//   examId         String
+//   orderIndex     Int                  @default(0) // order in exam
+//   explanation    String?              // explanation shown after exam
+//   createdAt      DateTime             @default(now())
+//   updatedAt      DateTime             @updatedAt
+//   exam           Exam                 @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+//   // MCQ specific — null for non-MCQ questions
+//   options        QuestionOption[]
+
+//   // Short answer / Essay specific
+//   maxLength      Int?                 // max character length for text answers
+//   wordLimit      Int?                 // word limit for essays
+
+//   answers        StudentExamAnswer[]
+
+//   @@index([examId])
+// }
+
+// // Separate table for MCQ options — clean and extensible
+// model QuestionOption {
+//   id           String   @id @default(cuid())
+//   questionId   String
+//   text         String   // option text e.g "Paris"
+//   isCorrect    Boolean  @default(false)
+//   orderIndex   Int      @default(0) // order: A, B, C, D
+//   imageUrl     String?  // optional image option
+//   question     Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+//   @@index([questionId])
+// }
+
+// model StudentExam {
+//   id            String              @id @default(cuid())
+//   studentId     String
+//   examId        String
+//   marksObtained Int                 @default(0)
+//   status        StudentExamStatus   @default(IN_PROGRESS)
+//   startedAt     DateTime            @default(now())
+//   submittedAt   DateTime?           // null until submitted
+//   givenAt       DateTime            @default(now())
+//   exam          Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+//   student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+//   answers       StudentExamAnswer[]
+
+//   @@unique([studentId, examId])   // student can attempt an exam only once
+//   @@index([studentId])
+//   @@index([examId])
+// }
+
+// model StudentExamAnswer {
+//   id            String      @id @default(cuid())
+//   studentExamId String
+//   questionId    String
+//   questionType  QuestionType  // denormalized for quick filtering
+
+//   // MCQ — store selected option id
+//   selectedOptionId  String?
+
+//   // Short answer / Essay — store text
+//   textAnswer        String?
+
+//   // Grading
+//   marksAwarded      Int?      // null until graded (auto for MCQ, manual for essay)
+//   isCorrect         Boolean?  // null until graded
+//   feedback          String?   // teacher feedback on answer
+
+//   createdAt     DateTime    @default(now())
+//   updatedAt     DateTime    @updatedAt
+//   question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+//   studentExam   StudentExam @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
+
+//   @@unique([studentExamId, questionId])
+//   @@index([studentExamId])
+//   @@index([questionId])
+// }
+
+// // ── Enums ─────────────────────────────────────────────────────
+
+// enum QuestionType {
+//   MULTIPLE_CHOICE   // options, one correct
+//   MULTIPLE_SELECT   // options, multiple correct
+//   TRUE_FALSE        // options: True / False
+//   SHORT_ANSWER      // text, maxLength applies
+//   ESSAY             // text, wordLimit applies
+// }
+
+// enum StudentExamStatus {
+//   IN_PROGRESS
+//   SUBMITTED
+//   GRADED
+//   EXPIRED           // time ran out
+// }
+
+// enum ExamType {
+//   MIDTERM
+//   FINAL
+//   QUIZ
+//   ASSIGNMENT
+//   MOCK
+// }
+// ```
+
+// ---
+
+// **Key design decisions:**
+
+// **`QuestionOption` as a separate table** instead of `String[]` — lets you attach `isCorrect`, `orderIndex`, and even an `imageUrl` per option cleanly. Your old schema stored options as `String[]` and `correctAnswer` as `String` which breaks for `MULTIPLE_SELECT`.
+
+// **`StudentExamAnswer` has both `selectedOptionId` and `textAnswer`** — one will always be null depending on question type. This handles MCQ and text answers in one table cleanly.
+
+// **Auto-grading flow:**
+// ```
+// MCQ / TRUE_FALSE    → compare selectedOptionId with isCorrect → auto marksAwarded
+// SHORT_ANSWER / ESSAY → teacher manually sets marksAwarded + feedback
+// MULTIPLE_SELECT     → compare selected options vs all isCorrect options → auto
