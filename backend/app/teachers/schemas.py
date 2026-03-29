@@ -1,6 +1,13 @@
 import json
 
-from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from app.users.schemas import UserResponse
 
@@ -108,3 +115,47 @@ class TeacherResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TeacherListItemResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    phoneNo: str
+    experience: int
+    qualifications: list[str] = []
+    department: str
+    subjects: list[str] = []
+
+
+class TeacherFilterParams(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: str | None = None
+    email: str | None = None
+    phone_no: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("phone_no", "phoneNo"),
+        serialization_alias="phoneNo",
+    )
+    department: str | None = None
+    subject: str | None = None
+    qualification: str | None = None
+    min_experience: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("min_experience", "minExperience"),
+        serialization_alias="minExperience",
+    )
+    max_experience: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("max_experience", "maxExperience"),
+        serialization_alias="maxExperience",
+    )
+
+
+class TeacherJoinSchoolRequest(BaseModel):
+    school_id: str = Field(
+        min_length=1,
+        validation_alias=AliasChoices("school_id", "schoolId"),
+        serialization_alias="schoolId",
+    )

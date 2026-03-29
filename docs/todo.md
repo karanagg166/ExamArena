@@ -1,0 +1,1 @@
+create a school search filter when teacher wants to join the school and same for pirncipal 

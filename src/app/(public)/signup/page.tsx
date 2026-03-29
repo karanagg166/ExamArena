@@ -103,6 +103,7 @@ const SignUpPage = () => {
       toast.success("Account created successfully");
       // Redirect to role-specific profile setup
       login(form.email, form.password);
+      console.log("Logged in user after signup:", form.role.toLowerCase());
       router.push(`/signup/${form.role.toLowerCase()}`);
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {

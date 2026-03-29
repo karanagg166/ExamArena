@@ -10,11 +10,7 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
 
   return (
     <div
-      onClick={() =>
-        router.push(
-          `/school/${schoolClass.schoolId}/school-class/${schoolClass.id}`,
-        )
-      }
+      onClick={() => router.push(`/principal/school/classes/${schoolClass.id}`)}
       className="group relative bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-indigo-500/50 hover:bg-zinc-800/80 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden"
     >
       {/* Accent bar on hover */}
@@ -23,11 +19,11 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">
+          <h3 className="text-base font-semibold text-zinc-100">
             {schoolClass.name}
           </h3>
           {schoolClass.schoolName && (
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-zinc-400 mt-0.5">
               {schoolClass.schoolName}
             </p>
           )}
@@ -44,17 +40,17 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
           {schoolClass.teachers.map((teacher) => (
             <div
               key={teacher.id}
-              className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm"
+              className="flex items-center justify-between rounded-lg bg-zinc-800/70 px-3 py-2 text-sm"
             >
               <div>
-                <p className="font-medium text-gray-800">{teacher.name}</p>
-                <p className="text-xs text-gray-400">{teacher.department}</p>
+                <p className="font-medium text-zinc-200">{teacher.name}</p>
+                <p className="text-xs text-zinc-400">{teacher.department}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-zinc-400">
                   {teacher.subjects.join(", ")}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-zinc-400">
                   {teacher.experience} yrs exp
                 </p>
               </div>
@@ -62,11 +58,11 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
           ))}
         </div>
       ) : (
-        <p className="text-xs text-gray-400">No teachers assigned</p>
+        <p className="text-xs text-zinc-400">No teachers assigned</p>
       )}
 
       {/* Footer */}
-      <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+      <div className="mt-4 pt-3 border-t border-zinc-700 flex items-center justify-between text-xs text-zinc-400">
         <span>
           Created {new Date(schoolClass.createdAt).toLocaleDateString()}
         </span>

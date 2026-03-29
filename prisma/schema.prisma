@@ -34,15 +34,15 @@ model Student {
   rollNo          String        @unique
   parentName      String
   parentEmail     String
-  dateOfAdmission DateTime
+  dateOfAdmission DateTime      @default(now())
   classId         String
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  schoolId        String
   schoolClass     SchoolClass   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   studentExams    StudentExam[]
-  schoolId        String
-  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@index([classId])
   @@index([userId])
@@ -57,12 +57,12 @@ model Teacher {
   subjects      String         @default("[]")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  exams         Exam[]
   schoolId      String?
+  exams         Exam[]
   principal     Principal?
+  school        School?        @relation(fields: [schoolId], references: [id])
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   teaches       TeacherClass[]
-  school        School?        @relation(fields: [schoolId], references: [id], onDelete: SetNull)
 
   @@index([userId])
 }
@@ -110,7 +110,7 @@ model Principal {
 }
 
 model School {
-  id         String      @id @default(cuid())
+  id         String        @id @default(cuid())
   name       String
   createdBy  String
   address    String
@@ -118,17 +118,17 @@ model School {
   state      String
   country    String
   pincode    String
-  schoolCode String      @unique
-  type       SchoolType  @default(PUBLIC)
-  email      String?     // ← add
-  website    String?     // ← add
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  schoolCode String        @unique
+  type       SchoolType    @default(PUBLIC)
+  email      String?
+  website    String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
   principals Principal[]
-  teachers   Teacher[]
-  user       User        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   classes    SchoolClass[]
   Student    Student[]
+  teachers   Teacher[]
 }
 
 model Exam {

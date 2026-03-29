@@ -1,7 +1,9 @@
-from typing import Annotated
+from importlib import import_module
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+import app.core.database as db
 from app.api.deps import get_current_user
 from app.principals.crud import (
     create_principal,
@@ -17,10 +19,13 @@ from app.school.schemas import (
     SchoolType,
     SchoolUpdateRequest,
 )
-from app.schoolClass.crud import get_school_classes_by_school_id
-from app.schoolClass.schemas import SchoolClassResponse
 from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
+
+_school_class_crud = import_module("app.school-class.crud")
+_school_class_schemas = import_module("app.school-class.schemas")
+get_school_classes_by_school_id = _school_class_crud.get_school_classes_by_school_id
+SchoolClassResponse = _school_class_schemas.SchoolClassResponse
 
 router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
 
@@ -31,6 +36,7 @@ async def get_current_user_school(
 ) -> SchoolResponse:
     school = await crud.get_school_by_user_id(current_user.id)
     print("Current school:", school)
+
     if not school:
         raise HTTPException(status_code=404, detail="School profile not found.")
 
@@ -59,7 +65,11 @@ async def create_school(
                 teacher.id,
                 PrincipalUpdate(schoolId=school.id),
             )
-
+    teacher_updated = await db.prisma.teacher.update(
+        where={"userId": current_user.id},
+        data=cast(Any, {"schoolId": school.id}),
+    )
+    print("Updated teacher with new schoolId:", teacher_updated)
     return school
 
 
@@ -71,7 +81,6 @@ async def get_my_school_profile(
     return await get_current_user_school(current_user)
 
 
-@router.patch("/me", response_model=SchoolResponse)
 @router.patch("/profile", response_model=SchoolResponse)
 async def update_my_school_profile(
     school_data: SchoolUpdateRequest,
@@ -99,16 +108,15 @@ async def delete_my_school_profile(
 
 @router.get("/", response_model=list[SchoolResponse])
 async def fetch_schools(
-    name: str | None = Query(None),
-    city: str | None = Query(None),
-    state: str | None = Query(None),
-    country: str | None = Query(None),
-    pincode: str | None = Query(None),
-    school_code: str | None = Query(None, alias="schoolCode"),
-    school_type: SchoolType | None = Query(None, alias="schoolType"),
-    email: str | None = Query(None),
-    website: str | None = Query(None),
-    current_user=Depends(get_current_user),
+    name: Annotated[str | None, Query()] = None,
+    city: Annotated[str | None, Query()] = None,
+    state: Annotated[str | None, Query()] = None,
+    country: Annotated[str | None, Query()] = None,
+    pincode: Annotated[str | None, Query()] = None,
+    school_code: Annotated[str | None, Query(alias="schoolCode")] = None,
+    school_type: Annotated[SchoolType | None, Query(alias="schoolType")] = None,
+    email: Annotated[str | None, Query()] = None,
+    website: Annotated[str | None, Query()] = None,
 ):
     filters = SchoolFilterParams(
         name=name,
@@ -167,7 +175,7 @@ async def get_school_by_id(
     return school
 
 
-@router.get("/{school_id}/classes", response_model=list[SchoolClassResponse])
+@router.get("/{school_id}/classes", response_model=list[dict[str, Any]])
 async def get_classes_for_school(
     school_id: str,
     current_user: Annotated[UserResponse, Depends(get_current_user)],

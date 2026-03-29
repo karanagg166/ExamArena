@@ -9,10 +9,8 @@ class StudentCreateRequest(BaseModel):
     """What the frontend sends — no userId (injected from JWT)"""
 
     rollNo: str
-    dob: datetime
     parentName: str
     parentEmail: EmailStr
-    dateOfAdmission: datetime
     schoolId: str
     classId: str  # ID of the SchoolClass the student joins
 
@@ -36,7 +34,6 @@ class UserUpdateNested(BaseModel):
 class StudentUpdate(BaseModel):
     user: UserUpdateNested | None = None
     rollNo: str | None = None
-    dob: datetime | None = None
     parentName: str | None = None
     parentEmail: EmailStr | None = None
     schoolId: str | None = None
@@ -47,7 +44,6 @@ class StudentResponse(BaseModel):
     id: str
     userId: str
     rollNo: str
-    dob: datetime
     parentName: str
     parentEmail: str
     dateOfAdmission: datetime

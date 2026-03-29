@@ -9,6 +9,7 @@ interface SchoolState {
   error: string;
 
   fetchSchool: () => Promise<void>;
+  fetchSchoolById: (schoolId: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -22,6 +23,20 @@ export const useSchoolStore = create<SchoolState>((set) => ({
     console.log("Fetching school data...");
     try {
       const res = await api.get("/api/v1/schools/me");
+      console.log("Fetched school data:", res.data);
+      set({ school: res.data });
+    } catch (error: unknown) {
+      console.error("Error fetching school data:", error);
+      set({ error: "Failed to load school" });
+    } finally {
+      set({ loading: false });
+    }
+  },
+  fetchSchoolById: async (schoolId: string) => {
+    set({ loading: true, error: "" });
+    console.log(`Fetching school data for ID: ${schoolId}...`);
+    try {
+      const res = await api.get(`/api/v1/schools/${schoolId}`);
       console.log("Fetched school data:", res.data);
       set({ school: res.data });
     } catch (error: unknown) {

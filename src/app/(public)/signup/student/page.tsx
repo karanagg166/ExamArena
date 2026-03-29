@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { api } from "@/lib/axios";
 import { School } from "@/types/school";
-import { useAuthStore } from "@/stores";
+
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,20 +19,21 @@ import { Badge } from "@/components/ui/badge";
 import { FormMessage } from "@/components/ui/form-message";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-type SchoolClass = { id: string; name: string };
+import { useSchoolClassStore } from "@/stores";
 
 export default function SignupStudentPage() {
   const router = useRouter();
   const [schools, setSchools] = useState<School[]>([]);
-  const [classes, setClasses] = useState<SchoolClass[]>([]);
-  const user = useAuthStore((s) => s.user);
-  console.log("Current user in signup page:", user);
+
+  const { fetchClassesBySchool, clearClasses, classes } = useSchoolClassStore();
+
+  // console.log("Current user in signup page:", user);
+
   const [form, setForm] = useState({
     rollNo: "",
-    dob: "",
     parentName: "",
     parentEmail: "",
-    dateOfAdmission: new Date().toISOString().split("T")[0],
+
     schoolId: "",
     classId: "",
   });
@@ -48,15 +49,13 @@ export default function SignupStudentPage() {
 
   useEffect(() => {
     if (!form.schoolId) {
-      setClasses([]);
+      clearClasses();
       return;
     }
+
     setForm((p) => ({ ...p, classId: "" }));
-    api
-      .get(`/api/v1/schools/${form.schoolId}/classes`)
-      .then((r) => setClasses(r.data))
-      .catch(() => setClasses([]));
-  }, [form.schoolId]);
+    fetchClassesBySchool(form.schoolId);
+  }, [form.schoolId, fetchClassesBySchool, clearClasses]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -67,6 +66,7 @@ export default function SignupStudentPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Submitting student profile with data:", form);
     if (!form.classId) {
       const message = "Please select a class.";
       setError(message);
@@ -78,15 +78,15 @@ export default function SignupStudentPage() {
     try {
       await api.post("/api/v1/students/", {
         rollNo: form.rollNo,
-        dob: new Date(form.dob).toISOString(),
+
         parentName: form.parentName,
         parentEmail: form.parentEmail,
-        dateOfAdmission: new Date(form.dateOfAdmission).toISOString(),
+
         schoolId: form.schoolId,
         classId: form.classId,
       });
       toast.success("Student profile completed");
-      router.push("/dashboard");
+      router.push("/student");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const detail = err.response?.data?.detail;
@@ -167,17 +167,6 @@ export default function SignupStudentPage() {
               <Input
                 name="rollNo"
                 value={form.rollNo}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div>
-              <Label className="mb-1.5 block">Date of Birth</Label>
-              <Input
-                type="date"
-                name="dob"
-                value={form.dob}
                 onChange={handleChange}
                 required
               />
