@@ -1,0 +1,27 @@
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes (unused imports, undefined names)
+    "I",   # isort (import ordering)
+    "B",   # flake8-bugbear (common bugs)
+    "UP",  # pyupgrade (modern Python syntax)
+]
+ignore = ["E501"]  # ignore line-too-long if Black handles it
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]  # your app module name
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+strict = false  # set true for strict type checking
+exclude = "(^|/)school-class(/|$)"

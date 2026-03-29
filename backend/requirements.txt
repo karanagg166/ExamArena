@@ -1,0 +1,53 @@
+# FastAPI & Core Web Server
+fastapi==0.110.0
+uvicorn==0.27.1
+pydantic==2.6.4
+pydantic-settings==2.1.0
+sqlalchemy==2.0.28
+python-dotenv==1.0.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+email-validator==2.1.0
+prisma>=0.15.0
+
+# AI Integration & Document Parsing
+openai
+langchain
+PyPDF2
+pdfplumber
+
+# Proctoring (Computer Vision)
+opencv-python
+face_recognition
+
+# Data Processing & Exporting
+pandas
+openpyxl
+reportlab
+
+# Storage & Background Tasks
+boto3
+arq
+redis
+
+# Real-Time Communication
+python-socketio
+
+# Monitoring & Logging
+sentry-sdk
+loguru
+
+# Database & Forms
+sqlmodel
+python-multipart
+
+# Testing
+pytest
+pytest-mock
+pytest-asyncio
+httpx
+
+# Linting and Formatting
+ruff
+black
+mypy

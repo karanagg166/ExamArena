@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --muted: #a1a1aa;
+  --surface: #111114;
+  --surface-soft: #18181b;
+  --ring: #6366f1;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    --foreground: #fafafa;
+    --muted: #a1a1aa;
+    --surface: #111114;
+    --surface-soft: #18181b;
+    --ring: #6366f1;
   }
+}
+
+.input {
+  @apply w-full rounded-xl border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-zinc-100 outline-none transition focus:ring-2 focus:ring-indigo-500;
+}
+
+.label {
+  @apply mb-1 block text-sm font-medium text-zinc-300;
+}
+
+.page-shell {
+  @apply mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-10;
+}
+
+.page-title {
+  @apply text-2xl font-bold tracking-tight text-zinc-100 md:text-3xl;
+}
+
+.page-subtitle {
+  @apply mt-2 text-sm text-zinc-400 md:text-base;
+}
+
+.panel {
+  @apply rounded-2xl border border-zinc-800 bg-zinc-950/80 backdrop-blur;
+}
+
+.panel-padding {
+  @apply p-5 md:p-6;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.14), transparent 32%),
+    radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.1), transparent 28%);
 }

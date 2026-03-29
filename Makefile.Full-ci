@@ -1,0 +1,159 @@
+# =============================================================
+#  Exam Arena — Full CI with Lint + Type Checks
+#  Usage:
+#    make ci            → full pipeline (lint + type + build + tests)
+#    make lint          → lint backend + frontend
+#    make lint-backend  → ruff + black check on FastAPI
+#    make lint-frontend → eslint + prettier check on Next.js
+#    make type-check    → mypy (backend) + tsc (frontend)
+#    make format        → auto-format backend + frontend
+#    make test          → run backend tests only
+#    make db-push       → run prisma db push
+#    make up            → start all services
+#    make down          → stop all services
+# =============================================================
+
+.PHONY: ci lint lint-backend lint-frontend type-check type-backend \
+        type-frontend format format-backend format-frontend \
+        up down test db-push wait-backend
+
+# ── Config ────────────────────────────────────────────────────
+BACKEND_CONTAINER  := backend
+FRONTEND_CONTAINER := frontend
+COMPOSE            := docker compose
+BACKEND_APP_DIR    := app        # folder inside the container where your FastAPI code lives
+FRONTEND_APP_DIR   := src        # folder inside the container where your Next.js code lives
+
+# ── Helpers ───────────────────────────────────────────────────
+wait-backend:
+	@echo "⏳ Waiting for backend + DB to be ready (max 180s)..."
+	@for i in $$(seq 1 60); do \
+		RESPONSE=$$(curl --silent http://localhost:8000/health 2>/dev/null); \
+		if echo "$$RESPONSE" | grep -q '"healthy"'; then \
+			echo "✅ Backend and DB are ready (took ~$$(($$i * 3))s)"; \
+			break; \
+		fi; \
+		if [ $$i -eq 60 ]; then \
+			echo "❌ Backend never became ready — logs:"; \
+			$(COMPOSE) logs $(BACKEND_CONTAINER); \
+			$(COMPOSE) down; \
+			exit 1; \
+		fi; \
+		echo "   Waiting... ($$i/60) response: $$RESPONSE"; \
+		sleep 3; \
+	done
+
+# ── Service control ───────────────────────────────────────────
+up:
+	@echo "🚀 Starting all services..."
+	$(COMPOSE) up -d
+
+down:
+	@echo "🧹 Stopping containers..."
+	$(COMPOSE) down
+
+# ── Backend lint ──────────────────────────────────────────────
+lint-backend:
+	@echo "🔍 [Backend] Ruff lint check..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) ruff check $(BACKEND_APP_DIR)
+
+	@echo "🎨 [Backend] Black format check (read-only)..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) black --check $(BACKEND_APP_DIR)
+
+# ── Frontend lint ─────────────────────────────────────────────
+lint-frontend:
+	@echo "🔍 [Frontend] ESLint check..."
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) npx next lint
+
+	@echo "🎨 [Frontend] Prettier format check (read-only)..."
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) npx prettier --check $(FRONTEND_APP_DIR)
+
+# ── Combined lint ─────────────────────────────────────────────
+lint: lint-backend lint-frontend
+	@echo "✅ Lint passed for backend and frontend!"
+
+# ── Backend type check ────────────────────────────────────────
+type-backend:
+	@echo "🔬 [Backend] mypy type check..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) mypy $(BACKEND_APP_DIR) --ignore-missing-imports
+
+# ── Frontend type check ───────────────────────────────────────
+type-frontend:
+	@echo "🔬 [Frontend] TypeScript compiler check..."
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) npx tsc --noEmit
+
+# ── Combined type check ───────────────────────────────────────
+type-check: type-backend type-frontend
+	@echo "✅ Type checks passed for backend and frontend!"
+
+# ── Auto-format (writes changes) ─────────────────────────────
+format-backend:
+	@echo "🎨 [Backend] Auto-formatting with Black..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) black $(BACKEND_APP_DIR)
+
+	@echo "🔧 [Backend] Auto-fixing lint issues with Ruff..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) ruff check $(BACKEND_APP_DIR) --fix
+
+format-frontend:
+	@echo "🎨 [Frontend] Auto-formatting with Prettier..."
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) npx prettier --write $(FRONTEND_APP_DIR)
+
+format: format-backend format-frontend
+	@echo "✅ Auto-format complete!"
+
+# ── Prisma ────────────────────────────────────────────────────
+db-push:
+	@echo "📦 Prisma validate..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma validate
+
+	@echo "📦 Prisma generate (pyclient)..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma generate --generator pyclient
+
+	@echo "📦 Prisma DB push..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma db push --accept-data-loss
+
+# ── Tests ─────────────────────────────────────────────────────
+test:
+	@echo "🧪 Running backend tests..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
+
+# ── Main CI pipeline ──────────────────────────────────────────
+ci:
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  Exam Arena — Full CI Pipeline"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+	@echo ""
+	@echo "🐳 [1/7] Building Docker images..."
+	$(COMPOSE) build
+
+	@echo ""
+	@echo "🚀 [2/7] Starting DB, Redis, backend and frontend..."
+	$(COMPOSE) up -d db redis $(BACKEND_CONTAINER) $(FRONTEND_CONTAINER)
+
+	@echo ""
+	@echo "⏳ [3/7] Health checks..."
+	$(MAKE) wait-backend
+
+	@echo ""
+	@echo "🔍 [4/7] Lint checks..."
+	$(MAKE) lint
+
+	@echo ""
+	@echo "🔬 [5/7] Type checks..."
+	$(MAKE) type-check
+
+	@echo ""
+	@echo "📦 [6/7] Prisma..."
+	$(MAKE) db-push
+
+	@echo ""
+	@echo "🧪 [7/7] Tests..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
+
+	$(MAKE) down
+
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "  ✅ All checks passed — safe to push!"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

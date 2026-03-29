@@ -1,0 +1,45 @@
+name: exam-arena
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/backend.Dockerfile
+      target: dev
+    container_name: exam_arena_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - path: .env
+        required: false        # ← this is the only change
+    volumes:
+      - ./backend:/app
+      - ./prisma:/app/prisma
+    
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+      target: dev                      # ← swap to "runner" for prod
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: exam_arena_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - .:/app                         # ← mounts source for hot reload
+      - /app/node_modules              # ← preserves container's node_modules
+      - /app/.next                     # ← preserves Next.js build cache
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
