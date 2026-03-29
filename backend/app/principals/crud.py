@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from prisma.enums import Role  # type: ignore
 
 import app.core.database as db
@@ -39,7 +41,7 @@ async def update_principal(teacher_id: str, principal_data: PrincipalUpdate):
     if update_dict:
         await db.prisma.principal.update(
             where={"teacherId": teacher_id},
-            data=update_dict,
+            data=cast(Any, update_dict),
         )
     return await get_principal_by_teacher_id(teacher_id)
 

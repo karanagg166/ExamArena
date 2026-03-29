@@ -8,8 +8,10 @@ interface SchoolClassState {
   loading: boolean;
   error: string;
 
-  fetchClasses: (schoolId: string) => Promise<void>;
-  createClass: (data: CreateClassRequest) => Promise<boolean>; // returns true on success
+  fetchClassesBySchool: (schoolId: string) => Promise<void>;
+  fetchClass: (classId: string) => Promise<void>;
+  createClass: (data: CreateClassRequest) => Promise<boolean>;
+  clearClasses: () => void; // ✅ added
   reset: () => void;
 }
 
@@ -18,10 +20,10 @@ const initial = { classes: [], loading: false, error: "" };
 export const useSchoolClassStore = create<SchoolClassState>((set) => ({
   ...initial,
 
-  fetchClasses: async (schoolId) => {
+  fetchClassesBySchool: async (schoolId) => {
     set({ loading: true, error: "" });
     try {
-      const res = await api.get(`/api/v1/classes/?schoolId=${schoolId}`);
+      const res = await api.get(`/api/v1/classes/school/${schoolId}`);
       set({ classes: res.data });
     } catch {
       set({ error: "Failed to load classes" });
@@ -30,12 +32,26 @@ export const useSchoolClassStore = create<SchoolClassState>((set) => ({
     }
   },
 
+  fetchClass: async (classId) => {
+    set({ loading: true, error: "" });
+    try {
+      const res = await api.get(`/api/v1/classes/${classId}`);
+      set((state) => ({
+        classes: state.classes.some((c) => c.id === classId)
+          ? state.classes.map((c) => (c.id === classId ? res.data : c))
+          : [...state.classes, res.data],
+      }));
+    } catch {
+      set({ error: "Failed to load class" });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   createClass: async (data) => {
     set({ loading: true, error: "" });
-    console.log("Creating class with data:", data);
     try {
-      const res = await api.post("/api/v1/classes/", data);
-      console.log("Create class response:", res);
+      const res = await api.post("/api/v1/classes/", { name: data.name });
       set((state) => ({ classes: [...state.classes, res.data] }));
       return true;
     } catch (error: unknown) {
@@ -47,5 +63,6 @@ export const useSchoolClassStore = create<SchoolClassState>((set) => ({
     }
   },
 
-  reset: () => set(initial),
+  clearClasses: () => set({ classes: [] }), // ✅ only clears classes
+  reset: () => set(initial), // resets everything
 }));

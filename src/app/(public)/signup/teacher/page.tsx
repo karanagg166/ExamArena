@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import axios from "axios";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
@@ -94,7 +95,7 @@ export default function SignupTeacherPage() {
       });
       console.log("Teacher profile created successfully:", data);
       toast.success("Teacher profile completed");
-      router.push("/dashboard");
+      router.push("/teacher");
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const detail = err.response?.data?.detail;
@@ -217,6 +218,19 @@ export default function SignupTeacherPage() {
             >
               {saving ? "Setting up…" : "Complete Setup →"}
             </Button>
+
+            <div className="grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
+              <Link href="/teacher/school/join">
+                <Button type="button" variant="secondary" className="w-full">
+                  Join Existing School
+                </Button>
+              </Link>
+              <Link href="/signup/principal">
+                <Button type="button" variant="outline" className="w-full">
+                  Become Principal
+                </Button>
+              </Link>
+            </div>
           </form>
         </CardContent>
       </Card>

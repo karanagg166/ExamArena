@@ -1,10 +1,10 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, EmailStr
 
 
-class SchoolType(str, Enum):
+class SchoolType(StrEnum):
     PUBLIC = "PUBLIC"
     PRIVATE = "PRIVATE"
     CHARTER = "CHARTER"

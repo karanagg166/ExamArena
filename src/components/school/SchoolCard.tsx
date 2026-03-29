@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import type { School } from "@/types/school";
 
 interface SchoolCardProps {
@@ -7,9 +8,16 @@ interface SchoolCardProps {
 }
 
 export default function SchoolCard({ school, onClick }: SchoolCardProps) {
+  const router = useRouter();
+
+  const handleClick = () => {
+    onClick?.(school);
+    router.push(`/schools/${school.id}`);
+  };
+
   return (
     <div
-      onClick={() => onClick?.(school)}
+      onClick={handleClick}
       className={`
         group relative bg-white border border-gray-100 rounded-2xl p-5
         shadow-sm hover:shadow-md hover:-translate-y-0.5

@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -11,7 +11,7 @@ class LoginRequest(BaseModel):
     password: str
 
 
-class Roles(str, Enum):
+class Roles(StrEnum):
     STUDENT = "STUDENT"
     TEACHER = "TEACHER"
     PRINCIPAL = "PRINCIPAL"

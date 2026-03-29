@@ -44,13 +44,13 @@ const LoginPage = () => {
         // Redirect based on role
         switch (user.role.toLowerCase()) {
           case "student":
-            router.push("/student/profile");
+            router.push("/student");
             break;
           case "teacher":
-            router.push("/teacher/profile");
+            router.push("/teacher");
             break;
           case "principal":
-            router.push("/principal/profile");
+            router.push("/principal");
             break;
           case "admin":
             router.push("/admin/profile");

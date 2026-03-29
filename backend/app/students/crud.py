@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import app.core.database as db
 from app.students.schemas import StudentCreate, StudentUpdate
 
@@ -16,16 +18,21 @@ async def get_student_by_id(student_id: str):
     )
 
 
+async def get_students_by_class_id(class_id: str):
+    """Get all students for a given class ID"""
+    return await db.prisma.student.find_many(
+        where={"classId": class_id}, include={"user": True}
+    )
+
+
 async def create_student(student_data: StudentCreate):
     """Create student record"""
     await db.prisma.student.create(
         data={
             "userId": student_data.userId,
             "rollNo": student_data.rollNo,
-            "dob": student_data.dob,
             "parentName": student_data.parentName,
             "parentEmail": student_data.parentEmail,
-            "dateOfAdmission": student_data.dateOfAdmission,
             "schoolId": student_data.schoolId,
             "classId": student_data.classId,
         }
@@ -46,7 +53,10 @@ async def update_student(user_id: str, student_data: StudentUpdate):
 
     # Update student data if any student-specific fields are provided
     if update_dict:
-        await db.prisma.student.update(where={"userId": user_id}, data=update_dict)
+        await db.prisma.student.update(
+            where={"userId": user_id},
+            data=cast(Any, update_dict),
+        )
 
     return await get_student_by_user_id(user_id)
 

@@ -12,7 +12,7 @@ export type SchoolClass = {
 
 export type CreateClassRequest = {
   name: string;
-  schoolId: string;
+  schoolId?: string;
   teachers?: Teacher[];
 };
 

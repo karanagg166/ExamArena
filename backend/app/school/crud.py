@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import app.core.database as db
 from app.school.schemas import (
     SchoolCreateRequest,
@@ -20,6 +22,47 @@ async def create_school(
 
 async def get_school_by_user_id(user_id: str) -> SchoolResponse | None:
     """Get a school by creator user ID."""
+    user = await db.prisma.user.find_unique(where={"id": user_id})
+    if not user:
+        return None
+
+    role = getattr(user, "role", None)
+    role_value = getattr(role, "value", None) or str(role)
+
+    if role_value == "PRINCIPAL":
+        teacher = await db.prisma.teacher.find_unique(where={"userId": user_id})
+        if not teacher:
+            return None
+
+        principal = await db.prisma.principal.find_unique(
+            where={"teacherId": teacher.id}
+        )
+        school_id = (
+            principal.schoolId
+            if principal and getattr(principal, "schoolId", None)
+            else teacher.schoolId
+        )
+        if not school_id:
+            return None
+
+        school = await db.prisma.school.find_unique(where={"id": school_id})
+        return SchoolResponse.model_validate(school) if school else None
+
+    if role_value == "TEACHER":
+        teacher = await db.prisma.teacher.find_unique(where={"userId": user_id})
+        if not teacher or not teacher.schoolId:
+            return None
+        school = await db.prisma.school.find_unique(where={"id": teacher.schoolId})
+        return SchoolResponse.model_validate(school) if school else None
+
+    if role_value == "STUDENT":
+        student = await db.prisma.student.find_unique(where={"userId": user_id})
+        if not student:
+            return None
+
+        school = await db.prisma.school.find_unique(where={"id": student.schoolId})
+        return SchoolResponse.model_validate(school) if school else None
+
     school = await db.prisma.school.find_first(where={"createdBy": user_id})
     return SchoolResponse.model_validate(school) if school else None
 
@@ -55,7 +98,7 @@ async def get_school_by_id(school_id: str) -> SchoolResponse | None:
 async def get_schools(filters: SchoolFilterParams) -> list[SchoolResponse]:
     """Get all schools with optional filters."""
 
-    where = {}
+    where: dict[str, object] = {}
 
     if filters.name:
         where["name"] = {"contains": filters.name, "mode": "insensitive"}
@@ -76,7 +119,7 @@ async def get_schools(filters: SchoolFilterParams) -> list[SchoolResponse]:
     if filters.school_type:
         where["type"] = filters.school_type  # exact match — enum
 
-    schools = await db.prisma.school.find_many(where=where)
+    schools = await db.prisma.school.find_many(where=cast(Any, where))
     return [SchoolResponse.model_validate(school) for school in schools]
 
 

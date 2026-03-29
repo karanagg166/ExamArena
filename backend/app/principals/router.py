@@ -1,7 +1,8 @@
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+import app.core.database as db
 from app.api.deps import get_current_user
 from app.principals.crud import (
     create_principal,
@@ -44,7 +45,11 @@ async def create_my_principal_profile(
             status_code=status.HTTP_409_CONFLICT,
             detail="Principal profile already exists",
         )
-
+    teacher_updated = await db.prisma.teacher.update(
+        where={"userId": current_user.id},
+        data=cast(Any, {"schoolId": data.schoolId}),
+    )
+    print("Updated teacher with new schoolId:", teacher_updated)
     return await create_principal(
         teacher_id=teacher.id,
         experience=data.experience,

@@ -55,7 +55,7 @@ export const Page = () => {
             <CardTitle>Classes</CardTitle>
             <CardDescription>View and manage school classes.</CardDescription>
           </div>
-          <Button onClick={() => router.push("/principal/school/school-class")}>
+          <Button onClick={() => router.push("/principal/school/classes/new")}>
             New Class
           </Button>
         </CardHeader>

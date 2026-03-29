@@ -101,7 +101,7 @@ export default function SignupPrincipalPage() {
               className="h-auto justify-start gap-4 px-6 py-5 text-left"
               onClick={() => {
                 toast.success("Starting school creation");
-                router.push("/school/profile");
+                router.push("/signup/principal/create-school");
               }}
             >
               <span className="text-2xl">🏫</span>
@@ -120,7 +120,7 @@ export default function SignupPrincipalPage() {
               className="h-auto justify-start gap-4 px-6 py-5 text-left"
               onClick={() => {
                 toast.info("Opening school join flow");
-                router.push("/principal/school/join");
+                router.push("/signup/principal/join-school");
               }}
             >
               <span className="text-2xl">🔑</span>
