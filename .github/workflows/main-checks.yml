@@ -6,8 +6,7 @@ name: 🚀 Main Branch Checks (Production Gate)
 #  Mirrors Makefile.full-ci: format checks, strict lint, types.
 # ─────────────────────────────────────────────────────────────
 on:
-  push:
-    branches: [main]
+  
   pull_request:
     branches: [main]
 

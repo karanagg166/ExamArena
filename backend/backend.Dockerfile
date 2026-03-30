@@ -30,5 +30,10 @@ CMD ["sh", "-c", "prisma generate --generator pyclient && uvicorn app.main:app -
 # ── Production Stage ───────────────────────────────────────────
 FROM base AS production
 COPY ./backend .
+
+# Pass DATABASE_URL as build arg for prisma generate
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
+
 EXPOSE 8000
 CMD ["sh", "-c", "prisma generate --generator pyclient && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
