@@ -1,3 +1,4 @@
+import asyncio
 import sentry_sdk
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,10 +25,29 @@ app = FastAPI(
 )
 
 
+async def connect_with_retry(attempts: int = 5, base_delay: int = 2) -> None:
+    """Attempt to connect to the database with simple backoff to handle transient failures."""
+
+    for attempt in range(1, attempts + 1):
+        try:
+            await db.prisma.connect()
+            print("✅ Database connected")
+            return
+        except Exception as exc:
+            if attempt == attempts:
+                raise
+
+            wait = base_delay * attempt
+            print(
+                f"⚠️ Database connect attempt {attempt}/{attempts} failed: {exc}. "
+                f"Retrying in {wait}s..."
+            )
+            await asyncio.sleep(wait)
+
+
 @app.on_event("startup")
 async def startup():
-    await db.prisma.connect()
-    print("✅ Database connected")
+    await connect_with_retry()
 
 
 @app.on_event("shutdown")
