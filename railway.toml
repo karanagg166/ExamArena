@@ -7,4 +7,3 @@ startCommand = "prisma generate --generator pyclient && uvicorn app.main:app --h
 healthcheckPath = "/health"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
