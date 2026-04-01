@@ -12,6 +12,9 @@ This repository is now organized with dedicated documentation for setup, feature
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) - contribution rules, PR process, and branch strategy.
 - [docs/commands.md](docs/commands.md) - Docker, Prisma, lint, and Makefile command reference.
 
+
+Schema → Types → Backend (schemas → crud → router) → Frontend (stores → components → pages)
+
 ## Tech Stack & Rationale
 
 **Frontend**

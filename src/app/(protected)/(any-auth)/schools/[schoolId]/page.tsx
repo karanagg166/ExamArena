@@ -1,21 +1,25 @@
 "use client";
 import { useEffect } from "react";
 import { useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/loading";
+import { PageHeader } from "@/components/ui/page-header";
+import { GlassCard } from "@/components/ui/glass-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { useSchoolStore } from "@/stores/index";
+import { MapPin, Globe, Hash, AlertTriangle } from "lucide-react";
 
 export default function SchoolPage() {
   const { schoolId } = useParams<{ schoolId: string }>();
   const { fetchSchoolById, school, loading, error } = useSchoolStore();
-  console.log("Fetching school details for ID:", schoolId);
+
   useEffect(() => {
     if (schoolId) fetchSchoolById(schoolId);
   }, [schoolId, fetchSchoolById]);
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <Spinner className="h-8 w-8 border-4" />
       </div>
     );
@@ -23,46 +27,64 @@ export default function SchoolPage() {
 
   if (error) {
     return (
-      <div className="page-shell text-white">
-        <Card className="max-w-2xl border-red-500/30">
-          <CardHeader>
-            <CardTitle className="text-red-300">
-              Unable to load school
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-red-200">{error}</p>
-          </CardContent>
-        </Card>
+      <div className="page-shell">
+        <EmptyState
+          icon={AlertTriangle}
+          title="Unable to load school"
+          description={error}
+        />
       </div>
     );
   }
 
   if (!school) return null;
 
+  const details = [
+    { icon: MapPin, label: "City", value: school.city },
+    { icon: MapPin, label: "State", value: school.state },
+    { icon: Globe, label: "Country", value: school.country },
+    { icon: Hash, label: "Pincode", value: school.pincode },
+  ];
+
   return (
-    <div className="page-shell text-white">
-      <Card className="max-w-3xl">
-        <CardHeader>
-          <CardTitle className="text-2xl">{school.name}</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
-          <p>
-            <span className="text-zinc-500">City:</span> {school.city || "-"}
-          </p>
-          <p>
-            <span className="text-zinc-500">State:</span> {school.state || "-"}
-          </p>
-          <p>
-            <span className="text-zinc-500">Country:</span>{" "}
-            {school.country || "-"}
-          </p>
-          <p>
-            <span className="text-zinc-500">Pincode:</span>{" "}
-            {school.pincode || "-"}
-          </p>
-        </CardContent>
-      </Card>
+    <div className="page-shell animate-fade-in-up">
+      <Breadcrumb
+        items={[
+          { label: "Schools", href: "/schools" },
+          { label: school.name },
+        ]}
+        showHome
+        className="mb-6"
+      />
+
+      <PageHeader title={school.name} subtitle="School details and information" />
+
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
+        {details.map((detail, i) => {
+          const Icon = detail.icon;
+          return (
+            <GlassCard
+              key={detail.label}
+              padding="md"
+              className={`animate-fade-in-up stagger-${i + 1}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-[var(--accent-muted)] p-2">
+                  <Icon className="h-4 w-4 text-[var(--accent)]" />
+                </div>
+                <div>
+                  <p className="text-xs text-[var(--text-dimmed)] uppercase tracking-wide">
+                    {detail.label}
+                  </p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    {detail.value || "—"}
+                  </p>
+                </div>
+              </div>
+            </GlassCard>
+          );
+        })}
+      </div>
     </div>
   );
 }

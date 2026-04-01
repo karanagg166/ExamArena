@@ -22,11 +22,11 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
           <h3 className="text-base font-semibold text-zinc-100">
             {schoolClass.name}
           </h3>
-          {schoolClass.schoolName && (
-            <p className="text-xs text-zinc-400 mt-0.5">
-              {schoolClass.schoolName}
-            </p>
-          )}
+          <p className="text-xs text-zinc-400 mt-0.5">
+            {schoolClass.year && schoolClass.section
+              ? `Year: ${schoolClass.year} • Section: ${schoolClass.section}`
+              : schoolClass.schoolName || ""}
+          </p>
         </div>
         <span className="shrink-0 text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full border border-indigo-100">
           {schoolClass.teachers?.length ?? 0} teacher

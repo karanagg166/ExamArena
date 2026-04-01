@@ -1,4 +1,3 @@
-from importlib import import_module
 from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -19,13 +18,9 @@ from app.school.schemas import (
     SchoolType,
     SchoolUpdateRequest,
 )
+from app.school_class.crud import get_school_classes_by_school_id
 from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
-
-_school_class_crud = import_module("app.school-class.crud")
-_school_class_schemas = import_module("app.school-class.schemas")
-get_school_classes_by_school_id = _school_class_crud.get_school_classes_by_school_id
-SchoolClassResponse = _school_class_schemas.SchoolClassResponse
 
 router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
 

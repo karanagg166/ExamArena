@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { School, Users, UserCircle, ArrowRight } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { GlassCard } from "@/components/ui/glass-card";
 
 export default function PrincipalDashboard() {
   const { user } = useAuthStore();
@@ -14,9 +16,9 @@ export default function PrincipalDashboard() {
         "Manage your school's core details and administration settings.",
       href: "/principal/school",
       icon: School,
-      color: "text-indigo-500",
-      bgHover: "hover:bg-indigo-500/10",
-      borderHover: "hover:border-indigo-500/30",
+      color: "text-[var(--accent)]",
+      bg: "bg-[var(--accent-muted)]",
+      hoverBg: "group-hover:bg-[var(--accent)]",
     },
     {
       title: "Classes & Staff",
@@ -24,9 +26,9 @@ export default function PrincipalDashboard() {
         "Oversee all classes, student rosters, and assigned teachers.",
       href: "/principal/school/classes",
       icon: Users,
-      color: "text-emerald-500",
-      bgHover: "hover:bg-emerald-500/10",
-      borderHover: "hover:border-emerald-500/30",
+      color: "text-[var(--success)]",
+      bg: "bg-[var(--success-muted)]",
+      hoverBg: "group-hover:bg-[var(--success)]",
     },
     {
       title: "My Profile",
@@ -34,56 +36,56 @@ export default function PrincipalDashboard() {
         "Update your personal credentials and professional experience.",
       href: "/principal/profile",
       icon: UserCircle,
-      color: "text-amber-500",
-      bgHover: "hover:bg-amber-500/10",
-      borderHover: "hover:border-amber-500/30",
+      color: "text-[var(--warning)]",
+      bg: "bg-[var(--warning-muted)]",
+      hoverBg: "group-hover:bg-[var(--warning)]",
     },
   ];
 
   return (
     <div className="page-shell">
-      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="max-w-6xl mx-auto space-y-8 animate-fade-in-up">
         {/* Header Section */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-8 md:p-12 relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+        <div className="glass-card p-8 md:p-12 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-[var(--accent)]/5" />
+          <div className="absolute top-0 right-0 p-12 opacity-[0.04] pointer-events-none">
             <School size={200} />
           </div>
           <div className="relative z-10">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
-              Welcome back, {user?.name?.split(" ")[0] || "Principal"}!
-            </h1>
-            <p className="text-lg text-slate-400 max-w-2xl">
-              Access your school&apos;s command center. From here, you can
-              manage your school&apos;s infrastructure, oversee all classes, and
-              keep your profile up to date.
-            </p>
+            <PageHeader
+              overline="Principal Dashboard"
+              title={`Welcome back, ${user?.name?.split(" ")[0] || "Principal"}!`}
+              subtitle="Access your school's command center. From here, you can manage your school's infrastructure, oversee all classes, and keep your profile up to date."
+            />
           </div>
         </div>
 
         {/* Quick Links Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {links.map((link) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {links.map((link, i) => {
             const Icon = link.icon;
             return (
               <Link
                 key={link.title}
                 href={link.href}
-                className={`group block p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300 ${link.bgHover} ${link.borderHover} hover:-translate-y-1 hover:shadow-lg`}
+                className={`group block animate-fade-in-up stagger-${i + 1}`}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div
-                    className={`p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 ${link.color}`}
-                  >
-                    <Icon size={24} />
+                <GlassCard interactive padding="md" className="h-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <div
+                      className={`p-3 rounded-xl ${link.bg} ${link.color} ${link.hoverBg} group-hover:text-white transition-colors`}
+                    >
+                      <Icon size={22} />
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-[var(--text-dimmed)] group-hover:text-[var(--text-secondary)] transition-colors" />
                   </div>
-                  <ArrowRight className="w-5 h-5 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-300 transition-colors" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
-                  {link.title}
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                  {link.description}
-                </p>
+                  <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1.5">
+                    {link.title}
+                  </h3>
+                  <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                    {link.description}
+                  </p>
+                </GlassCard>
               </Link>
             );
           })}

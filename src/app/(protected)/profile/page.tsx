@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAxiosError } from "axios"; // ← only import what we need
+import { isAxiosError } from "axios";
 import { api } from "@/lib/axios";
-import { Save } from "lucide-react";
+import { Save, ArrowRight } from "lucide-react";
 import { User } from "@/types/user";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
+import { Spinner } from "@/components/ui/loading";
+import { FormMessage } from "@/components/ui/form-message";
 
-// All user fields except id and role
-type UserForm = Omit<User, "id" | "role">;
-
-const INPUT_CLS =
-  "w-full bg-zinc-900 border border-zinc-800 text-white rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50";
+// All user fields except id, role, and server timestamps
+type UserForm = Omit<User, "id" | "role" | "createdAt" | "updatedAt">;
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -80,155 +83,137 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spinner className="h-8 w-8 border-4" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="page-shell animate-fade-in-up">
       <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Account Settings</h1>
-          <p className="text-zinc-400 mt-1 text-sm">
-            Update your personal information.
-          </p>
-        </div>
+        <PageHeader
+          title="Account Settings"
+          subtitle="Update your personal information."
+        />
 
-        {message && (
-          <div
-            className={`p-3 rounded-xl mb-6 text-sm text-center border ${
-              message.ok
-                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                : "bg-red-500/10 text-red-400 border-red-500/20"
-            }`}
+        <div className="mt-8">
+          {message && (
+            <FormMessage
+              message={message.text}
+              type={message.ok ? "success" : "error"}
+              className="mb-6 text-center"
+            />
+          )}
+
+          <form
+            onSubmit={handleSubmit}
+            className="panel panel-padding space-y-5"
           >
-            {message.text}
-          </div>
-        )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-name">Full Name</Label>
+                <Input
+                  id="profile-name"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-email">Email</Label>
+                <Input
+                  id="profile-email"
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 space-y-4"
-        >
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-zinc-400 block mb-1">
-                Full Name
-              </label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                required
-                className={INPUT_CLS}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-phone">Phone Number</Label>
+                <Input
+                  id="profile-phone"
+                  name="phoneNo"
+                  value={form.phoneNo}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-dob">Date of Birth</Label>
+                <Input
+                  id="profile-dob"
+                  type="date"
+                  name="dateOfBirth"
+                  value={form.dateOfBirth}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-zinc-400 block mb-1">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                required
-                className={INPUT_CLS}
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-zinc-400 block mb-1">
-                Phone Number
-              </label>
-              <input
-                name="phoneNo"
-                value={form.phoneNo}
-                onChange={handleChange}
-                className={INPUT_CLS}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-city">City</Label>
+                <Input
+                  id="profile-city"
+                  name="city"
+                  value={form.city}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-pincode">Pincode</Label>
+                <Input
+                  id="profile-pincode"
+                  name="pincode"
+                  value={form.pincode}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-zinc-400 block mb-1">
-                Date of Birth
-              </label>
-              <input
-                type="date"
-                name="dateOfBirth"
-                value={form.dateOfBirth}
-                onChange={handleChange}
-                className={INPUT_CLS}
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-zinc-400 block mb-1">City</label>
-              <input
-                name="city"
-                value={form.city}
-                onChange={handleChange}
-                className={INPUT_CLS}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-state">State</Label>
+                <Input
+                  id="profile-state"
+                  name="state"
+                  value={form.state}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-country">Country</Label>
+                <Input
+                  id="profile-country"
+                  name="country"
+                  value={form.country}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-zinc-400 block mb-1">
-                Pincode
-              </label>
-              <input
-                name="pincode"
-                value={form.pincode}
-                onChange={handleChange}
-                className={INPUT_CLS}
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm text-zinc-400 block mb-1">State</label>
-              <input
-                name="state"
-                value={form.state}
-                onChange={handleChange}
-                className={INPUT_CLS}
-              />
+            <div className="flex flex-wrap gap-3 pt-2">
+              <Button type="submit" disabled={saving}>
+                <Save className="h-4 w-4" />
+                {saving ? "Saving…" : "Save Changes"}
+              </Button>
+              {role && (
+                <Button asChild variant="secondary">
+                  <a href={`/${role.toLowerCase()}/profile`}>
+                    Edit {role.charAt(0) + role.slice(1).toLowerCase()} Info
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </a>
+                </Button>
+              )}
             </div>
-            <div>
-              <label className="text-sm text-zinc-400 block mb-1">
-                Country
-              </label>
-              <input
-                name="country"
-                value={form.country}
-                onChange={handleChange}
-                className={INPUT_CLS}
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-semibold transition-all disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? "Saving…" : "Save Changes"}
-            </button>
-            {role && (
-              <a
-                href={`/${role.toLowerCase()}/profile`}
-                className="flex items-center px-6 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-semibold transition-all text-sm"
-              >
-                Edit {role.charAt(0) + role.slice(1).toLowerCase()} Info →
-              </a>
-            )}
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

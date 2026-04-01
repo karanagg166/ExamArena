@@ -15,7 +15,7 @@ class Roles(StrEnum):
     STUDENT = "STUDENT"
     TEACHER = "TEACHER"
     PRINCIPAL = "PRINCIPAL"
-    SYSTEM_ADMIN = "SYSTEM_ADMIN"
+    ADMIN = "ADMIN"
 
 
 class UserRequest(BaseModel):

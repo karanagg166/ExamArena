@@ -5,6 +5,8 @@ from pydantic import BaseModel
 
 class SchoolClassBase(BaseModel):
     name: str
+    year: str
+    section: str = "A"
 
 
 class SchoolClassCreateRequest(SchoolClassBase):
@@ -13,11 +15,15 @@ class SchoolClassCreateRequest(SchoolClassBase):
 
 class SchoolClassUpdateRequest(BaseModel):
     name: str | None = None
+    year: str | None = None
+    section: str | None = None
+    teacherId: str | None = None
 
 
 class SchoolClassResponse(SchoolClassBase):
     id: str
     schoolId: str
+    teacherId: str | None = None
     createdAt: datetime
     updatedAt: datetime
 

@@ -5,7 +5,7 @@ generator pyclient {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL")  
 }
 
 model User {
@@ -36,9 +36,9 @@ model Student {
   parentEmail     String
   dateOfAdmission DateTime      @default(now())
   classId         String
+  schoolId        String
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  schoolId        String
   schoolClass     SchoolClass   @relation(fields: [classId], references: [id], onDelete: Cascade)
   school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -55,9 +55,9 @@ model Teacher {
   experience    Int
   department    String
   subjects      String         @default("[]")
+  schoolId      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  schoolId      String?
   exams         Exam[]
   principal     Principal?
   school        School?        @relation(fields: [schoolId], references: [id])
@@ -82,15 +82,18 @@ model TeacherClass {
 
 model SchoolClass {
   id        String         @id @default(cuid())
-  name      String
+  name      String         // display name, e.g. "12th - A" (can be auto-generated)
+  year      String         // grade/year level, e.g. "12th", "10th", "1st"
+  section   String         @default("A") // batch/section, e.g. "A", "B", "C"
   schoolId  String
-  teacherId String?
+  teacherId String?        // class teacher / homeroom teacher
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   school    School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   students  Student[]
   teachers  TeacherClass[]
 
+  @@unique([schoolId, year, section]) // no duplicate "12th A" in same school
   @@index([schoolId])
   @@index([teacherId])
 }
@@ -99,9 +102,9 @@ model Principal {
   id         String   @id @default(cuid())
   experience Int
   schoolId   String?
+  teacherId  String   @unique
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  teacherId  String   @unique
   school     School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
@@ -121,7 +124,8 @@ model School {
   schoolCode String        @unique
   type       SchoolType    @default(PUBLIC)
   email      String?
-  website    String?
+  website    String?      
+  phoneNo    String?  
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
   principals Principal[]
@@ -135,9 +139,12 @@ model Exam {
   id           String        @id @default(cuid())
   name         String
   description  String
-  date         DateTime
+  scheduledAt  DateTime
   duration     Int
   maxMarks     Int
+  instructions String?
+  isPublished  Boolean       @default(false)
+  subject      Subject?
   type         ExamType
   teacherId    String
   createdAt    DateTime      @default(now())
@@ -149,50 +156,91 @@ model Exam {
   @@index([teacherId])
 }
 
+model Question {
+  id             String              @id @default(cuid())
+  questionNumber Int
+  text           String
+  section        String?
+  marks          Int
+  imageUrl       String?
+  wordLimit      Int?
+  explanation    String?
+  questionType   QuestionType        @default(MULTIPLE_CHOICE)
+  examId         String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  exam           Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  options        QuestionOption[]
+  answers        StudentExamAnswer[]
+
+  @@unique([examId, questionNumber, section])
+  @@index([examId])
+}
+
+model QuestionOption {
+  id           String           @id @default(cuid())
+  optionNumber Int              @default(0)
+  questionId   String
+  text         String
+  isCorrect    Boolean          @default(false)
+  imageUrl     String?
+  question     Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedBy   SelectedOption[]
+
+  @@unique([questionId, optionNumber])
+  @@index([questionId])
+}
+
 model StudentExam {
   id            String              @id @default(cuid())
   studentId     String
   examId        String
-  marksObtained Int
-  givenAt       DateTime            @default(now())
+  marksObtained Int                 @default(0)
+  startedAt     DateTime            @default(now())
+  submittedAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  status        StudentExamStatus   @default(IN_PROGRESS)
   exam          Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
   student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   answers       StudentExamAnswer[]
 
+  @@unique([studentId, examId])
   @@index([studentId])
   @@index([examId])
 }
 
 model StudentExamAnswer {
-  id            String      @id @default(cuid())
-  studentExamId String
-  questionId    String
-  answer        String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  studentExam   StudentExam @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  studentExamId   String
+  questionId      String
+  questionType    QuestionType
+  textAnswer      String?
+  marksAwarded    Int?             @default(0)
+  feedback        String?
+  isCorrect       Correctness?
+  gradingStatus   GradingStatus    @default(PENDING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  question        Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studentExam     StudentExam      @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
+  selectedOptions SelectedOption[]
 
   @@unique([studentExamId, questionId])
   @@index([studentExamId])
   @@index([questionId])
 }
 
-model Question {
-  id            String              @id @default(cuid())
-  text          String
-  options       String[]
-  correctAnswer String?
-  marks         Int
-  imageUrl      String?
-  questionType  QuestionType        @default(MULTIPLE_CHOICE)
-  examId        String
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  exam          Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
-  answers       StudentExamAnswer[]
-
-  @@index([examId])
+model SelectedOption {
+  id                  String            @id @default(cuid())
+  studentExamAnswerId String
+  optionId            String
+  studentExamAnswer   StudentExamAnswer @relation(fields: [studentExamAnswerId], references: [id], onDelete: Cascade)
+  option              QuestionOption    @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  @@unique([studentExamAnswerId, optionId])
+  @@index([studentExamAnswerId])
 }
 
 model Notification {
@@ -206,6 +254,8 @@ model Notification {
 
   @@index([userId])
 }
+
+// ── Enums ─────────────────────────────────────────────────────//
 
 enum Role {
   STUDENT
@@ -242,6 +292,7 @@ enum Qualification {
 
 enum QuestionType {
   MULTIPLE_CHOICE
+  MULTIPLE_SELECT
   TRUE_FALSE
   SHORT_ANSWER
   ESSAY
@@ -254,150 +305,23 @@ enum SchoolType {
   INTERNATIONAL
 }
 
+enum StudentExamStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+  EXPIRED
+  NOT_ATTEMPTED
+}
 
-// model Exam {
-//   id           String        @id @default(cuid())
-//   name         String
-//   description  String
-//   date         DateTime
-//   duration     Int           // in minutes
-//   maxMarks     Int
-//   type         ExamType
-//   teacherId    String
-//   classId      String?       // optional: target a specific class
-//   subject      Subject?      // optional: subject of the exam
-//   instructions String?       // exam instructions shown to students
-//   isPublished  Boolean       @default(false) // draft vs published
-//   createdAt    DateTime      @default(now())
-//   updatedAt    DateTime      @updatedAt
-//   teacher      Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-//   class        SchoolClass?  @relation(fields: [classId], references: [id])
-//   questions    Question[]
-//   studentExams StudentExam[]
+enum GradingStatus {
+  PENDING
+  AUTO_GRADED
+  MANUALLY_GRADED
+}
 
-//   @@index([teacherId])
-//   @@index([classId])
-// }
+enum Correctness {
+  FULLY_CORRECT
+  PARTIALLY_CORRECT
+  INCORRECT
+}
 
-// model Question {
-//   id             String               @id @default(cuid())
-//   text           String               // question text
-//   questionType   QuestionType         @default(MULTIPLE_CHOICE)
-//   marks          Int
-//   imageUrl       String?              // optional image attachment
-//   examId         String
-//   orderIndex     Int                  @default(0) // order in exam
-//   explanation    String?              // explanation shown after exam
-//   createdAt      DateTime             @default(now())
-//   updatedAt      DateTime             @updatedAt
-//   exam           Exam                 @relation(fields: [examId], references: [id], onDelete: Cascade)
-
-//   // MCQ specific — null for non-MCQ questions
-//   options        QuestionOption[]
-
-//   // Short answer / Essay specific
-//   maxLength      Int?                 // max character length for text answers
-//   wordLimit      Int?                 // word limit for essays
-
-//   answers        StudentExamAnswer[]
-
-//   @@index([examId])
-// }
-
-// // Separate table for MCQ options — clean and extensible
-// model QuestionOption {
-//   id           String   @id @default(cuid())
-//   questionId   String
-//   text         String   // option text e.g "Paris"
-//   isCorrect    Boolean  @default(false)
-//   orderIndex   Int      @default(0) // order: A, B, C, D
-//   imageUrl     String?  // optional image option
-//   question     Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-//   @@index([questionId])
-// }
-
-// model StudentExam {
-//   id            String              @id @default(cuid())
-//   studentId     String
-//   examId        String
-//   marksObtained Int                 @default(0)
-//   status        StudentExamStatus   @default(IN_PROGRESS)
-//   startedAt     DateTime            @default(now())
-//   submittedAt   DateTime?           // null until submitted
-//   givenAt       DateTime            @default(now())
-//   exam          Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
-//   student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
-//   answers       StudentExamAnswer[]
-
-//   @@unique([studentId, examId])   // student can attempt an exam only once
-//   @@index([studentId])
-//   @@index([examId])
-// }
-
-// model StudentExamAnswer {
-//   id            String      @id @default(cuid())
-//   studentExamId String
-//   questionId    String
-//   questionType  QuestionType  // denormalized for quick filtering
-
-//   // MCQ — store selected option id
-//   selectedOptionId  String?
-
-//   // Short answer / Essay — store text
-//   textAnswer        String?
-
-//   // Grading
-//   marksAwarded      Int?      // null until graded (auto for MCQ, manual for essay)
-//   isCorrect         Boolean?  // null until graded
-//   feedback          String?   // teacher feedback on answer
-
-//   createdAt     DateTime    @default(now())
-//   updatedAt     DateTime    @updatedAt
-//   question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
-//   studentExam   StudentExam @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
-
-//   @@unique([studentExamId, questionId])
-//   @@index([studentExamId])
-//   @@index([questionId])
-// }
-
-// // ── Enums ─────────────────────────────────────────────────────
-
-// enum QuestionType {
-//   MULTIPLE_CHOICE   // options, one correct
-//   MULTIPLE_SELECT   // options, multiple correct
-//   TRUE_FALSE        // options: True / False
-//   SHORT_ANSWER      // text, maxLength applies
-//   ESSAY             // text, wordLimit applies
-// }
-
-// enum StudentExamStatus {
-//   IN_PROGRESS
-//   SUBMITTED
-//   GRADED
-//   EXPIRED           // time ran out
-// }
-
-// enum ExamType {
-//   MIDTERM
-//   FINAL
-//   QUIZ
-//   ASSIGNMENT
-//   MOCK
-// }
-// ```
-
-// ---
-
-// **Key design decisions:**
-
-// **`QuestionOption` as a separate table** instead of `String[]` — lets you attach `isCorrect`, `orderIndex`, and even an `imageUrl` per option cleanly. Your old schema stored options as `String[]` and `correctAnswer` as `String` which breaks for `MULTIPLE_SELECT`.
-
-// **`StudentExamAnswer` has both `selectedOptionId` and `textAnswer`** — one will always be null depending on question type. This handles MCQ and text answers in one table cleanly.
-
-// **Auto-grading flow:**
-// ```
-// MCQ / TRUE_FALSE    → compare selectedOptionId with isCorrect → auto marksAwarded
-// SHORT_ANSWER / ESSAY → teacher manually sets marksAwarded + feedback
-// MULTIPLE_SELECT     → compare selected options vs all isCorrect options → auto

@@ -13,29 +13,34 @@ import {
 } from "@/components/ui/card";
 import { FormMessage } from "@/components/ui/form-message";
 import { Input } from "@/components/ui/input";
-// import {api}  from "@/lib/axios"
+
 interface Props {
   onClose?: () => void;
 }
 
 export const NewClass = ({ onClose }: Props) => {
-  const [name, setName] = useState("");
+  const [year, setYear] = useState("");
+  const [section, setSection] = useState("A");
 
   const { createClass, loading, error } = useSchoolClassStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // const data=await api.post("/api/v1/classes/", { name })
-    // console.log("Create class response:", data)
-    console.log("Submitting new class with name:", name, "and schoolId:");
-    if (!name.trim()) return;
+    if (!year.trim()) return;
 
-    const success = await createClass({ name: name.trim() });
+    const name = `${year.trim()} - ${section.trim()}`;
+    console.log("Submitting new class:", { name, year, section });
+
+    const success = await createClass({
+      name,
+      year: year.trim(),
+      section: section.trim() || "A",
+    });
     console.log("Create class success:", success);
-    // console.log("Create class success:",);
     if (success) {
       toast.success("Class created successfully");
-      setName("");
+      setYear("");
+      setSection("A");
       onClose?.();
     } else {
       toast.error("Failed to create class");
@@ -52,16 +57,31 @@ export const NewClass = ({ onClose }: Props) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Class Name"
-            disabled={loading}
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm text-zinc-400 block mb-1">Year / Grade</label>
+              <Input
+                type="text"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="e.g. 12th, 10th, 1st"
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="text-sm text-zinc-400 block mb-1">Section / Batch</label>
+              <Input
+                type="text"
+                value={section}
+                onChange={(e) => setSection(e.target.value)}
+                placeholder="e.g. A, B, C"
+                disabled={loading}
+              />
+            </div>
+          </div>
           <FormMessage message={error} type="error" />
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={loading || !name.trim()}>
+            <Button type="submit" disabled={loading || !year.trim()}>
               {loading ? "Creating..." : "Create Class"}
             </Button>
             {onClose && (

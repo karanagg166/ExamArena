@@ -4,22 +4,22 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]",
   {
     variants: {
       variant: {
         primary:
-          "bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500",
+          "bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] focus-visible:ring-[var(--accent)] shadow-[var(--shadow-sm)]",
         secondary:
-          "bg-zinc-800 text-zinc-100 hover:bg-zinc-700 focus-visible:ring-zinc-500",
+          "bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--surface-3)] focus-visible:ring-[var(--accent)]",
         ghost:
-          "text-zinc-300 hover:bg-zinc-800 hover:text-white focus-visible:ring-zinc-500",
+          "text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] focus-visible:ring-[var(--accent)]",
         danger:
-          "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500",
+          "bg-[var(--error)] text-white hover:brightness-110 focus-visible:ring-[var(--error)]",
         success:
-          "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-emerald-500",
+          "bg-[var(--success)] text-white hover:brightness-110 focus-visible:ring-[var(--success)]",
         outline:
-          "border border-zinc-700 text-zinc-200 hover:bg-zinc-800 focus-visible:ring-zinc-500",
+          "border border-[var(--border-default)] text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] focus-visible:ring-[var(--accent)]",
       },
       size: {
         sm: "h-9 px-3",

@@ -51,7 +51,11 @@ export const useSchoolClassStore = create<SchoolClassState>((set) => ({
   createClass: async (data) => {
     set({ loading: true, error: "" });
     try {
-      const res = await api.post("/api/v1/classes/", { name: data.name });
+      const res = await api.post("/api/v1/classes/", {
+        name: data.name,
+        year: data.year,
+        section: data.section,
+      });
       set((state) => ({ classes: [...state.classes, res.data] }));
       return true;
     } catch (error: unknown) {

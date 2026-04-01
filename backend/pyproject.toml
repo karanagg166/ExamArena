@@ -24,4 +24,3 @@ known-first-party = ["app"]  # your app module name
 python_version = "3.11"
 ignore_missing_imports = true
 strict = false  # set true for strict type checking
-exclude = "(^|/)school-class(/|$)"

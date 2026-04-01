@@ -58,12 +58,12 @@ export default function SchoolProfileCard({ school }: { school: School }) {
                     <span>{school.email}</span>
                   </div>
                 )}
-                {school.phone && (
+                {school.phoneNo && (
                   <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
                     <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
                       <Phone size={16} />
                     </div>
-                    <span>{school.phone}</span>
+                    <span>{school.phoneNo}</span>
                   </div>
                 )}
                 {school.website && (

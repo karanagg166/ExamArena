@@ -1,3 +1,8 @@
+// ─── Enums (match Prisma Role) ──────────────────────────────────────────────
+export type UserRole = "STUDENT" | "TEACHER" | "ADMIN" | "PRINCIPAL";
+
+// ─── User ───────────────────────────────────────────────────────────────────
+// Matches Prisma: User model
 export type User = {
   id: string;
   name: string;
@@ -9,10 +14,12 @@ export type User = {
   city: string;
   state: string;
   country: string;
+  createdAt: string;
+  updatedAt: string;
 };
-export type UserRole = "STUDENT" | "TEACHER" | "PRINCIPAL" | "SYSTEM_ADMIN";
 
-export type SignUpForm = Omit<User, "id"> & {
+// Signup form — no id/timestamps (server-generated)
+export type SignUpForm = Omit<User, "id" | "createdAt" | "updatedAt"> & {
   password: string;
   confirmPassword: string;
 };
