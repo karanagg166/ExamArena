@@ -5,7 +5,7 @@ generator pyclient {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")  
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -82,18 +82,18 @@ model TeacherClass {
 
 model SchoolClass {
   id        String         @id @default(cuid())
-  name      String         // display name, e.g. "12th - A" (can be auto-generated)
-  year      String         // grade/year level, e.g. "12th", "10th", "1st"
-  section   String         @default("A") // batch/section, e.g. "A", "B", "C"
+  name      String
+  year      String
+  section   String         @default("A")
   schoolId  String
-  teacherId String?        // class teacher / homeroom teacher
+  teacherId String?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   school    School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   students  Student[]
   teachers  TeacherClass[]
 
-  @@unique([schoolId, year, section]) // no duplicate "12th A" in same school
+  @@unique([schoolId, year, section])
   @@index([schoolId])
   @@index([teacherId])
 }
@@ -124,10 +124,10 @@ model School {
   schoolCode String        @unique
   type       SchoolType    @default(PUBLIC)
   email      String?
-  website    String?      
-  phoneNo    String?  
+  website    String?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+  phoneNo    String?
   principals Principal[]
   user       User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   classes    SchoolClass[]
@@ -222,9 +222,9 @@ model StudentExamAnswer {
   gradingStatus   GradingStatus    @default(PENDING)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  selectedOptions SelectedOption[]
   question        Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
   studentExam     StudentExam      @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
-  selectedOptions SelectedOption[]
 
   @@unique([studentExamId, questionId])
   @@index([studentExamId])
@@ -235,10 +235,11 @@ model SelectedOption {
   id                  String            @id @default(cuid())
   studentExamAnswerId String
   optionId            String
-  studentExamAnswer   StudentExamAnswer @relation(fields: [studentExamAnswerId], references: [id], onDelete: Cascade)
-  option              QuestionOption    @relation(fields: [optionId], references: [id], onDelete: Cascade)
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
+  option              QuestionOption    @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  studentExamAnswer   StudentExamAnswer @relation(fields: [studentExamAnswerId], references: [id], onDelete: Cascade)
+
   @@unique([studentExamAnswerId, optionId])
   @@index([studentExamAnswerId])
 }
@@ -254,8 +255,6 @@ model Notification {
 
   @@index([userId])
 }
-
-// ── Enums ─────────────────────────────────────────────────────//
 
 enum Role {
   STUDENT
@@ -324,4 +323,3 @@ enum Correctness {
   PARTIALLY_CORRECT
   INCORRECT
 }
-

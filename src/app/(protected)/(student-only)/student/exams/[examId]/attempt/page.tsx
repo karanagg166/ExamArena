@@ -144,8 +144,13 @@ export default function ExamAttemptPage() {
         }
     };
 
-    if (!activeQuestionId && questions.length > 0) {
-       setActiveQuestion(questions[0].id);
+    useEffect(() => {
+        if (!activeQuestionId && questions && questions.length > 0) {
+           setActiveQuestion(questions[0].id);
+        }
+    }, [activeQuestionId, questions, setActiveQuestion]);
+
+    if (!activeQuestionId && questions && questions.length > 0) {
        return null;
     }
 

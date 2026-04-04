@@ -163,7 +163,8 @@ export function AppSidebar() {
         ? "STUDENT"
         : null;
 
-  const role: UserRole | null = user?.role ?? inferredRole;
+  const roleRaw = user?.role ?? inferredRole;
+  const role: UserRole | null = roleRaw ? (roleRaw.toUpperCase() as UserRole) : null;
   
   if (!role || isExamAttempt) return null;
 
