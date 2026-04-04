@@ -11,6 +11,10 @@ This repository is now organized with dedicated documentation for setup, feature
 - [docs/FEATURES.md](docs/FEATURES.md) - implemented features and roadmap.
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) - contribution rules, PR process, and branch strategy.
 - [docs/commands.md](docs/commands.md) - Docker, Prisma, lint, and Makefile command reference.
+- [docs/TECH_STACK.md](docs/TECH_STACK.md) - full current stack and future stack roadmap.
+
+
+Schema → Types → Backend (schemas → crud → router) → Frontend (stores → components → pages)
 
 ## Tech Stack & Rationale
 

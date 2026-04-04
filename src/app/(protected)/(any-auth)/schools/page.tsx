@@ -5,6 +5,14 @@ import { api } from "@/lib/axios";
 import type { School } from "@/types/school";
 import SchoolCard from "@/components/school/SchoolCard";
 import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CardSkeleton } from "@/components/ui/skeleton";
+import { SlidersHorizontal, X, School as SchoolIcon } from "lucide-react";
+
 // ─── Filter State ─────────────────────────────────────────────────────────────
 
 type Filters = {
@@ -46,7 +54,6 @@ export default function SchoolsPage() {
     setLoading(true);
     setError(null);
     try {
-      // Only send filters that have a value
       const query = new URLSearchParams(
         Object.fromEntries(Object.entries(params).filter(([, v]) => v !== "")),
       ).toString();
@@ -54,7 +61,7 @@ export default function SchoolsPage() {
       const { data } = await api.get<School[]>(
         `/api/v1/schools${query ? `?${query}` : ""}`,
       );
-      console.log("Fetched schools:", query); // Debug log
+      console.log("Fetched schools:", query);
       setSchools(data);
     } catch (err: unknown) {
       console.log("Failed to fetch schools:", err);
@@ -89,37 +96,37 @@ export default function SchoolsPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="page-shell">
       {/* Page Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Schools</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {loading
-                ? "Searching..."
-                : `${schools.length} school${schools.length !== 1 ? "s" : ""} found`}
-            </p>
-          </div>
-          <button
+      <PageHeader
+        title="Schools"
+        subtitle={
+          loading
+            ? "Searching..."
+            : `${schools.length} school${schools.length !== 1 ? "s" : ""} found`
+        }
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setFiltersOpen((o) => !o)}
-            className="flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors"
+            className="gap-2"
           >
-            <FilterIcon />
+            <SlidersHorizontal className="h-4 w-4" />
             Filters
             {activeFilterCount > 0 && (
-              <span className="bg-indigo-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
                 {activeFilterCount}
               </span>
             )}
-          </button>
-        </div>
-      </div>
+          </Button>
+        }
+      />
 
-      <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col gap-6">
+      <div className="mt-6 flex flex-col gap-6">
         {/* Filter Panel */}
         {filtersOpen && (
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+          <div className="glass-panel p-5 animate-fade-in-down">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <FilterInput
                 label="School Name"
@@ -175,18 +182,15 @@ export default function SchoolsPage() {
                 value={filters.email}
                 onChange={(v) => handleFilterChange("email", v)}
               />
-              {/* 
-                ── Add SchoolType dropdown here later ──
-                <FilterSelect ... /> 
-              */}
             </div>
 
             {activeFilterCount > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+              <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex justify-end">
                 <button
                   onClick={handleReset}
-                  className="text-sm text-red-500 hover:text-red-700 font-medium transition-colors"
+                  className="inline-flex items-center gap-1.5 text-sm text-[var(--error)] hover:text-[var(--error)]/80 font-medium transition-colors"
                 >
+                  <X className="h-3.5 w-3.5" />
                   Clear all filters
                 </button>
               </div>
@@ -198,40 +202,49 @@ export default function SchoolsPage() {
         {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={i} />
+              <CardSkeleton key={i} />
             ))}
           </div>
         )}
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-5 py-4 text-sm">
+          <div className="panel panel-padding border-[var(--error)]/30 text-sm text-[var(--error)]">
             {error}
           </div>
         )}
 
         {/* Empty State */}
         {!loading && !error && schools.length === 0 && (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-4xl mb-3">🏫</p>
-            <p className="text-lg font-medium text-gray-600">
-              No schools found
-            </p>
-            <p className="text-sm mt-1">Try adjusting your filters</p>
-          </div>
+          <EmptyState
+            icon={SchoolIcon}
+            title="No schools found"
+            description="Try adjusting your filters to find what you're looking for."
+            action={
+              activeFilterCount > 0 ? (
+                <Button variant="secondary" size="sm" onClick={handleReset}>
+                  Clear filters
+                </Button>
+              ) : undefined
+            }
+          />
         )}
 
         {/* Results Grid */}
         {!loading && !error && schools.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {schools.map((school) => (
-              <SchoolCard
+            {schools.map((school, i) => (
+              <div
                 key={school.id}
-                school={school}
-                onClick={() => {
-                  router.push(`/school/${school.id}`);
-                }}
-              />
+                className={`animate-fade-in-up stagger-${Math.min(i + 1, 6)}`}
+              >
+                <SchoolCard
+                  school={school}
+                  onClick={() => {
+                    router.push(`/school/${school.id}`);
+                  }}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -255,57 +268,13 @@ function FilterInput({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-        {label}
-      </label>
-      <input
+      <Label className="text-xs">{label}</Label>
+      <Input
         type="text"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
       />
     </div>
-  );
-}
-
-function SkeletonCard() {
-  return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-3 animate-pulse">
-      <div className="flex justify-between">
-        <div className="h-4 bg-gray-200 rounded w-2/3" />
-        <div className="h-4 bg-gray-200 rounded w-16" />
-      </div>
-      <div className="h-3 bg-gray-100 rounded w-1/3" />
-      <div className="grid grid-cols-2 gap-2 pt-1">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-8 bg-gray-100 rounded" />
-        ))}
-      </div>
-      <div className="h-px bg-gray-100 mt-2" />
-      <div className="flex justify-between pt-1">
-        <div className="h-3 bg-gray-100 rounded w-16" />
-        <div className="h-3 bg-gray-100 rounded w-24" />
-      </div>
-    </div>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 15 15"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M1 3h13M3 7h9M5 11h5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

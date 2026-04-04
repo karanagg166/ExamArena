@@ -56,6 +56,7 @@ class SchoolResponse(BaseModel):
     type: SchoolType
     email: EmailStr | None = None
     website: str | None = None
+    principalName: str | None = None
     createdAt: datetime
     updatedAt: datetime
 

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 
 export default function PrincipalSchoolClassPage() {
   const router = useRouter();
@@ -61,14 +61,20 @@ export default function PrincipalSchoolClassPage() {
       </div>
 
       <Card className="border-zinc-800 bg-zinc-950/50">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold tracking-tight">
-            Classes Directory
-          </CardTitle>
-          <CardDescription className="text-zinc-400">
-            Overview of all classes in {school.name}. Click into a class to view
-            its specific details and student roster.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-3xl font-bold tracking-tight">
+              Classes Directory
+            </CardTitle>
+            <CardDescription className="text-zinc-400">
+              Overview of all classes in {school.name}. Click into a class to view
+              its specific details and student roster.
+            </CardDescription>
+          </div>
+          <Button onClick={() => router.push("/principal/school/classes/new")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Class
+          </Button>
         </CardHeader>
       </Card>
 

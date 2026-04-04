@@ -36,9 +36,9 @@ model Student {
   parentEmail     String
   dateOfAdmission DateTime      @default(now())
   classId         String
+  schoolId        String
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  schoolId        String
   schoolClass     SchoolClass   @relation(fields: [classId], references: [id], onDelete: Cascade)
   school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -55,9 +55,9 @@ model Teacher {
   experience    Int
   department    String
   subjects      String         @default("[]")
+  schoolId      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  schoolId      String?
   exams         Exam[]
   principal     Principal?
   school        School?        @relation(fields: [schoolId], references: [id])
@@ -83,6 +83,8 @@ model TeacherClass {
 model SchoolClass {
   id        String         @id @default(cuid())
   name      String
+  year      String
+  section   String         @default("A")
   schoolId  String
   teacherId String?
   createdAt DateTime       @default(now())
@@ -91,6 +93,7 @@ model SchoolClass {
   students  Student[]
   teachers  TeacherClass[]
 
+  @@unique([schoolId, year, section])
   @@index([schoolId])
   @@index([teacherId])
 }
@@ -99,9 +102,9 @@ model Principal {
   id         String   @id @default(cuid())
   experience Int
   schoolId   String?
+  teacherId  String   @unique
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  teacherId  String   @unique
   school     School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacher    Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
@@ -124,6 +127,7 @@ model School {
   website    String?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+  phoneNo    String?
   principals Principal[]
   user       User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   classes    SchoolClass[]
@@ -135,9 +139,12 @@ model Exam {
   id           String        @id @default(cuid())
   name         String
   description  String
-  date         DateTime
+  scheduledAt  DateTime
   duration     Int
   maxMarks     Int
+  instructions String?
+  isPublished  Boolean       @default(false)
+  subject      Subject?
   type         ExamType
   teacherId    String
   createdAt    DateTime      @default(now())
@@ -149,50 +156,92 @@ model Exam {
   @@index([teacherId])
 }
 
+model Question {
+  id             String              @id @default(cuid())
+  questionNumber Int
+  text           String
+  section        String              @default("General")
+  marks          Int
+  imageUrl       String?
+  wordLimit      Int?
+  explanation    String?
+  questionType   QuestionType        @default(MULTIPLE_CHOICE)
+  examId         String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  exam           Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  options        QuestionOption[]
+  answers        StudentExamAnswer[]
+
+  @@unique([examId, questionNumber, section])
+  @@index([examId])
+}
+
+model QuestionOption {
+  id           String           @id @default(cuid())
+  optionNumber Int              @default(0)
+  questionId   String
+  text         String
+  isCorrect    Boolean          @default(false)
+  imageUrl     String?
+  question     Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedBy   SelectedOption[]
+
+  @@unique([questionId, optionNumber])
+  @@index([questionId])
+}
+
 model StudentExam {
   id            String              @id @default(cuid())
   studentId     String
   examId        String
-  marksObtained Int
-  givenAt       DateTime            @default(now())
+  marksObtained Int                 @default(0)
+  startedAt     DateTime            @default(now())
+  submittedAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  status        StudentExamStatus   @default(IN_PROGRESS)
   exam          Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
   student       Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
   answers       StudentExamAnswer[]
 
+  @@unique([studentId, examId])
   @@index([studentId])
   @@index([examId])
 }
 
 model StudentExamAnswer {
-  id            String      @id @default(cuid())
-  studentExamId String
-  questionId    String
-  answer        String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  studentExam   StudentExam @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
+  id              String           @id @default(cuid())
+  studentExamId   String
+  questionId      String
+  questionType    QuestionType
+  textAnswer      String?
+  marksAwarded    Int?             @default(0)
+  feedback        String?
+  isCorrect       Correctness?
+  gradingStatus   GradingStatus    @default(PENDING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  selectedOptions SelectedOption[]
+  question        Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studentExam     StudentExam      @relation(fields: [studentExamId], references: [id], onDelete: Cascade)
 
   @@unique([studentExamId, questionId])
   @@index([studentExamId])
   @@index([questionId])
 }
 
-model Question {
-  id            String              @id @default(cuid())
-  text          String
-  options       String[]
-  correctAnswer String?
-  marks         Int
-  imageUrl      String?
-  questionType  QuestionType        @default(MULTIPLE_CHOICE)
-  examId        String
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  exam          Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
-  answers       StudentExamAnswer[]
+model SelectedOption {
+  id                  String            @id @default(cuid())
+  studentExamAnswerId String
+  optionId            String
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  option              QuestionOption    @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  studentExamAnswer   StudentExamAnswer @relation(fields: [studentExamAnswerId], references: [id], onDelete: Cascade)
 
-  @@index([examId])
+  @@unique([studentExamAnswerId, optionId])
+  @@index([studentExamAnswerId])
 }
 
 model Notification {
@@ -242,6 +291,7 @@ enum Qualification {
 
 enum QuestionType {
   MULTIPLE_CHOICE
+  MULTIPLE_SELECT
   TRUE_FALSE
   SHORT_ANSWER
   ESSAY
@@ -252,4 +302,24 @@ enum SchoolType {
   PRIVATE
   CHARTER
   INTERNATIONAL
+}
+
+enum StudentExamStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+  EXPIRED
+  NOT_ATTEMPTED
+}
+
+enum GradingStatus {
+  PENDING
+  AUTO_GRADED
+  MANUALLY_GRADED
+}
+
+enum Correctness {
+  FULLY_CORRECT
+  PARTIALLY_CORRECT
+  INCORRECT
 }

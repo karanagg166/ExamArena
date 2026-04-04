@@ -15,9 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Exam Arena",
+  title: {
+    default: "Exam Arena",
+    template: "%s | Exam Arena",
+  },
   description:
     "Role-based exam platform for students, teachers, and principals.",
+  keywords: ["exam", "education", "school", "testing", "assessment"],
 };
 
 export default function RootLayout({
@@ -26,9 +30,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}
       >
         <Providers>
           <AuthProvider>{children}</AuthProvider>

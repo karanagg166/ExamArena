@@ -1,0 +1,16 @@
+app = "examarena-backend"
+primary_region = "bom"
+
+[build]
+  dockerfile = "backend/backend.Dockerfile"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

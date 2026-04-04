@@ -3,26 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogIn, Mail, Lock, ArrowRight } from "lucide-react";
+import { LogIn, Mail, Lock, ArrowRight, ShieldCheck, GraduationCap, Sparkles, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import axios from "axios";
 import { api } from "@/lib/axios";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { FormMessage } from "@/components/ui/form-message";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/loading";
+import { GlassCard } from "@/components/ui/glass-card";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -41,7 +36,6 @@ const LoginPage = () => {
       if (response.status === 200) {
         const user = response.data;
 
-        // Redirect based on role
         switch (user.role.toLowerCase()) {
           case "student":
             router.push("/student");
@@ -78,30 +72,90 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 text-white">
-      <div className="pointer-events-none absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-indigo-600/20 blur-[120px]" />
-      <div className="pointer-events-none absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-sky-600/15 blur-[120px]" />
+    <div className="relative flex min-h-screen overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 z-0 bg-[var(--background)]">
+        <div className="absolute inset-0 animated-gradient opacity-30 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-900/40 via-transparent to-transparent" />
+        <div
+          className="absolute inset-0 animated-gradient opacity-20 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-emerald-900/30 via-transparent to-transparent"
+          style={{ animationDelay: "-3s" }}
+        />
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-md"
-      >
-        <Card className="shadow-2xl shadow-indigo-900/20">
-          <CardHeader>
-            <div className="mb-2 flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10">
-                <LogIn className="h-8 w-8 text-indigo-400" />
-              </div>
+      {/* Left panel — Brand (hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-1/2 relative z-10 flex-col justify-center px-16">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-md"
+        >
+          <div className="flex items-center gap-3 mb-10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent)] text-white font-bold">
+              EA
             </div>
-            <CardTitle className="text-center text-3xl">Welcome back</CardTitle>
-            <CardDescription className="text-center">
-              Enter your credentials to access your account
-            </CardDescription>
-          </CardHeader>
+            <span className="font-bold text-[var(--text-primary)] text-xl tracking-tight">
+              Exam Arena
+            </span>
+          </div>
 
-          <CardContent>
+          <h2 className="text-4xl font-bold text-[var(--text-primary)] tracking-tight mb-4">
+            Welcome back to your{" "}
+            <span className="text-gradient">academic hub.</span>
+          </h2>
+          <p className="text-[var(--text-secondary)] text-lg leading-relaxed mb-10">
+            Sign in to manage exams, track progress, and stay connected with
+            your school.
+          </p>
+
+          <div className="space-y-4">
+            {[
+              { icon: ShieldCheck, text: "Secure role-based access" },
+              { icon: GraduationCap, text: "Personalized dashboards" },
+              { icon: Sparkles, text: "Real-time exam management" },
+            ].map((item) => (
+              <div key={item.text} className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--accent-muted)]">
+                  <item.icon className="h-4 w-4 text-[var(--accent)]" />
+                </div>
+                <span className="text-sm text-[var(--text-secondary)]">
+                  {item.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Right panel — Form */}
+      <div className="flex w-full lg:w-1/2 items-center justify-center px-4 py-12 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="w-full max-w-md"
+        >
+          <GlassCard padding="lg" className="shadow-2xl shadow-indigo-900/10">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <div className="mb-4 flex justify-center lg:hidden">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-muted)] border border-[var(--accent)]/20">
+                  <LogIn className="h-7 w-7 text-[var(--accent)]" />
+                </div>
+              </div>
+              <div className="hidden lg:flex mb-4 justify-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-muted)] border border-[var(--accent)]/20">
+                  <LogIn className="h-7 w-7 text-[var(--accent)]" />
+                </div>
+              </div>
+              <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+                Sign in
+              </h1>
+              <p className="text-sm text-[var(--text-muted)] mt-1">
+                Enter your credentials to access your account
+              </p>
+            </div>
+
             <FormMessage
               message={error}
               type="error"
@@ -112,7 +166,7 @@ const LoginPage = () => {
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                  <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-dimmed)]" />
                   <Input
                     type="email"
                     id="email"
@@ -130,22 +184,33 @@ const LoginPage = () => {
                   <Label htmlFor="password">Password</Label>
                   <Link
                     href="/forgot-password"
-                    className="text-xs text-indigo-400 transition-colors hover:text-indigo-300"
+                    className="text-xs text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)]"
                   >
                     Forgot password?
                   </Link>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                  <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-dimmed)]" />
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     id="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 pl-11"
+                    className="h-11 pl-11 pr-11"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dimmed)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -165,18 +230,18 @@ const LoginPage = () => {
               </Button>
             </form>
 
-            <p className="mt-7 text-center text-sm text-zinc-500">
+            <p className="mt-7 text-center text-sm text-[var(--text-muted)]">
               Don&apos;t have an account yet?{" "}
               <Link
                 href="/signup"
-                className="font-medium text-indigo-400 transition-colors hover:text-indigo-300"
+                className="font-medium text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)]"
               >
                 Sign up now
               </Link>
             </p>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </GlassCard>
+        </motion.div>
+      </div>
     </div>
   );
 };
