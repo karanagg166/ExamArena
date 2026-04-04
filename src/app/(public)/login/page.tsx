@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { LogIn, Mail, Lock, ArrowRight, ShieldCheck, GraduationCap, Sparkles } from "lucide-react";
+import { LogIn, Mail, Lock, ArrowRight, ShieldCheck, GraduationCap, Sparkles, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import axios from "axios";
 import { api } from "@/lib/axios";
@@ -17,6 +17,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -191,14 +192,25 @@ const LoginPage = () => {
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-dimmed)]" />
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     id="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 pl-11"
+                    className="h-11 pl-11 pr-11"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dimmed)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
 

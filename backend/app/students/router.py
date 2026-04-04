@@ -9,11 +9,14 @@ from app.students.crud import (
     create_student,
     get_student_by_id,
     get_student_by_user_id,
+    get_students,
     update_student,
 )
 from app.students.schemas import (
     StudentCreate,
     StudentCreateRequest,
+    StudentFilterParams,
+    StudentListItemResponse,
     StudentResponse,
     StudentUpdate,
 )
@@ -21,6 +24,76 @@ from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
 
 router = APIRouter(prefix="/api/v1/students", tags=["students"])
+
+
+@router.get("/", response_model=list[StudentListItemResponse])
+async def fetch_students(
+    name: str | None = None,
+    email: str | None = None,
+    rollNo: str | None = None,
+    classYear: str | None = None,
+    section: str | None = None,
+    schoolName: str | None = None,
+    schoolCode: str | None = None,
+    current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
+):
+    """
+    List students with optional filters.
+
+    Access rules:
+        - STUDENT: can only see students in their own class
+    - TEACHER / PRINCIPAL: can see students in their school (schoolId scoped automatically)
+    """
+    # Determine scoping based on role
+    if current_user.role == Role.STUDENT:
+        me = await get_student_by_user_id(current_user.id)
+        if not me:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Student profile not found. Complete your profile first.",
+            )
+        # Students can only see classmates — force classId to their own class
+        filters = StudentFilterParams(
+            name=name,
+            email=email,
+            rollNo=rollNo,
+            classYear=classYear,
+            section=section,
+            schoolName=schoolName,
+            schoolCode=schoolCode,
+            scopeClassId=me.classId,
+            scopeSchoolId=me.schoolId,
+        )
+    elif current_user.role in (Role.TEACHER, Role.PRINCIPAL):
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher or not teacher.schoolId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You must be assigned to a school to view its students.",
+            )
+        filters = StudentFilterParams(
+            name=name,
+            email=email,
+            rollNo=rollNo,
+            classYear=classYear,
+            section=section,
+            schoolName=schoolName,
+            schoolCode=schoolCode,
+            scopeSchoolId=teacher.schoolId,
+        )
+    else:
+        # ADMIN or other — no restriction (can optionally filter)
+        filters = StudentFilterParams(
+            name=name,
+            email=email,
+            rollNo=rollNo,
+            classYear=classYear,
+            section=section,
+            schoolName=schoolName,
+            schoolCode=schoolCode,
+        )
+
+    return await get_students(filters)
 
 
 @router.post(
@@ -81,7 +154,7 @@ async def get_student_by_id_endpoint(
     student_id: str,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    """Get student data by primary ID (admin/teacher access)"""
+    """Get student data by primary ID with role-based access control"""
     student = await get_student_by_id(student_id)
     if not student:
         raise HTTPException(
@@ -90,10 +163,18 @@ async def get_student_by_id_endpoint(
 
     # Authorization checks
     if current_user.role == Role.STUDENT:
-        if student.userId != current_user.id:
+        # Students can see their own profile OR same-class peers
+        me = await get_student_by_user_id(current_user.id)
+        if not me:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You can only view your own profile.",
+                detail="Student profile not found.",
+            )
+        # Allow: same student or same class
+        if student.userId != current_user.id and student.classId != me.classId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You can only view profiles of students in your class.",
             )
     elif current_user.role == Role.TEACHER:
         teacher = await get_teacher_by_user_id(current_user.id)

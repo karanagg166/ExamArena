@@ -103,7 +103,7 @@ export function ExamSearchFilters({ filters, setFilters, onClear }: ExamSearchFi
         {/* Clear Filters */}
         {hasFilters && (
           <Button
-            variant="neutral"
+            variant="outline"
             className="w-full mt-4 bg-white/5 border-white/10 hover:bg-white/10"
             onClick={onClear}
           >

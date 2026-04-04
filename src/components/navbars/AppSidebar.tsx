@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   LayoutDashboard,
   User,
@@ -15,6 +16,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Building2,
+  Search,
+  History,
+  Sun,
+  Moon,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,93 +37,86 @@ interface NavItem {
   matchPrefix?: string;
 }
 
+/**
+ * Each role's nav items are derived from the actual Next.js route tree:
+ *
+ * STUDENT:
+ *   /dashboard              — Dashboard
+ *   /student/profile        — My Profile
+ *   /student/school         — My School
+ *   /student/class          — My Class
+ *   /exams                  — Browse Exams  (any-auth)
+ *   /student/exams          — My Exams (history / results)
+ *
+ * TEACHER:
+ *   /dashboard              — Dashboard
+ *   /teacher/profile        — My Profile
+ *   /teacher/school         — School (join)
+ *   /teacher/classes        — My Classes
+ *   /teacher/exams/create   — Create Exam
+ *   /teacher/exams          — My Exams
+ *   /students               — Students   (staff-only)
+ *   /teachers               — Teachers   (any-auth)
+ *   /exams                  — Browse Exams
+ *
+ * PRINCIPAL:
+ *   /dashboard              — Dashboard
+ *   /principal/profile      — My Profile
+ *   /principal/school       — My School
+ *   /principal/school/classes — Classes
+ *   /teacher/exams/create   — Create Exam
+ *   /teacher/exams          — My Exams
+ *   /teachers               — Teachers
+ *   /students               — Students
+ *   /exams                  — Browse Exams
+ *
+ * ADMIN:
+ *   /dashboard              — Dashboard
+ *   /profile                — Profile
+ *   /schools                — Schools
+ *   /teachers               — Teachers
+ *   /students               — Students
+ *   /exams                  — Browse Exams
+ */
 const navItemsByRole: Record<UserRole, NavItem[]> = {
-  PRINCIPAL: [
+  STUDENT: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    {
-      label: "My School",
-      href: "/principal/school",
-      icon: School,
-      matchPrefix: "/principal/school",
-    },
-    {
-      label: "Classes",
-      href: "/principal/school/classes",
-      icon: GraduationCap,
-      matchPrefix: "/principal/school/classes",
-    },
-    {
-      label: "Profile",
-      href: "/principal/profile",
-      icon: User,
-      matchPrefix: "/principal/profile",
-    },
+    { label: "My Profile", href: "/student/profile", icon: User, matchPrefix: "/student/profile" },
+    { label: "My School", href: "/student/school", icon: School, matchPrefix: "/student/school" },
+    { label: "My Class", href: "/student/class", icon: GraduationCap, matchPrefix: "/student/class" },
+    { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
+    { label: "My Exams", href: "/student/exams", icon: History, matchPrefix: "/student/exams" },
+    { label: "Classmates", href: "/students", icon: Users, matchPrefix: "/students" },
   ],
   TEACHER: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    {
-      label: "My Classes",
-      href: "/teacher/classes",
-      icon: GraduationCap,
-      matchPrefix: "/teacher/classes",
-    },
-    {
-      label: "Create Exam",
-      href: "/teacher/exams/create",
-      icon: Plus,
-      matchPrefix: "/teacher/exams/create",
-    },
-    {
-      label: "Exams",
-      href: "/teacher/exams",
-      icon: ClipboardList,
-      matchPrefix: "/teacher/exams",
-    },
-    {
-      label: "Profile",
-      href: "/teacher/profile",
-      icon: User,
-      matchPrefix: "/teacher/profile",
-    },
+    { label: "My Profile", href: "/teacher/profile", icon: User, matchPrefix: "/teacher/profile" },
+    { label: "School", href: "/teacher/school", icon: Building2, matchPrefix: "/teacher/school" },
+    { label: "My Classes", href: "/teacher/classes", icon: GraduationCap, matchPrefix: "/teacher/classes" },
+    { label: "Create Exam", href: "/teacher/exams/create", icon: Plus, matchPrefix: "/teacher/exams/create" },
+    { label: "My Exams", href: "/teacher/exams", icon: ClipboardList, matchPrefix: "/teacher/exams" },
+    { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
+    { label: "Students", href: "/students", icon: Users, matchPrefix: "/students" },
+    { label: "Teachers", href: "/teachers", icon: BookOpen, matchPrefix: "/teachers" },
   ],
-  STUDENT: [
+  PRINCIPAL: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    {
-      label: "My School",
-      href: "/student/school",
-      icon: School,
-      matchPrefix: "/student/school",
-    },
-    {
-      label: "My Class",
-      href: "/student/class",
-      icon: GraduationCap,
-      matchPrefix: "/student/class",
-    },
-    {
-      label: "Take Exam",
-      href: "/student/exams/take",
-      icon: BookOpen,
-      matchPrefix: "/student/exams/take",
-    },
-    {
-      label: "Results",
-      href: "/student/exams/history",
-      icon: ClipboardList,
-      matchPrefix: "/student/exams/history",
-    },
-    {
-      label: "Profile",
-      href: "/student/profile",
-      icon: User,
-      matchPrefix: "/student/profile",
-    },
+    { label: "My Profile", href: "/principal/profile", icon: User, matchPrefix: "/principal/profile" },
+    { label: "My School", href: "/principal/school", icon: Building2, matchPrefix: "/principal/school" },
+    { label: "Classes", href: "/principal/school/classes", icon: GraduationCap, matchPrefix: "/principal/school/classes" },
+    { label: "Create Exam", href: "/teacher/exams/create", icon: Plus, matchPrefix: "/teacher/exams/create" },
+    { label: "My Exams", href: "/teacher/exams", icon: ClipboardList, matchPrefix: "/teacher/exams" },
+    { label: "Teachers", href: "/teachers", icon: Users, matchPrefix: "/teachers" },
+    { label: "Students", href: "/students", icon: GraduationCap, matchPrefix: "/students" },
+    { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
   ],
   ADMIN: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Schools", href: "/schools", icon: School, matchPrefix: "/schools" },
-    { label: "Users", href: "/admin/users", icon: Users, matchPrefix: "/admin/users" },
     { label: "Profile", href: "/profile", icon: User, matchPrefix: "/profile" },
+    { label: "Schools", href: "/schools", icon: School, matchPrefix: "/schools" },
+    { label: "Teachers", href: "/teachers", icon: Users, matchPrefix: "/teachers" },
+    { label: "Students", href: "/students", icon: GraduationCap, matchPrefix: "/students" },
+    { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
   ],
 };
 
@@ -129,6 +128,13 @@ const roleBadgeColors: Record<UserRole, string> = {
   ADMIN: "border-amber-500/25 bg-amber-500/10 text-amber-300",
 };
 
+const roleDotColors: Record<UserRole, string> = {
+  PRINCIPAL: "bg-violet-400",
+  TEACHER: "bg-emerald-400",
+  STUDENT: "bg-sky-400",
+  ADMIN: "bg-amber-400",
+};
+
 /* ─── Sidebar component ─── */
 
 export function AppSidebar() {
@@ -137,11 +143,31 @@ export function AppSidebar() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [collapsed, setCollapsed] = useState(false);
+  
+  // Theme handling
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
 
-  if (!user) return null;
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const role = user.role;
-  const navItems = navItemsByRole[role] || [];
+  // Check if we are in exam attempt view to hide sidebar
+  const isExamAttempt = pathname.includes("/attempt");
+
+  const inferredRole: UserRole | null = pathname.startsWith("/principal")
+    ? "PRINCIPAL"
+    : pathname.startsWith("/teacher")
+      ? "TEACHER"
+      : pathname.startsWith("/student")
+        ? "STUDENT"
+        : null;
+
+  const role: UserRole | null = user?.role ?? inferredRole;
+  
+  if (!role || isExamAttempt) return null;
+
+  const navItems = navItemsByRole[role] ?? [];
 
   const handleLogout = async () => {
     await logout();
@@ -186,20 +212,12 @@ export function AppSidebar() {
               {role}
             </span>
           ) : (
-            <div
-              className={cn(
-                "mx-auto h-2 w-2 rounded-full",
-                role === "PRINCIPAL" && "bg-violet-400",
-                role === "TEACHER" && "bg-emerald-400",
-                role === "STUDENT" && "bg-sky-400",
-                role === "ADMIN" && "bg-amber-400",
-              )}
-            />
+            <div className={cn("mx-auto h-2 w-2 rounded-full", roleDotColors[role])} />
           )}
         </div>
 
         {/* Nav Items */}
-        <nav className="flex-1 space-y-1 px-3 py-2 overflow-y-auto">
+        <nav className="flex-1 space-y-0.5 px-3 py-2 overflow-y-auto">
           {navItems.map((item) => {
             const active = isActive(item);
             return (
@@ -238,7 +256,7 @@ export function AppSidebar() {
         {/* Bottom section */}
         <div className="border-t border-[var(--border-subtle)] p-3 space-y-2">
           {/* User info */}
-          {!collapsed && (
+          {!collapsed && user && (
             <div className="rounded-xl bg-[var(--surface-2)] px-3 py-2.5 animate-fade-in">
               <p className="truncate text-sm font-medium text-[var(--text-primary)]">
                 {user.name}
@@ -247,6 +265,25 @@ export function AppSidebar() {
                 {user.email}
               </p>
             </div>
+          )}
+
+          {/* Theme Toggle */}
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              title={collapsed ? (theme === "dark" ? "Light Mode" : "Dark Mode") : undefined}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-muted)] transition-all hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
+                collapsed && "justify-center px-2",
+              )}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-[18px] w-[18px] shrink-0" />
+              ) : (
+                <Moon className="h-[18px] w-[18px] shrink-0" />
+              )}
+              {!collapsed && <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>}
+            </button>
           )}
 
           {/* Logout */}
@@ -286,9 +323,7 @@ export function AppSidebar() {
               href={item.href}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                active
-                  ? "text-[var(--accent)]"
-                  : "text-[var(--text-muted)]",
+                active ? "text-[var(--accent)]" : "text-[var(--text-muted)]",
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -304,11 +339,14 @@ export function AppSidebar() {
 /* ─── Layout wrapper that adds sidebar spacing ─── */
 
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isExamAttempt = pathname.includes("/attempt");
+
   return (
     <div className="flex min-h-screen">
       <AppSidebar />
-      {/* Main content area — offset by sidebar width */}
-      <main className="flex-1 md:ml-[240px] pb-16 md:pb-0">
+      {/* Main content area — offset by sidebar width unless in exam attempt view */}
+      <main className={cn("flex-1", !isExamAttempt && "md:ml-[240px] pb-16 md:pb-0")}>
         {children}
       </main>
     </div>

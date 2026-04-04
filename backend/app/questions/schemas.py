@@ -20,7 +20,7 @@ class QuestionBase(BaseModel):
     wordLimit: int | None = None
     explanation: str | None = None
     examId: str | None = None
-    section: str | None = None
+    section: str
 
 class QuestionOptionBase(BaseModel):
     text: str

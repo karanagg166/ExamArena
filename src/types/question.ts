@@ -26,7 +26,7 @@ export type Question = {
   id: string;
   questionNumber: number;
   text: string;
-  section?: string;
+  section: string;
   marks: number;
   imageUrl?: string;
   wordLimit?: number;

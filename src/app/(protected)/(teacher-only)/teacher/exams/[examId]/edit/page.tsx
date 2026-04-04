@@ -30,6 +30,7 @@ export default function EditExamPage() {
     duration: 60,
     type: "MIDTERM",
     maxMarks: 0,
+    isPublished: false,
     questions: [],
   });
 
@@ -48,6 +49,7 @@ export default function EditExamPage() {
           duration: data.duration,
           type: data.type,
           maxMarks: data.maxMarks,
+          isPublished: data.isPublished,
           instructions: data.instructions,
           subject: data.subject,
           questions: (data.questions ?? []).map((q) => ({
@@ -81,6 +83,7 @@ export default function EditExamPage() {
 
     for (const q of exam.questions ?? []) {
       if (!q.text.trim()) return "All questions must have a prompt.";
+      if (!q.section?.trim()) return "All questions must have a section (e.g. Physics).";
       if (!q.marks || q.marks < 1)
         return `Question ${q.questionNumber} must have marks greater than 0.`;
       if (

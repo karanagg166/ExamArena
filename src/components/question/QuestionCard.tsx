@@ -129,9 +129,9 @@ export function QuestionCard({
             </div>
 
             <div className="md:col-span-4 space-y-1.5">
-              <Label>Section Topic (Optional)</Label>
+              <Label>Section <span className="text-red-400">*</span></Label>
               <Input 
-                placeholder="e.g. Grammar"
+                placeholder="e.g. Physics, Chemistry, Mathematics"
                 value={question.section || ""}
                 onChange={(e) => updateField("section", e.target.value)}
               />

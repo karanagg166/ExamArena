@@ -5,6 +5,37 @@ from pydantic import BaseModel, EmailStr
 from app.users.schemas import UserResponse
 
 
+class StudentFilterParams(BaseModel):
+    """Query params for filtering the student list"""
+
+    name: str | None = None
+    email: str | None = None
+    rollNo: str | None = None
+    classYear: str | None = None
+    section: str | None = None
+    schoolName: str | None = None
+    schoolCode: str | None = None
+    scopeClassId: str | None = None
+    scopeSchoolId: str | None = None
+
+
+class StudentListItemResponse(BaseModel):
+    """Lightweight student data for list views"""
+
+    id: str
+    userId: str
+    rollNo: str
+    classId: str
+    schoolId: str
+    name: str
+    email: str
+    phoneNo: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+
 class StudentCreateRequest(BaseModel):
     """What the frontend sends — no userId (injected from JWT)"""
 

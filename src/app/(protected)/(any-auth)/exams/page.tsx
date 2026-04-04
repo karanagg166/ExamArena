@@ -9,10 +9,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Search, Compass } from "lucide-react";
 import type { Exam } from "@/types";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function ExamsDiscoveryPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
+  const user = useAuthStore((state) => state.user);
+  const isStudent = user?.role === "STUDENT";
 
   const [filters, setFilters] = useState({
     name: "",
@@ -110,7 +113,7 @@ export default function ExamsDiscoveryPage() {
           ) : exams.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {exams.map((exam) => (
-                <ExamPublicCard key={exam.id} exam={exam} />
+                <ExamPublicCard key={exam.id} exam={exam} isStudent={isStudent} />
               ))}
             </div>
           ) : (

@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  ArrowLeft, 
-  Edit3, 
-  Calendar, 
-  Clock, 
-  FileText, 
+import {
+  ArrowLeft,
+  Edit3,
+  Calendar,
+  Clock,
+  FileText,
   AlertCircle,
   ChevronRight,
   Target
@@ -34,8 +34,8 @@ export default function ExamViewPage() {
       try {
         const response = await api.get(`/api/v1/exams/${examId}`);
         setExam(response.data);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || "Failed to load exam details.");
+      } catch (err: unknown) {
+        setError((err as { response?: { data?: { detail?: string } } }).response?.data?.detail || "Failed to load exam details.");
       } finally {
         setLoading(false);
       }
@@ -77,7 +77,7 @@ export default function ExamViewPage() {
   return (
     <div className="page-shell">
       <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
-        
+
         <PageHeader
           overline="Exam Overview"
           title={exam.name}
@@ -106,7 +106,7 @@ export default function ExamViewPage() {
                 <FileText className="w-5 h-5" />
                 <h3>About this Exam</h3>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex items-start gap-3">
                   <div className="p-2 rounded-lg bg-[var(--surface-3)] text-zinc-400">
@@ -170,16 +170,16 @@ export default function ExamViewPage() {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">Questions ({(exam.questions ?? []).length})</h3>
               </div>
-              
+
               <div className="space-y-3">
                 {(exam.questions ?? []).map((q, idx) => (
-                  <GlassCard key={q.id} padding="md" className="hover:bg-[var(--surface-2)] transition-colors">
+                  <GlassCard key={q.id} padding="md" className="space-y-4 hover:bg-[var(--surface-2)] transition-colors">
                     <div className="flex items-start gap-4">
                       <div className="w-8 h-8 rounded-full bg-[var(--surface-3)] flex items-center justify-center text-xs font-bold text-indigo-400 shrink-0">
                         {idx + 1}
                       </div>
                       <div className="flex-grow space-y-2 pe-4">
-                        <p className="text-[var(--text-primary)] font-medium line-clamp-2">{q.text}</p>
+                        <p className="text-[var(--text-primary)] font-medium whitespace-pre-wrap">{q.text}</p>
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="neutral" className="text-[10px] lowercase">
                             {q.questionType.replace("_", " ")}
@@ -190,9 +190,41 @@ export default function ExamViewPage() {
                           {q.section && (
                             <span className="text-[10px] text-[var(--text-dimmed)] italic">Section: {q.section}</span>
                           )}
+                          {q.wordLimit && (
+                            <span className="text-[10px] text-[var(--text-dimmed)] italic">Word Limit: {q.wordLimit}</span>
+                          )}
                         </div>
                       </div>
                     </div>
+
+                    {(q.options ?? []).length > 0 && (
+                      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-2">
+                        <p className="text-xs font-semibold tracking-wider uppercase text-[var(--text-dimmed)]">Options</p>
+                        <div className="space-y-2">
+                          {(q.options ?? []).map((opt) => (
+                            <div
+                              key={opt.id}
+                              className={`flex items-start justify-between gap-3 rounded-lg px-3 py-2 border ${opt.isCorrect
+                                ? "border-emerald-500/40 bg-emerald-500/10"
+                                : "border-[var(--border-subtle)] bg-[var(--surface-2)]"
+                                }`}
+                            >
+                              <p className="text-sm text-[var(--text-primary)]">{opt.optionNumber}. {opt.text || "--"}</p>
+                              {opt.isCorrect && (
+                                <Badge variant="success" className="text-[10px] shrink-0">Correct</Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {q.explanation && (
+                      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-1">
+                        <p className="text-xs font-semibold tracking-wider uppercase text-[var(--text-dimmed)]">Explanation</p>
+                        <p className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">{q.explanation}</p>
+                      </div>
+                    )}
                   </GlassCard>
                 ))}
               </div>
@@ -201,32 +233,32 @@ export default function ExamViewPage() {
 
           {/* Sidebar / Quick Stats */}
           <div className="space-y-6">
-             <GlassCard padding="lg" className="bg-indigo-500/5 border-indigo-500/20">
-               <h4 className="text-sm font-semibold text-white mb-4">Exam Summary</h4>
-               <div className="space-y-4">
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-[var(--text-muted)]">Total Questions</span>
-                   <span className="text-white font-medium">{(exam.questions ?? []).length}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-[var(--text-muted)]">Max Marks</span>
-                   <span className="text-white font-medium">{exam.maxMarks}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-sm">
-                   <span className="text-[var(--text-muted)]">Avg Marks/Q</span>
-                   <span className="text-white font-medium">
-                     {((exam.questions ?? []).length > 0 ? (exam.maxMarks / (exam.questions ?? []).length).toFixed(1) : 0)}
-                   </span>
-                 </div>
-               </div>
-               <hr className="my-4 border-[var(--border-subtle)]" />
-               <Link href={`/teacher/exams/${examId}/edit`}>
-                 <Button className="w-full" variant="outline">
-                   Manage Questions
-                   <ChevronRight className="ml-1 h-4 w-4" />
-                 </Button>
-               </Link>
-             </GlassCard>
+            <GlassCard padding="lg" className="bg-indigo-500/5 border-indigo-500/20">
+              <h4 className="text-sm font-semibold text-white mb-4">Exam Summary</h4>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-[var(--text-muted)]">Total Questions</span>
+                  <span className="text-white font-medium">{(exam.questions ?? []).length}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-[var(--text-muted)]">Max Marks</span>
+                  <span className="text-white font-medium">{exam.maxMarks}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-[var(--text-muted)]">Avg Marks/Q</span>
+                  <span className="text-white font-medium">
+                    {((exam.questions ?? []).length > 0 ? (exam.maxMarks / (exam.questions ?? []).length).toFixed(1) : 0)}
+                  </span>
+                </div>
+              </div>
+              <hr className="my-4 border-[var(--border-subtle)]" />
+              <Link href={`/teacher/exams/${examId}/edit`}>
+                <Button className="w-full" variant="outline">
+                  Manage Questions
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </Link>
+            </GlassCard>
           </div>
         </div>
       </div>

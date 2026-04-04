@@ -28,6 +28,7 @@ type FormState = {
   type: SchoolType;
   email: string;
   website: string;
+  phoneNo: string;
 };
 
 const INITIAL_FORM: FormState = {
@@ -41,6 +42,7 @@ const INITIAL_FORM: FormState = {
   type: "PUBLIC",
   email: "",
   website: "",
+  phoneNo: "",
 };
 
 export default function PrincipalCreateSchoolPage() {
@@ -59,6 +61,7 @@ export default function PrincipalCreateSchoolPage() {
         ...form,
         email: form.email.trim() || undefined,
         website: form.website.trim() || undefined,
+        phoneNo: form.phoneNo.trim() || undefined,
       });
       router.push("/principal");
     } catch (err: unknown) {
@@ -224,6 +227,18 @@ export default function PrincipalCreateSchoolPage() {
                   }
                 />
               </div>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block">Phone Number (optional)</Label>
+              <Input
+                type="tel"
+                placeholder="e.g. +91 98765 43210"
+                value={form.phoneNo}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, phoneNo: event.target.value }))
+                }
+              />
             </div>
 
             <Button type="submit" className="w-full" disabled={saving}>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { QuestionCard } from "./QuestionCard";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { PlusCircle, SearchX } from "lucide-react";
 import type { QuestionUpsert } from "@/types";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -12,14 +13,28 @@ interface QuestionListProps {
 
 export function QuestionList({ questions, onChange }: QuestionListProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [sectionDraft, setSectionDraft] = useState("");
 
-  const addQuestion = () => {
+  const existingSections = Array.from(
+    new Set(
+      (questions ?? [])
+        .map((q) => q.section?.trim())
+        .filter((section): section is string => Boolean(section))
+    )
+  );
+
+  const addQuestion = (sectionName?: string) => {
+    const normalizedSection = sectionName?.trim();
+    const fallbackSection =
+      normalizedSection || existingSections[existingSections.length - 1] || "";
+
     const newQuestion: QuestionUpsert = {
       text: "",
       marks: 1,
       questionNumber: questions.length + 1,
       questionType: "MULTIPLE_CHOICE",
       examId: "placeholder", // Removed before submission to server via types or backend defaults
+      section: fallbackSection,
       options: [
         { text: "", optionNumber: 1, isCorrect: false },
         { text: "", optionNumber: 2, isCorrect: false },
@@ -27,6 +42,13 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
     };
     onChange([...questions, newQuestion]);
     setExpandedIndex(questions.length); // Auto-expand new question
+  };
+
+  const addSectionWithQuestion = () => {
+    const sectionName = sectionDraft.trim();
+    if (!sectionName) return;
+    addQuestion(sectionName);
+    setSectionDraft("");
   };
 
   const updateQuestion = (index: number, updated: QuestionUpsert) => {
@@ -40,7 +62,7 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
     // Auto re-sequence question numbers
     newQuestions.forEach((q, i) => (q.questionNumber = i + 1));
     onChange(newQuestions);
-    
+
     // Fix expanded index
     if (expandedIndex === index) setExpandedIndex(null);
     else if (expandedIndex !== null && expandedIndex > index) setExpandedIndex(expandedIndex - 1);
@@ -62,9 +84,45 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
           </p>
         </div>
         {questions.length > 0 && (
-          <Button onClick={addQuestion} size="sm" variant="secondary" className="hidden sm:flex">
+          <Button onClick={() => addQuestion()} size="sm" variant="secondary" className="hidden sm:flex">
             <PlusCircle className="mr-2 h-4 w-4" /> Add Question
           </Button>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-dimmed)]">
+          Sections
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input
+            placeholder="e.g. Section A - Algebra"
+            value={sectionDraft}
+            onChange={(e) => setSectionDraft(e.target.value)}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={addSectionWithQuestion}
+            disabled={!sectionDraft.trim()}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Section + Question
+          </Button>
+        </div>
+
+        {existingSections.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {existingSections.map((section) => (
+              <button
+                key={section}
+                type="button"
+                className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-2)] px-3 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                onClick={() => setSectionDraft(section)}
+              >
+                {section}
+              </button>
+            ))}
+          </div>
         )}
       </div>
 
@@ -75,7 +133,7 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
           description="Your exam is currently empty. Start by adding your first question."
           className="border border-dashed border-[var(--border-default)] rounded-2xl bg-[var(--surface-1)]"
           action={
-            <Button onClick={addQuestion} variant="primary">
+            <Button onClick={() => addQuestion()} variant="primary">
               <PlusCircle className="mr-2 h-4 w-4" /> Add First Question
             </Button>
           }
@@ -94,9 +152,9 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
             />
           ))}
 
-          <Button 
-            onClick={addQuestion} 
-            variant="outline" 
+          <Button
+            onClick={() => addQuestion()}
+            variant="outline"
             className="w-full mt-4 border-dashed border-[var(--border-strong)] text-[var(--accent)] hover:text-[var(--accent-hover)]"
           >
             <PlusCircle className="mr-2 h-4 w-4" /> Add Another Question

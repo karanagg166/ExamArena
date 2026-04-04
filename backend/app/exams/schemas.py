@@ -12,10 +12,11 @@ from app.questions.schemas import (
 
 class ExamType(StrEnum):
     MIDTERM = "MIDTERM"
-    FINAL="FINAL"
-    QUIZ="QUIZ"
-    ASSIGNMENT="ASSIGNMENT"
-    MOCK="MOCK"   
+    FINAL = "FINAL"
+    QUIZ = "QUIZ"
+    ASSIGNMENT = "ASSIGNMENT"
+    MOCK = "MOCK"
+
 
 class Subject(StrEnum):
     MATHS = "MATHS"
@@ -37,14 +38,14 @@ class ExamBase(BaseModel):
     isPublished: bool = False
     subject: Subject | None = None
     type: ExamType
-    teacherId: str | None = None
+    questionCount: int | None = None
+
 
 class ExamCreateRequest(ExamBase):
     questions: list[QuestionCreateRequest] | None = None
-    pass
+
 
 class ExamUpdateRequest(BaseModel):
-    id: str
     name: str | None = None
     description: str | None = None
     scheduledAt: datetime | None = None
@@ -54,16 +55,18 @@ class ExamUpdateRequest(BaseModel):
     isPublished: bool | None = None
     subject: Subject | None = None
     type: ExamType | None = None
-    teacherId: str | None = None
     questions: list[QuestionUpdateRequest] | None = None
+
 
 class SchoolInfo(BaseModel):
     name: str
     model_config = ConfigDict(from_attributes=True)
 
+
 class UserInfo(BaseModel):
     name: str
     model_config = ConfigDict(from_attributes=True)
+
 
 class TeacherInfo(BaseModel):
     id: str
@@ -71,10 +74,16 @@ class TeacherInfo(BaseModel):
     school: SchoolInfo | None = None
     model_config = ConfigDict(from_attributes=True)
 
+
 class ExamResponse(ExamBase):
     id: str
     createdAt: datetime
     updatedAt: datetime
     teacher: TeacherInfo | None = None
     questions: list[QuestionResponse] | None = None
+    model_config = ConfigDict(from_attributes=True)
+
+class StudentExamListItemResponse(ExamResponse):
+    studentStatus: str | None = None
+    attemptId: str | None = None
     model_config = ConfigDict(from_attributes=True)

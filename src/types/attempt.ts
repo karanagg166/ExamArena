@@ -90,3 +90,4 @@ export type StudentExamUpdate = {
   status?: AttemptStatus;
   submittedAt?: string;
 };
+export type QuestionStatus = "NOT_ANSWERED" | "ANSWERED" | "MARKED_FOR_REVIEW" | "NOT_VISITED";

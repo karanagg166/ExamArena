@@ -22,8 +22,8 @@ export function EmptyState({
   action,
   className,
 }: EmptyStateProps) {
-  const isComponent = typeof icon === "function";
-  const Icon = (isComponent ? icon : Inbox) as LucideIcon;
+  const isElement = React.isValidElement(icon);
+  const Icon = (!isElement && icon ? icon : Inbox) as LucideIcon;
 
   return (
     <div
@@ -34,10 +34,10 @@ export function EmptyState({
     >
       <div className="rounded-2xl bg-[var(--surface-2)] p-4 flex items-center justify-center">
         {icon ? (
-          isComponent ? (
-            <Icon className="h-8 w-8 text-[var(--text-muted)]" />
-          ) : (
+          isElement ? (
             icon
+          ) : (
+            <Icon className="h-8 w-8 text-[var(--text-muted)]" />
           )
         ) : (
           <Inbox className="h-8 w-8 text-[var(--text-muted)]" />

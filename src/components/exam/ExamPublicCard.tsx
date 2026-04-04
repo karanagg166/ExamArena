@@ -7,9 +7,10 @@ import type { Exam } from "@/types";
 
 interface ExamPublicCardProps {
   exam: Exam;
+  isStudent?: boolean;
 }
 
-export function ExamPublicCard({ exam }: ExamPublicCardProps) {
+export function ExamPublicCard({ exam, isStudent }: ExamPublicCardProps) {
   const formattedDate = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
@@ -18,8 +19,10 @@ export function ExamPublicCard({ exam }: ExamPublicCardProps) {
     minute: "2-digit",
   }).format(new Date(exam.scheduledAt));
 
+  const targetHref = isStudent ? `/student/exams/${exam.id}/start` : `/exams/${exam.id}`;
+
   return (
-    <Link href={`/exams/${exam.id}`}>
+    <Link href={targetHref}>
       <GlassCard interactive padding="lg" className="h-full flex flex-col group relative overflow-hidden">
         {/* Top Accent Bar */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--accent)] to-violet-500 opacity-50 transition-opacity group-hover:opacity-100" />

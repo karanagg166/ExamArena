@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import type { ExamType, Subject } from "@/types";
 
 interface ExamFormProps {
@@ -14,6 +15,7 @@ interface ExamFormProps {
     duration: number;
     type: ExamType;
     maxMarks: number;
+    isPublished: boolean;
     subject?: Subject;
     instructions?: string;
   };
@@ -159,6 +161,31 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
             value={exam.instructions || ""}
             onChange={(e) => onChange({ instructions: e.target.value })}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Publish Status</Label>
+          <div className="inline-flex rounded-xl border border-[var(--border-default)] p-1 bg-[var(--surface-1)]">
+            <Button
+              type="button"
+              size="sm"
+              variant={exam.isPublished ? "ghost" : "secondary"}
+              onClick={() => onChange({ isPublished: false })}
+            >
+              Draft
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={exam.isPublished ? "secondary" : "ghost"}
+              onClick={() => onChange({ isPublished: true })}
+            >
+              Published
+            </Button>
+          </div>
+          <p className="text-xs text-[var(--text-muted)]">
+            Draft exams are visible only to you. Published exams are visible to students.
+          </p>
         </div>
       </div>
     </GlassCard>

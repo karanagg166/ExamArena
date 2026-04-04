@@ -40,8 +40,8 @@ export type Exam = {
   };
 };
 
-// Teacher creating an exam — no id/timestamps/isPublished (server defaults)
-export type ExamCreate = Omit<Exam, "id" | "createdAt" | "updatedAt" | "isPublished" | "questions" | "teacherId"> & {
+// Teacher creating an exam — no id/timestamps/teacherId
+export type ExamCreate = Omit<Exam, "id" | "createdAt" | "updatedAt" | "questions" | "teacherId"> & {
   questions?: QuestionCreate[];
 };
 

@@ -160,7 +160,7 @@ model Question {
   id             String              @id @default(cuid())
   questionNumber Int
   text           String
-  section        String?
+  section        String              @default("General")
   marks          Int
   imageUrl       String?
   wordLimit      Int?

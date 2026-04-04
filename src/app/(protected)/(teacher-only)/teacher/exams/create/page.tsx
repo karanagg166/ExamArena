@@ -27,6 +27,7 @@ export default function CreateExamPage() {
     duration: 60,
     type: "MIDTERM",
     maxMarks: 0,
+    isPublished: false,
     questions: [],
   });
 
@@ -46,6 +47,7 @@ export default function CreateExamPage() {
 
     for (const q of exam.questions ?? []) {
       if (!q.text.trim()) return "All questions must have a prompt.";
+      if (!q.section?.trim()) return "All questions must have a section (e.g. Physics).";
       if (!q.marks || q.marks < 1)
         return `Question ${q.questionNumber} must have marks greater than 0.`;
       if (
@@ -69,6 +71,7 @@ export default function CreateExamPage() {
 
     setLoading(true);
     try {
+      console.log(exam);
       await api.post("/api/v1/exams/", { ...exam, maxMarks });
       router.push("/teacher/exams");
     } catch (err: unknown) {
