@@ -160,7 +160,7 @@ docker compose exec backend prisma generate --generator pyclient
 Push schema to database:
 
 ```bash
-docker compose exec backend prisma db push
+docker compose exec backend prisma db push 
 ```
 
 Force reset and push schema (destructive):
@@ -352,3 +352,7 @@ View your project structure (excluding noise folders):
 ```bash
 tree -I 'node_modules|.next|__pycache__|.git|.venv|*.pyc|postgres_data|generated' --dirsfirst
 ```
+
+
+
+

@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -23,6 +24,8 @@ from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
 
 router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
+logger = logging.getLogger(__name__)
+
 
 
 @router.get("/me", response_model=SchoolResponse)
@@ -30,7 +33,7 @@ async def get_current_user_school(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ) -> SchoolResponse:
     school = await crud.get_school_by_user_id(current_user.id)
-    print("Current school:", school)
+    logger.debug("Current school: %s", school)
 
     if not school:
         raise HTTPException(status_code=404, detail="School profile not found.")
@@ -64,7 +67,7 @@ async def create_school(
         where={"userId": current_user.id},
         data=cast(Any, {"schoolId": school.id}),
     )
-    print("Updated teacher with new schoolId:", teacher_updated)
+    logger.debug("Updated teacher with new schoolId: %s", teacher_updated)
     return school
 
 
@@ -160,7 +163,7 @@ async def get_school_by_id(
     school_id: str,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    print("Fetching school with ID:", school_id)  # Debug log
+    logger.debug("Fetching school with ID: %s", school_id)
     """Get a school by database ID."""
     del current_user
     school = await crud.get_school_by_id(school_id)

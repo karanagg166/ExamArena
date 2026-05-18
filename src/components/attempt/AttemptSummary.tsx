@@ -1,13 +1,14 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAttemptEngine } from '@/hooks/useAttemptEngine';
 import { cn } from '@/lib/utils';
+import type { Question } from '@/types';
 
-export const AttemptSummary = ({ questions }: { questions: any[] }) => {
+export const AttemptSummary = ({ questions }: { questions: Question[] }) => {
   const { answers, activeQuestionId, setActiveQuestion } = useAttemptEngine();
 
   // Group questions by section
   const sections = useMemo(() => {
-    const map = new Map<string, any[]>();
+    const map = new Map<string, Question[]>();
     questions.forEach((q) => {
       const sec = q.section || "General";
       if (!map.has(sec)) map.set(sec, []);
@@ -25,6 +26,7 @@ export const AttemptSummary = ({ questions }: { questions: any[] }) => {
     if (activeQuestionId) {
       const activeQ = questions.find(q => q.id === activeQuestionId);
       if (activeQ) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setActiveTab(activeQ.section || "General");
       }
     }

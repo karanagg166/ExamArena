@@ -12,9 +12,9 @@ export function getErrorMessage(error: unknown): string {
   if (typeof error === "string") return error;
 
   // Handle Axios Error
-  const axiosError = error as AxiosError<any>;
+  const axiosError = error as AxiosError<Record<string, unknown>>;
   if (axiosError?.response?.data) {
-    const data = axiosError.response.data;
+    const data = axiosError.response.data as Record<string, unknown>;
 
     // Handle "detail" field (common in FastAPI)
     if (data.detail) {
@@ -23,7 +23,7 @@ export function getErrorMessage(error: unknown): string {
       // If detail is an array (Pydantic validation errors)
       if (Array.isArray(data.detail)) {
         return data.detail
-          .map((err: any) => {
+          .map((err: { loc?: string[]; msg: string }) => {
             const loc = err.loc ? `${err.loc.join(" -> ")}: ` : "";
             return `${loc}${err.msg}`;
           })
@@ -31,8 +31,8 @@ export function getErrorMessage(error: unknown): string {
       }
 
       // If detail is an object with a message
-      if (typeof data.detail === "object" && data.detail.msg) {
-        return data.detail.msg;
+      if (typeof data.detail === "object" && data.detail !== null && "msg" in data.detail) {
+        return (data.detail as { msg: string }).msg;
       }
       
       // Just stringify if it's an object we don't recognize
@@ -40,7 +40,7 @@ export function getErrorMessage(error: unknown): string {
     }
 
     // Handle other common error fields
-    if (data.message) return data.message;
+    if (data.message) return typeof data.message === "string" ? data.message : JSON.stringify(data.message);
     if (data.error) return typeof data.error === "string" ? data.error : JSON.stringify(data.error);
   }
 

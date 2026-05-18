@@ -30,7 +30,7 @@ async def start_exam_attempt(attempt_data: StudentExamCreate, user_id: str) -> S
         for q in exam.questions
     ] if exam.questions else []
 
-    return await db.prisma.studentexam.create(
+    new_attempt = await db.prisma.studentexam.create(
         data={
             "studentId": student.id,
             "examId": exam.id,
@@ -48,7 +48,7 @@ async def start_exam_attempt(attempt_data: StudentExamCreate, user_id: str) -> S
             }
         }
     )
-    return StudentExamResponse.model_validate(attempt_model)
+    return StudentExamResponse.model_validate(new_attempt)
 
 async def get_attempt_by_id(attempt_id: str) -> StudentExamResponse | None:
     attempt_model = await db.prisma.studentexam.find_unique(

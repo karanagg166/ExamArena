@@ -11,9 +11,10 @@
     "ci": "docker compose build && docker compose up -d && sleep 5 && curl http://localhost:8000/health"
   },
   "dependencies": {
+    "@base-ui/react": "^1.4.1",
     "@clerk/nextjs": "^7.0.6",
-    "@lottiefiles/dotlottie-react": "^0.14.3",
     "@hookform/resolvers": "^5.2.2",
+    "@lottiefiles/dotlottie-react": "^0.14.3",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.3.2",
@@ -56,6 +57,7 @@
     "react-simple-typewriter": "^5.0.1",
     "react-webcam": "^7.2.0",
     "recharts": "^2.15.3",
+    "shadcn": "^4.7.0",
     "socket.io-client": "^4.8.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",

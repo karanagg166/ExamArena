@@ -120,19 +120,19 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
   ],
 };
 
-/* ─── Role badge colors ─── */
+/* ─── Role badge colors — light/dark compatible ─── */
 const roleBadgeColors: Record<UserRole, string> = {
-  PRINCIPAL: "border-violet-500/25 bg-violet-500/10 text-violet-300",
-  TEACHER: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-  STUDENT: "border-sky-500/25 bg-sky-500/10 text-sky-300",
-  ADMIN: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+  PRINCIPAL: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950/50 dark:text-violet-300",
+  TEACHER: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
+  STUDENT: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
+  ADMIN: "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
 };
 
 const roleDotColors: Record<UserRole, string> = {
-  PRINCIPAL: "bg-violet-400",
-  TEACHER: "bg-emerald-400",
-  STUDENT: "bg-sky-400",
-  ADMIN: "bg-amber-400",
+  PRINCIPAL: "bg-violet-500",
+  TEACHER: "bg-emerald-500",
+  STUDENT: "bg-blue-500",
+  ADMIN: "bg-amber-500",
 };
 
 /* ─── Sidebar component ─── */
@@ -185,17 +185,17 @@ export function AppSidebar() {
       {/* ─── Desktop Sidebar ─── */}
       <aside
         className={cn(
-          "glass-nav fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-[var(--border-subtle)] transition-all duration-300 md:flex",
+          "glass-nav fixed inset-y-0 left-0 z-30 hidden flex-col border-r border-border transition-all duration-300 md:flex",
           collapsed ? "w-[68px]" : "w-[240px]",
         )}
       >
         {/* Logo / Brand */}
-        <div className="flex h-14 items-center gap-3 border-b border-[var(--border-subtle)] px-4">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">
+        <div className="flex h-14 items-center gap-3 border-b border-border px-4">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white shadow-sm">
             EA
           </div>
           {!collapsed && (
-            <span className="text-sm font-semibold text-[var(--text-primary)] animate-fade-in">
+            <span className="text-sm font-semibold text-foreground animate-fade-in">
               Exam Arena
             </span>
           )}
@@ -229,8 +229,8 @@ export function AppSidebar() {
                 className={cn(
                   "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                   active
-                    ? "bg-[var(--accent-muted)] text-[var(--accent)] shadow-sm"
-                    : "text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
+                    ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shadow-sm"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                   collapsed && "justify-center px-2",
                 )}
               >
@@ -238,16 +238,16 @@ export function AppSidebar() {
                   className={cn(
                     "h-[18px] w-[18px] shrink-0 transition-colors",
                     active
-                      ? "text-[var(--accent)]"
-                      : "text-[var(--text-muted)] group-hover:text-[var(--text-primary)]",
+                      ? "text-indigo-600 dark:text-indigo-400"
+                      : "text-muted-foreground group-hover:text-foreground",
                   )}
                 />
                 {!collapsed && (
                   <span className="animate-fade-in">{item.label}</span>
                 )}
-                {/* Active indicator pill */}
+                {/* Active indicator */}
                 {active && !collapsed && (
-                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
+                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />
                 )}
               </Link>
             );
@@ -255,14 +255,14 @@ export function AppSidebar() {
         </nav>
 
         {/* Bottom section */}
-        <div className="border-t border-[var(--border-subtle)] p-3 space-y-2">
+        <div className="border-t border-border p-3 space-y-1.5">
           {/* User info */}
           {!collapsed && user && (
-            <div className="rounded-xl bg-[var(--surface-2)] px-3 py-2.5 animate-fade-in">
-              <p className="truncate text-sm font-medium text-[var(--text-primary)]">
+            <div className="rounded-xl bg-muted px-3 py-2.5 animate-fade-in">
+              <p className="truncate text-sm font-medium text-foreground">
                 {user.name}
               </p>
-              <p className="truncate text-xs text-[var(--text-muted)]">
+              <p className="truncate text-xs text-muted-foreground">
                 {user.email}
               </p>
             </div>
@@ -274,7 +274,7 @@ export function AppSidebar() {
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               title={collapsed ? (theme === "dark" ? "Light Mode" : "Dark Mode") : undefined}
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-muted)] transition-all hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
+                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground",
                 collapsed && "justify-center px-2",
               )}
             >
@@ -292,7 +292,7 @@ export function AppSidebar() {
             onClick={handleLogout}
             title={collapsed ? "Logout" : undefined}
             className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--error)] transition-all hover:bg-[var(--error-muted)]",
+              "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 transition-all hover:bg-red-50 dark:hover:bg-red-950/30",
               collapsed && "justify-center px-2",
             )}
           >
@@ -315,7 +315,7 @@ export function AppSidebar() {
       </aside>
 
       {/* ─── Mobile Bottom Tab Bar ─── */}
-      <nav className="glass-nav fixed inset-x-0 bottom-0 z-30 flex border-t border-[var(--border-subtle)] md:hidden">
+      <nav className="glass-nav fixed inset-x-0 bottom-0 z-30 flex border-t border-border md:hidden">
         {navItems.slice(0, 5).map((item) => {
           const active = isActive(item);
           return (
@@ -324,7 +324,7 @@ export function AppSidebar() {
               href={item.href}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
-                active ? "text-[var(--accent)]" : "text-[var(--text-muted)]",
+                active ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground",
               )}
             >
               <item.icon className="h-5 w-5" />
