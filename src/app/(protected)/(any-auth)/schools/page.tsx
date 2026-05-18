@@ -115,7 +115,7 @@ export default function SchoolsPage() {
             <SlidersHorizontal className="h-4 w-4" />
             Filters
             {activeFilterCount > 0 && (
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">
                 {activeFilterCount}
               </span>
             )}
@@ -126,7 +126,7 @@ export default function SchoolsPage() {
       <div className="mt-6 flex flex-col gap-6">
         {/* Filter Panel */}
         {filtersOpen && (
-          <div className="glass-panel p-5 animate-fade-in-down">
+          <div className="rounded-2xl border border-border bg-card p-5 animate-fade-in-down">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               <FilterInput
                 label="School Name"
@@ -185,10 +185,10 @@ export default function SchoolsPage() {
             </div>
 
             {activeFilterCount > 0 && (
-              <div className="mt-4 pt-4 border-t border-[var(--border-subtle)] flex justify-end">
+              <div className="mt-4 pt-4 border-t border-border flex justify-end">
                 <button
                   onClick={handleReset}
-                  className="inline-flex items-center gap-1.5 text-sm text-[var(--error)] hover:text-[var(--error)]/80 font-medium transition-colors"
+                  className="inline-flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400 hover:opacity-80 font-medium transition-colors"
                 >
                   <X className="h-3.5 w-3.5" />
                   Clear all filters
@@ -209,7 +209,7 @@ export default function SchoolsPage() {
 
         {/* Error */}
         {error && (
-          <div className="panel panel-padding border-[var(--error)]/30 text-sm text-[var(--error)]">
+          <div className="panel panel-padding border-red-200 dark:border-red-900/30 text-sm text-red-600 dark:text-red-400">
             {error}
           </div>
         )}

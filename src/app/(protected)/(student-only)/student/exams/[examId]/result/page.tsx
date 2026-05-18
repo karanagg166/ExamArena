@@ -14,6 +14,7 @@ export default function ExamResultPage() {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMounted(true);
         // Ensure state is cleared so user can't resume
         if (attemptId) {

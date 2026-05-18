@@ -1,6 +1,7 @@
-from typing import Annotated
+import logging
+from typing import Annotated  # noqa: I001
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status # type: ignore
 from prisma.enums import Role
 
 from app.api.deps import get_current_user
@@ -18,6 +19,7 @@ from .crud import (
 from .schemas import SchoolClassCreateRequest, SchoolClassResponse
 
 router = APIRouter(prefix="/api/v1/classes", tags=["classes"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -28,7 +30,7 @@ async def create_class(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Create a new school class."""
-    print("Received class creation request:", class_data, "from user:", current_user.id)
+    logger.debug("Received class creation request: %s from user: %s", class_data, current_user.id)
     created_class = await create_school_class(class_data, current_user.id)
     if not created_class:
         raise HTTPException(

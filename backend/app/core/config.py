@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     ALLOWED_ORIGINS: str = "http://localhost:3000"
     OPENAI_API_KEY: str | None = None
-
+    REDIS_URL: str = "redis://localhost:6379/0"
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )

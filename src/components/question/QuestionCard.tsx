@@ -36,7 +36,7 @@ export function QuestionCard({
   onDelete,
 }: QuestionCardProps) {
   // Simple update helper
-  const updateField = (field: keyof QuestionUpsert, value: any) => {
+  const updateField = <K extends keyof QuestionUpsert>(field: K, value: QuestionUpsert[K]) => {
     onChange({ ...question, [field]: value });
   };
 

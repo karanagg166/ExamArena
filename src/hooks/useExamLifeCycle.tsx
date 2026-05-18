@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
 import { useAttemptStore, QuestionAttemptState } from '@/stores/useAttemptStore';
 import { api } from '@/lib/axios';
+import type { QuestionType } from '@/types';
 
 export function useExamLifeCycle() {
   const store = useAttemptStore();
 
-  const initializeAttempt = useCallback((examId: string, attemptId: string, initialAnswers: any[], startedAt: string, defaultTimeLimitSeconds?: number) => {
+  const initializeAttempt = useCallback((examId: string, attemptId: string, initialAnswers: { id: string; questionId: string; questionType: QuestionType; textAnswer?: string; selectedOptions?: { optionId: string }[] }[], startedAt: string, defaultTimeLimitSeconds?: number) => {
     // Only initialize if we're starting a new attempt or forcing a refresh of the SAME attempt.
     if (store.attemptId === attemptId && Object.keys(store.answers).length > 0) {
       return; 
@@ -19,7 +20,7 @@ export function useExamLifeCycle() {
         questionType: ans.questionType,
         status: "NOT_VISITED",
         textAnswer: ans.textAnswer,
-        selectedOptions: ans.selectedOptions?.map((o: any) => ({ optionId: o.optionId })) || [],
+        selectedOptions: ans.selectedOptions?.map((o: { optionId: string }) => ({ optionId: o.optionId })) || [],
       };
       if (ans.textAnswer || (ans.selectedOptions && ans.selectedOptions.length > 0)) {
          newAnswers[ans.questionId].status = "ANSWERED";

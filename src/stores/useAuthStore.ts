@@ -18,11 +18,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await api.post("/api/v1/auth/login", { email, password });
       await useAuthStore.getState().fetchMe();
-      console.log("Login attempted with:", { email, password });
     } catch (error: unknown) {
       console.error("Login failed:", error);
       set({ user: null });
-
       set({ error: "Invalid email or password" });
     } finally {
       set({ loading: false });

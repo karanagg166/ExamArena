@@ -9,11 +9,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { api } from '@/lib/axios';
 import { AlertCircle, Clock, FileText, CheckCircle2 } from 'lucide-react';
 import { useAttemptEngine } from '@/hooks/useAttemptEngine';
+import { getErrorMessage } from '@/lib/error';
+import type { Exam } from '@/types';
 
 export default function ExamStartPage() {
   const { examId } = useParams();
   const router = useRouter();
-  const [exam, setExam] = useState<any>(null);
+  const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [accepted, setAccepted] = useState(false);
@@ -26,7 +28,7 @@ export default function ExamStartPage() {
       try {
         const res = await api.get(`/api/v1/exams/${examId}`);
         setExam(res.data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         setError("Failed to load exam details. It may not exist or not be published.");
       } finally {
         setLoading(false);
@@ -54,7 +56,7 @@ export default function ExamStartPage() {
          attemptData.id, 
          attemptData.answers, 
          attemptData.startedAt,
-         exam.duration * 60 // Assuming duration is in minutes in DB
+         exam?.duration ? exam.duration * 60 : undefined // Assuming duration is in minutes in DB
       );
 
       // Force full screen
@@ -67,8 +69,8 @@ export default function ExamStartPage() {
       }
 
       router.push(`/student/exams/${examId}/attempt`);
-    } catch (err: any) {
-        setError(err.response?.data?.detail || "Failed to start the exam. You might have already submitted it.");
+    } catch (err: unknown) {
+        setError(getErrorMessage(err) || "Failed to start the exam. You might have already submitted it.");
         setStarting(false);
     }
   };
@@ -114,7 +116,7 @@ export default function ExamStartPage() {
                </div>
                <div>
                    <p className="text-xs text-[var(--text-dimmed)] uppercase mb-1">Questions</p>
-                   <p className="text-white font-medium">{exam.questionCount ?? exam.questions?.length ?? 0}</p>
+                   <p className="text-white font-medium">{exam.questions?.length ?? 0}</p>
                </div>
                 <div>
                    <p className="text-xs text-[var(--text-dimmed)] uppercase mb-1">Type</p>

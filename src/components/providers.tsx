@@ -5,15 +5,14 @@ import { Toaster } from "sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
       {children}
       <Toaster
         richColors
         closeButton
-        theme="dark"
         position="top-right"
         toastOptions={{
-          className: "!border !border-zinc-700 !bg-zinc-900 !text-zinc-100",
+          className: "!border !border-border !bg-card !text-card-foreground !shadow-md",
         }}
       />
     </ThemeProvider>

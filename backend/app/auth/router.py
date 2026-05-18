@@ -38,14 +38,14 @@ async def signup(user_data: UserRequest, response: Response):
 
     # Generate token
     access_token = create_access_token(new_user.id)
-    print("created user token is here", access_token)  # type: ignore
     # Set cookie
+    is_production = settings.ENVIRONMENT == "production"
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",
-        samesite="lax",
+        secure=is_production,
+        samesite="none" if is_production else "lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
@@ -73,13 +73,13 @@ async def login(credentials: LoginRequest, response: Response):
     # Generate token
     access_token = create_access_token(user.id)
 
-    # Set cookie
+    is_production = settings.ENVIRONMENT == "production"
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",
-        samesite="lax",
+        secure=is_production,
+        samesite="none" if is_production else "lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 

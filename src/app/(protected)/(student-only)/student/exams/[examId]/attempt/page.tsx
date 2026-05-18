@@ -12,6 +12,8 @@ import { ChevronRight, ChevronLeft, Send, AlertCircle, Maximize, PanelRightOpen,
 import { GlassCard } from '@/components/ui/glass-card';
 import { useProctoring } from '@/hooks/useProctoring';
 import { ProctoringWarning } from '@/components/attempt/ProctoringWarning';
+import type { Exam, Question } from '@/types';
+import { getErrorMessage } from '@/lib/error';
 
 export default function ExamAttemptPage() {
     const { examId } = useParams();
@@ -27,7 +29,7 @@ export default function ExamAttemptPage() {
         clearAttempt
     } = useAttemptEngine();
 
-    const [exam, setExam] = useState<any>(null);
+    const [exam, setExam] = useState<Exam | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -88,9 +90,9 @@ export default function ExamAttemptPage() {
             }
 
             router.replace(`/student/exams/${examId}/result`);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Submission failed", err);
-            const msg = err.response?.data?.detail || "Failed to submit exam. Please check your connection and try again.";
+            const msg = getErrorMessage(err) || "Failed to submit exam. Please check your connection and try again.";
             alert(msg);
             setSubmitting(false);
         }
@@ -104,6 +106,27 @@ export default function ExamAttemptPage() {
         enabled: !!(exam && status === 'IN_PROGRESS' && !submitting)
     });
 
+    const questions = React.useMemo(() => exam?.questions || [], [exam?.questions]);
+    const currentIndex = questions.findIndex((q: Question) => q.id === activeQuestionId);
+    const activeQuestion = currentIndex !== -1 ? questions[currentIndex] : questions[0];
+
+    const goToNext = () => {
+        if (currentIndex < questions.length - 1) {
+            setActiveQuestion(questions[currentIndex + 1].id);
+        }
+    };
+
+    const goToPrev = () => {
+        if (currentIndex > 0) {
+            setActiveQuestion(questions[currentIndex - 1].id);
+        }
+    };
+
+    useEffect(() => {
+        if (!activeQuestionId && questions && questions.length > 0) {
+           setActiveQuestion(questions[0].id);
+        }
+    }, [activeQuestionId, questions, setActiveQuestion]);
 
     if (loading) {
         return (
@@ -127,28 +150,6 @@ export default function ExamAttemptPage() {
 
     const unansweredCount = Object.values(answers).filter(a => a.status === 'NOT_VISITED' || a.status === 'VISITED_NOT_ANSWERED').length;
     const hasUnanswered = unansweredCount > 0;
-
-    const questions = exam.questions || [];
-    const currentIndex = questions.findIndex((q: any) => q.id === activeQuestionId);
-    const activeQuestion = currentIndex !== -1 ? questions[currentIndex] : questions[0];
-
-    const goToNext = () => {
-        if (currentIndex < questions.length - 1) {
-            setActiveQuestion(questions[currentIndex + 1].id);
-        }
-    };
-
-    const goToPrev = () => {
-        if (currentIndex > 0) {
-            setActiveQuestion(questions[currentIndex - 1].id);
-        }
-    };
-
-    useEffect(() => {
-        if (!activeQuestionId && questions && questions.length > 0) {
-           setActiveQuestion(questions[0].id);
-        }
-    }, [activeQuestionId, questions, setActiveQuestion]);
 
     if (!activeQuestionId && questions && questions.length > 0) {
        return null;

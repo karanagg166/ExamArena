@@ -13,10 +13,6 @@ interface QuestionOptionsProps {
 }
 
 export function QuestionOptions({ type, options, onChange }: QuestionOptionsProps) {
-  if (type === "SHORT_ANSWER" || type === "ESSAY") {
-    return null;
-  }
-
   // Auto-initialize True/False
   React.useEffect(() => {
     if (type === "TRUE_FALSE" && options.length !== 2) {
@@ -26,6 +22,10 @@ export function QuestionOptions({ type, options, onChange }: QuestionOptionsProp
       ]);
     }
   }, [type, options.length, onChange]);
+
+  if (type === "SHORT_ANSWER" || type === "ESSAY") {
+    return null;
+  }
 
   const addOption = () => {
     onChange([
