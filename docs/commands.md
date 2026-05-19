@@ -2,7 +2,15 @@
 
 Use this guide to run the full stack with Docker and manage Prisma from backend only.
 
-## 0. Where To Run Commands
+## 0. Quick Setup (Automated)
+
+To easily start the services, configure the database, and seed it with test accounts (Admin, Principal, Teacher, Student), simply run the automated setup script from the project root:
+
+```bash
+./setup.sh
+```
+
+## 0.1 Where To Run Commands
 
 Run all commands from project root:
 

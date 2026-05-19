@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     SENTRY_DSN: str | None = None
     DATABASE_URL: str = ""
-    ALLOWED_ORIGINS: str = "http://localhost:3000"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,https://exam-arena-mu.vercel.app"
     OPENAI_API_KEY: str | None = None
     REDIS_URL: str = "redis://localhost:6379/0"
     model_config = SettingsConfigDict(
