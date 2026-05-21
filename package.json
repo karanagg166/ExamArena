@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "export PRISMA_PY_DEBUG_GENERATOR=1 && (pip3 install prisma --break-system-packages || pip3 install prisma) && export PATH=\"$PATH:$(python3 -m site --user-base)/bin\" && prisma generate --schema=prisma/schema.prisma && next build",
+    "build": "export PRISMA_PY_DEBUG_GENERATOR=1 && (pip3 install prisma --break-system-packages || pip3 install prisma) && python3 -m prisma generate --schema=prisma/schema.prisma && next build",
     "start": "next start",
     "lint": "eslint src/",
     "test": "vitest",
