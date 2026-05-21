@@ -66,7 +66,7 @@ async def real_db():
     """Creates a fresh Prisma client on the current event loop and
     monkey-patches the global singleton so the app's routes use it."""
     import app.core.database as db_module
-    from prisma import Prisma
+    from app.generated.prisma import Prisma
 
     original = db_module.prisma  # save the original
     fresh = Prisma()

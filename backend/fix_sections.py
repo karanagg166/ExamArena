@@ -1,5 +1,5 @@
 import asyncio
-from prisma import Prisma
+from app.generated.prisma import Prisma
 
 async def main() -> None:
     db = Prisma()

@@ -21,6 +21,7 @@ import {
   History,
   Sun,
   Moon,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -63,7 +64,7 @@ interface NavItem {
  *   /dashboard              — Dashboard
  *   /principal/profile      — My Profile
  *   /principal/school       — My School
- *   /principal/school/classes — Classes
+ *   /principal/school/classes -- Classes
  *   /teacher/exams/create   — Create Exam
  *   /teacher/exams          — My Exams
  *   /teachers               — Teachers
@@ -87,6 +88,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
     { label: "My Exams", href: "/student/exams", icon: History, matchPrefix: "/student/exams" },
     { label: "Classmates", href: "/students", icon: Users, matchPrefix: "/students" },
+    { label: "Chat Support", href: "/chat", icon: MessageSquare, matchPrefix: "/chat" },
   ],
   TEACHER: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -98,6 +100,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
     { label: "Students", href: "/students", icon: Users, matchPrefix: "/students" },
     { label: "Teachers", href: "/teachers", icon: BookOpen, matchPrefix: "/teachers" },
+    { label: "Chat Support", href: "/chat", icon: MessageSquare, matchPrefix: "/chat" },
   ],
   PRINCIPAL: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -109,6 +112,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { label: "Teachers", href: "/teachers", icon: Users, matchPrefix: "/teachers" },
     { label: "Students", href: "/students", icon: GraduationCap, matchPrefix: "/students" },
     { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
+    { label: "Chat Support", href: "/chat", icon: MessageSquare, matchPrefix: "/chat" },
   ],
   ADMIN: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -117,6 +121,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { label: "Teachers", href: "/teachers", icon: Users, matchPrefix: "/teachers" },
     { label: "Students", href: "/students", icon: GraduationCap, matchPrefix: "/students" },
     { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
+    { label: "Chat Support", href: "/chat", icon: MessageSquare, matchPrefix: "/chat" },
   ],
 };
 

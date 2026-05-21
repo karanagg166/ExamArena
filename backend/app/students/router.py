@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from prisma.enums import Role
+from app.generated.prisma.enums import Role
 
 from app.api.deps import get_current_user
 from app.principals.crud import get_principal_by_teacher_id

@@ -6,7 +6,7 @@ import os
 # Ensure the backend directory is in the sys.path so we can import app modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from prisma import Prisma
+from app.generated.prisma import Prisma
 from app.core.security import hash_password
 
 async def main():

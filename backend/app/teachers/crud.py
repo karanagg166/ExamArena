@@ -1,7 +1,7 @@
 import json
 from typing import Any, cast
 
-from prisma.enums import Qualification, Subject  # type: ignore
+from app.generated.prisma.enums import Qualification, Subject  # type: ignore
 
 import app.core.database as db
 from app.school.crud import get_school_by_id

@@ -1,6 +1,6 @@
 from typing import Any, cast
 
-from prisma.enums import Role  # type: ignore
+from app.generated.prisma.enums import Role  # type: ignore
 
 import app.core.database as db
 from app.principals.schemas import PrincipalUpdate

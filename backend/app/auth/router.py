@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
+from jose import jwt
 
 from app.api.deps import get_current_user
 from app.core.config import settings
@@ -108,3 +109,30 @@ async def update_current_user_info(
 ):
     """Update current authenticated user"""
     return await update_user(current_user.id, user_data)
+
+
+@router.get("/stream-token")
+async def get_stream_token(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """
+    Generate GetStream secure user token for Stream Chat
+    """
+    if not settings.STREAM_API_SECRET:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Stream API Secret not configured in backend Settings."
+        )
+    
+    payload = {
+        "user_id": current_user.id
+    }
+    
+    token = jwt.encode(payload, settings.STREAM_API_SECRET, algorithm="HS256")
+    
+    return {
+        "token": token,
+        "apiKey": settings.STREAM_API_KEY,
+        "appId": settings.STREAM_APP_ID
+    }
+

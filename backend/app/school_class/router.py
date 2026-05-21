@@ -2,7 +2,7 @@ import logging
 from typing import Annotated  # noqa: I001
 
 from fastapi import APIRouter, Depends, HTTPException, status # type: ignore
-from prisma.enums import Role
+from app.generated.prisma.enums import Role
 
 from app.api.deps import get_current_user
 from app.principals.crud import get_principal_by_teacher_id

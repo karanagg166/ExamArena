@@ -48,6 +48,15 @@ next-env.d.ts
 /src/generated/prisma
 /src/generated/
 
+# Python generated files
+/backend/app/generated/
+/backend/.pytest_cache/
+/backend/.mypy_cache/
+/backend/.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # Python Virtual Environments
 venv/
 backend/venv/
@@ -56,7 +65,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 backend/__pycache__/
-.pytest_cache/
 
 # Sentry Config File
 .env.sentry-build-plugin
+
