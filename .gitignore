@@ -69,3 +69,4 @@ backend/__pycache__/
 # Sentry Config File
 .env.sentry-build-plugin
 
+.env*.local
