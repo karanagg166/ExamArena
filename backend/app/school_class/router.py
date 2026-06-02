@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.post(
-    "/", response_model=SchoolClassResponse, status_code=status.HTTP_201_CREATED
+    "", response_model=SchoolClassResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_class(
     class_data: SchoolClassCreateRequest,

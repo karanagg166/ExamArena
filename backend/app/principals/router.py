@@ -31,7 +31,7 @@ async def get_current_teacher_profile(current_user: UserResponse):
     return teacher
 
 
-@router.post("/", response_model=PrincipalResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PrincipalResponse, status_code=status.HTTP_201_CREATED)
 async def create_my_principal_profile(
     data: PrincipalCreateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],

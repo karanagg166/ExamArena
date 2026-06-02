@@ -41,7 +41,7 @@ async def get_current_user_school(
     return school
 
 
-@router.post("/", response_model=SchoolResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=SchoolResponse, status_code=status.HTTP_201_CREATED)
 async def create_school(
     school_data: SchoolCreateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
@@ -104,7 +104,7 @@ async def delete_my_school_profile(
     return None
 
 
-@router.get("/", response_model=list[SchoolResponse])
+@router.get("", response_model=list[SchoolResponse])
 async def fetch_schools(
     name: Annotated[str | None, Query()] = None,
     city: Annotated[str | None, Query()] = None,

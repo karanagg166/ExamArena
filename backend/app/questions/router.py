@@ -22,7 +22,7 @@ async def _require_teacher(current_user: UserResponse):
     return teacher
 
 
-@router.post("/", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
 async def add_new_question(
     question_data: QuestionCreateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)]

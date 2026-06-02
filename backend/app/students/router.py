@@ -26,7 +26,7 @@ from app.users.schemas import UserResponse
 router = APIRouter(prefix="/api/v1/students", tags=["students"])
 
 
-@router.get("/", response_model=list[StudentListItemResponse])
+@router.get("", response_model=list[StudentListItemResponse])
 async def fetch_students(
     name: str | None = None,
     email: str | None = None,
@@ -97,7 +97,7 @@ async def fetch_students(
 
 
 @router.post(
-    "/", response_model=StudentCreateRequest, status_code=status.HTTP_201_CREATED
+    "", response_model=StudentCreateRequest, status_code=status.HTTP_201_CREATED
 )
 async def create_my_student_profile(
     student_data: StudentCreateRequest,

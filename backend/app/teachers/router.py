@@ -27,7 +27,7 @@ from app.users.schemas import UserResponse
 router = APIRouter(prefix="/api/v1/teachers", tags=["teachers"])
 
 
-@router.get("/", response_model=list[TeacherListItemResponse])
+@router.get("", response_model=list[TeacherListItemResponse])
 async def fetch_teachers(
     filters: Annotated[TeacherFilterParams, Depends()],
     _current_user: Annotated[UserResponse, Depends(get_current_user)],
@@ -35,7 +35,7 @@ async def fetch_teachers(
     return await get_teachers(filters)
 
 
-@router.post("/", response_model=TeacherResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=TeacherResponse, status_code=status.HTTP_201_CREATED)
 async def create_my_teacher_profile(
     teacher_data: TeacherCreateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],

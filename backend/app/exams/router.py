@@ -18,7 +18,7 @@ async def get_teacher_from_user(user: UserResponse):
     return teacher
 
 
-@router.post("/", response_model=ExamResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ExamResponse, status_code=status.HTTP_201_CREATED)
 async def create_new_exam(
     exam_data: ExamCreateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
@@ -33,7 +33,7 @@ async def create_new_exam(
         ) from exc
 
 
-@router.get("/", response_model=list[ExamResponse])
+@router.get("", response_model=list[ExamResponse])
 async def list_my_exams_teacher(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
@@ -41,7 +41,7 @@ async def list_my_exams_teacher(
     return await crud.get_exams_by_teacher(teacher.id)
 
 
-@router.get("/public/", response_model=list[ExamResponse])
+@router.get("/public", response_model=list[ExamResponse])
 async def list_published_exams(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
     name: str | None = None,
@@ -66,7 +66,7 @@ async def list_published_exams(
     ) # type: ignore
 
 
-@router.get("/student/", response_model=list[StudentExamListItemResponse])
+@router.get("/student", response_model=list[StudentExamListItemResponse])
 async def list_student_exams(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
     name: str | None = None,

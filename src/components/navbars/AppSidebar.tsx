@@ -142,12 +142,16 @@ const roleDotColors: Record<UserRole, string> = {
 
 /* ─── Sidebar component ─── */
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  collapsed: boolean;
+  setCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
+}
+
+export function AppSidebar({ collapsed, setCollapsed }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const [collapsed, setCollapsed] = useState(false);
   
   // Theme handling
   const { theme, setTheme } = useTheme();
@@ -347,12 +351,35 @@ export function AppSidebar() {
 export function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isExamAttempt = pathname.includes("/attempt");
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Sync collapsed state from localStorage on mount
+  React.useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved === "true") {
+      setCollapsed(true);
+    }
+  }, []);
+
+  const handleSetCollapsed = (val: boolean | ((prev: boolean) => boolean)) => {
+    setCollapsed((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  };
 
   return (
     <div className="flex min-h-screen">
-      <AppSidebar />
+      <AppSidebar collapsed={collapsed} setCollapsed={handleSetCollapsed} />
       {/* Main content area — offset by sidebar width unless in exam attempt view */}
-      <main className={cn("flex-1", !isExamAttempt && "md:ml-[240px] pb-16 md:pb-0")}>
+      <main
+        className={cn(
+          "flex-1 transition-all duration-300",
+          !isExamAttempt && (collapsed ? "md:ml-[68px]" : "md:ml-[240px]"),
+          "pb-16 md:pb-0"
+        )}
+      >
         {children}
       </main>
     </div>
