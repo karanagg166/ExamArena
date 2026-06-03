@@ -1,5 +1,6 @@
 # backend/tests/dummy_data/users.py
 from unittest.mock import MagicMock
+from datetime import datetime
 
 # ── Reusable dummy data ───────────────────────────────────────
 TEST_USER_PAYLOAD = {
@@ -11,7 +12,8 @@ TEST_USER_PAYLOAD = {
     "city": "Mumbai",
     "state": "Maharashtra",
     "country": "India",
-    "role": "USER",
+    "role": "STUDENT",
+    "dateOfBirth": "1990-01-01T00:00:00Z",
 }
 
 
@@ -33,7 +35,8 @@ def make_fake_user(overrides: dict = None):
     user.city = TEST_USER_PAYLOAD["city"]
     user.state = TEST_USER_PAYLOAD["state"]
     user.country = TEST_USER_PAYLOAD["country"]
-    user.role = "USER"
+    user.role = "STUDENT"
+    user.dateOfBirth = datetime(1990, 1, 1)
 
     for k, v in overrides.items():
         setattr(user, k, v)
