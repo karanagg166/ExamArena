@@ -190,10 +190,8 @@ class TestMeUnit:
     async def test_me_invalid_token(self, client, mock_db):
         mock_db["verify_token"].return_value = None
 
-        response = await client.get(
-            "/api/v1/auth/me",
-            cookies={"access_token": "fake.bad.token"},
-        )
+        client.cookies.set("access_token", "fake.bad.token")
+        response = await client.get("/api/v1/auth/me")
         assert response.status_code == 401
 
     @pytest.mark.asyncio
@@ -201,10 +199,8 @@ class TestMeUnit:
         mock_db["verify_token"].return_value = fake_user.id
         mock_db["get_user_by_id"].return_value = None
 
-        response = await client.get(
-            "/api/v1/auth/me",
-            cookies={"access_token": "mocked.jwt.token"},
-        )
+        client.cookies.set("access_token", "mocked.jwt.token")
+        response = await client.get("/api/v1/auth/me")
         assert response.status_code == 404
 
 
