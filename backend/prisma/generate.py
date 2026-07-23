@@ -80,7 +80,7 @@ def main():
     print(f"Updated PATH for generator execution: {env['PATH']}")
     
     # 3. Run the generator
-    schema_path = os.path.join("prisma", "schema.prisma")
+    schema_path = os.path.join("backend", "prisma", "schema.prisma")
     cmd = [sys.executable, "-m", "prisma", "py", "generate", f"--schema={schema_path}"]
     run_command(cmd, env=env)
     

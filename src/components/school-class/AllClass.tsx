@@ -24,13 +24,17 @@ export const Page = () => {
     const fetchClasses = async () => {
       try {
         const schoolResponse = await api.get("/api/v1/schools/me");
-        const response = await api.get(
-          `/api/v1/classes/school/${schoolResponse.data.id}`,
-        );
-        setClasses(response.data);
-      } catch (error) {
+        if (schoolResponse.data?.id) {
+          const response = await api.get(
+            `/api/v1/classes/school/${schoolResponse.data.id}`,
+          );
+          setClasses(response.data);
+        } else {
+          setError("No school associated with your account.");
+        }
+      } catch (error: unknown) {
         console.error("Failed to fetch classes:", error);
-        setError("Failed to load classes");
+        setError("No school associated with your account.");
       } finally {
         setLoading(false);
       }

@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
 import { useSchoolClassStore } from "@/stores";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function ClassPage() {
   const { classId } = useParams<{ classId: string }>();
   const router = useRouter();
-  const { classes, loading, error, fetchClass } = useSchoolClassStore();
+  const { classes, loading, error, fetchClass, deleteClass } = useSchoolClassStore();
 
   const schoolClass = classes.find((c) => c.id === classId);
   useEffect(() => {
@@ -18,6 +19,19 @@ export default function ClassPage() {
       fetchClass(classId);
     }
   }, [classId, fetchClass, schoolClass]);
+
+  const handleDelete = async () => {
+    if (!schoolClass) return;
+    if (window.confirm(`Are you sure you want to delete class '${schoolClass.name}'?`)) {
+      const success = await deleteClass(schoolClass.id);
+      if (success) {
+        toast.success(`Class '${schoolClass.name}' deleted successfully`);
+        router.push("/principal/school/classes");
+      } else {
+        toast.error("Failed to delete class");
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -66,6 +80,9 @@ export default function ClassPage() {
               </p>
             )}
           </div>
+          <Button variant="destructive" size="sm" onClick={handleDelete}>
+            <Trash2 className="w-4 h-4 mr-2" /> Delete Class
+          </Button>
         </CardHeader>
 
         <CardContent className="space-y-6">

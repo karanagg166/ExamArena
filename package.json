@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "python3 prisma/generate.py && next build",
+    "build": "python3 backend/prisma/generate.py && next build",
     "start": "next start",
     "lint": "eslint src/",
     "test": "vitest",

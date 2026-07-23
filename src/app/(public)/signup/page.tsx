@@ -16,6 +16,14 @@ import { Badge } from "@/components/ui/badge";
 import { FormMessage } from "@/components/ui/form-message";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Spinner } from "@/components/ui/loading";
+import {
+  sanitizePincode,
+  sanitizePhoneNo,
+  sanitizeAlpha,
+  blockNonDigits,
+  blockNonPhone,
+  blockNonAlpha,
+} from "@/lib/utils";
 
 type ValidationError = {
   msg: string;
@@ -48,9 +56,17 @@ const SignUpPage = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
+    let sanitizedValue = value;
+    if (name === "pincode") {
+      sanitizedValue = sanitizePincode(value);
+    } else if (name === "phoneNo") {
+      sanitizedValue = sanitizePhoneNo(value);
+    } else if (name === "name") {
+      sanitizedValue = sanitizeAlpha(value);
+    }
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: sanitizedValue,
     }));
   };
 
@@ -188,6 +204,7 @@ const SignUpPage = () => {
                   placeholder="John Doe"
                   value={form.name}
                   onChange={handleChange}
+                  onKeyDown={blockNonAlpha}
                   required
                 />
               </div>
@@ -269,9 +286,12 @@ const SignUpPage = () => {
                   <Input
                     id="signup-phone"
                     name="phoneNo"
+                    type="tel"
+                    inputMode="tel"
                     placeholder="+1234567890"
                     value={form.phoneNo}
                     onChange={handleChange}
+                    onKeyDown={blockNonPhone}
                   />
                 </div>
 
@@ -306,9 +326,12 @@ const SignUpPage = () => {
                   <Input
                     id="signup-pincode"
                     name="pincode"
+                    inputMode="numeric"
+                    maxLength={6}
                     placeholder="100001"
                     value={form.pincode}
                     onChange={handleChange}
+                    onKeyDown={blockNonDigits}
                   />
                 </div>
               </div>

@@ -1,5 +1,8 @@
 import type { SchoolClass } from "@/types/index";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+import { useSchoolClassStore } from "@/stores";
+import { toast } from "sonner";
 
 interface SchoolClassCardProps {
   schoolClass: SchoolClass;
@@ -7,6 +10,19 @@ interface SchoolClassCardProps {
 
 export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
   const router = useRouter();
+  const deleteClass = useSchoolClassStore((s) => s.deleteClass);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete class '${schoolClass.name}'?`)) {
+      const success = await deleteClass(schoolClass.id);
+      if (success) {
+        toast.success(`Class '${schoolClass.name}' deleted successfully`);
+      } else {
+        toast.error("Failed to delete class");
+      }
+    }
+  };
 
   return (
     <div
@@ -28,10 +44,20 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
               : schoolClass.schoolName || ""}
           </p>
         </div>
-        <span className="shrink-0 text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full border border-indigo-100">
-          {schoolClass.teachers?.length ?? 0} teacher
-          {schoolClass.teachers?.length !== 1 ? "s" : ""}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full border border-indigo-100">
+            {schoolClass.teachers?.length ?? 0} teacher
+            {schoolClass.teachers?.length !== 1 ? "s" : ""}
+          </span>
+          <button
+            type="button"
+            onClick={handleDelete}
+            title="Delete class"
+            className="p-1 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Teachers list */}

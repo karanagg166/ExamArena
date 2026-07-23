@@ -40,10 +40,16 @@ export default function PrincipalSchoolClassPage() {
 
   if (!school) {
     return (
-      <div className="flex min-h-[80vh] items-center justify-center">
-        <p className="text-zinc-500">
-          No school found. Please set up your school first.
-        </p>
+      <div className="flex min-h-[70vh] flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md rounded-2xl border border-zinc-800 bg-zinc-950/60 p-8 shadow-xl">
+          <h2 className="text-xl font-bold text-white mb-2">No School Associated</h2>
+          <p className="text-sm text-zinc-400 mb-6">
+            You must be connected to a school to view or manage classes.
+          </p>
+          <Button onClick={() => router.push("/teacher/school/join")}>
+            Join a School →
+          </Button>
+        </div>
       </div>
     );
   }

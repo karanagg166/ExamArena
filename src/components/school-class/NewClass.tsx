@@ -1,4 +1,3 @@
-// src/components/school-class/NewClass.tsx — accept onClose prop
 "use client";
 import React, { useState } from "react";
 import { useSchoolClassStore } from "@/stores/index";
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { FormMessage } from "@/components/ui/form-message";
 import { Input } from "@/components/ui/input";
+import { blockNonDigits, sanitizeNumber } from "@/lib/utils";
 
 interface Props {
   onClose?: () => void;
@@ -21,29 +21,51 @@ interface Props {
 export const NewClass = ({ onClose }: Props) => {
   const [year, setYear] = useState("");
   const [section, setSection] = useState("A");
+  const [localError, setLocalError] = useState("");
 
-  const { createClass, loading, error } = useSchoolClassStore();
+  const { classes, createClass, loading, error } = useSchoolClassStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError("");
     if (!year.trim()) return;
 
-    const name = `${year.trim()} - ${section.trim()}`;
-    console.log("Submitting new class:", { name, year, section });
+    const formattedYear = year.trim();
+    const formattedSection = section.trim() || "A";
+    const name = `${formattedYear} - ${formattedSection}`;
 
-    const success = await createClass({
+    // Pre-check duplicate class client-side
+    const duplicate = classes.some(
+      (c) =>
+        c.name.toLowerCase() === name.toLowerCase() ||
+        (c.year === formattedYear &&
+          c.section?.toLowerCase() === formattedSection.toLowerCase()),
+    );
+
+    if (duplicate) {
+      const msg = `Class '${name}' already exists of same name.`;
+      setLocalError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    console.log("Submitting new class:", { name, year: formattedYear, section: formattedSection });
+
+    const result = await createClass({
       name,
-      year: year.trim(),
-      section: section.trim() || "A",
+      year: formattedYear,
+      section: formattedSection,
     });
-    console.log("Create class success:", success);
-    if (success) {
+
+    if (result.success) {
       toast.success("Class created successfully");
       setYear("");
       setSection("A");
       onClose?.();
     } else {
-      toast.error("Failed to create class");
+      const msg = result.error || `Class '${name}' already exists of same name.`;
+      setLocalError(msg);
+      toast.error(msg);
     }
   };
 
@@ -59,17 +81,24 @@ export const NewClass = ({ onClose }: Props) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm text-zinc-400 block mb-1">Year / Grade</label>
+              <label className="text-sm text-zinc-400 block mb-1">
+                Year / Grade (Numbers Only)
+              </label>
               <Input
                 type="text"
+                inputMode="numeric"
                 value={year}
-                onChange={(e) => setYear(e.target.value)}
-                placeholder="e.g. 12th, 10th, 1st"
+                onKeyDown={blockNonDigits}
+                onChange={(e) => setYear(sanitizeNumber(e.target.value))}
+                placeholder="e.g. 10, 12, 1"
                 disabled={loading}
+                required
               />
             </div>
             <div>
-              <label className="text-sm text-zinc-400 block mb-1">Section / Batch</label>
+              <label className="text-sm text-zinc-400 block mb-1">
+                Section / Batch
+              </label>
               <Input
                 type="text"
                 value={section}
@@ -79,7 +108,9 @@ export const NewClass = ({ onClose }: Props) => {
               />
             </div>
           </div>
-          <FormMessage message={error} type="error" />
+
+          <FormMessage message={localError || error} type="error" />
+
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={loading || !year.trim()}>
               {loading ? "Creating..." : "Create Class"}

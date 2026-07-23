@@ -14,6 +14,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  sanitizePincode,
+  sanitizePhoneNo,
+  blockNonDigits,
+  blockNonPhone,
+} from "@/lib/utils";
 
 type SchoolType = "PUBLIC" | "PRIVATE" | "CHARTER" | "INTERNATIONAL";
 
@@ -176,10 +182,13 @@ export default function PrincipalCreateSchoolPage() {
                 <Label className="mb-1.5 block">Pincode</Label>
                 <Input
                   value={form.pincode}
+                  inputMode="numeric"
+                  maxLength={6}
+                  onKeyDown={blockNonDigits}
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
-                      pincode: event.target.value,
+                      pincode: sanitizePincode(event.target.value),
                     }))
                   }
                   required
@@ -233,10 +242,15 @@ export default function PrincipalCreateSchoolPage() {
               <Label className="mb-1.5 block">Phone Number (optional)</Label>
               <Input
                 type="tel"
+                inputMode="tel"
                 placeholder="e.g. +91 98765 43210"
                 value={form.phoneNo}
+                onKeyDown={blockNonPhone}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, phoneNo: event.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    phoneNo: sanitizePhoneNo(event.target.value),
+                  }))
                 }
               />
             </div>

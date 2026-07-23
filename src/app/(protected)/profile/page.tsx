@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAxiosError } from "axios";
+import {
+  sanitizePincode,
+  sanitizePhoneNo,
+  sanitizeAlpha,
+  blockNonDigits,
+  blockNonPhone,
+  blockNonAlpha,
+} from "@/lib/utils";
 import { api } from "@/lib/axios";
 import { Save, ArrowRight } from "lucide-react";
 import { User } from "@/types/user";
@@ -58,7 +66,15 @@ export default function ProfilePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    let sanitizedValue = value;
+    if (name === "pincode") {
+      sanitizedValue = sanitizePincode(value);
+    } else if (name === "phoneNo") {
+      sanitizedValue = sanitizePhoneNo(value);
+    } else if (name === "name") {
+      sanitizedValue = sanitizeAlpha(value);
+    }
+    setForm((p) => ({ ...p, [name]: sanitizedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,6 +134,7 @@ export default function ProfilePage() {
                   name="name"
                   value={form.name}
                   onChange={handleChange}
+                  onKeyDown={blockNonAlpha}
                   required
                 />
               </div>
@@ -140,8 +157,11 @@ export default function ProfilePage() {
                 <Input
                   id="profile-phone"
                   name="phoneNo"
+                  type="tel"
+                  inputMode="tel"
                   value={form.phoneNo}
                   onChange={handleChange}
+                  onKeyDown={blockNonPhone}
                 />
               </div>
               <div className="space-y-1.5">
@@ -171,8 +191,11 @@ export default function ProfilePage() {
                 <Input
                   id="profile-pincode"
                   name="pincode"
+                  inputMode="numeric"
+                  maxLength={6}
                   value={form.pincode}
                   onChange={handleChange}
+                  onKeyDown={blockNonDigits}
                 />
               </div>
             </div>

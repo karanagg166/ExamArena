@@ -20,6 +20,7 @@ import { FormMessage } from "@/components/ui/form-message";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSchoolClassStore } from "@/stores";
+import { blockNonAlpha, sanitizeAlpha } from "@/lib/utils";
 
 export default function SignupStudentPage() {
   const router = useRouter();
@@ -61,7 +62,11 @@ export default function SignupStudentPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    let sanitizedValue = value;
+    if (name === "parentName") {
+      sanitizedValue = sanitizeAlpha(value);
+    }
+    setForm((p) => ({ ...p, [name]: sanitizedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,6 +184,7 @@ export default function SignupStudentPage() {
                   name="parentName"
                   value={form.parentName}
                   onChange={handleChange}
+                  onKeyDown={blockNonAlpha}
                   required
                 />
               </div>

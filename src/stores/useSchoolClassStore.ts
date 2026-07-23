@@ -1,5 +1,5 @@
-// src/stores/useSchoolClassStore.ts
 import { create } from "zustand";
+import axios from "axios";
 import { api } from "@/lib/axios";
 import { SchoolClass, CreateClassRequest } from "@/types";
 
@@ -10,8 +10,11 @@ interface SchoolClassState {
 
   fetchClassesBySchool: (schoolId: string) => Promise<void>;
   fetchClass: (classId: string) => Promise<void>;
-  createClass: (data: CreateClassRequest) => Promise<boolean>;
-  clearClasses: () => void; // ✅ added
+  createClass: (
+    data: CreateClassRequest,
+  ) => Promise<{ success: boolean; error?: string }>;
+  deleteClass: (classId: string) => Promise<boolean>;
+  clearClasses: () => void;
   reset: () => void;
 }
 
@@ -56,11 +59,49 @@ export const useSchoolClassStore = create<SchoolClassState>((set) => ({
         year: data.year,
         section: data.section,
       });
-      set((state) => ({ classes: [...state.classes, res.data] }));
+      set((state) => ({ classes: [...state.classes, res.data], error: "" }));
+      return { success: true };
+    } catch (err: unknown) {
+      let errorMsg = `Class '${data.name}' already exists.`;
+      if (axios.isAxiosError(err)) {
+        const detail = err.response?.data?.detail;
+        if (typeof detail === "string") {
+          if (
+            detail.toLowerCase().includes("already exists") ||
+            detail.toLowerCase().includes("duplicate") ||
+            detail.toLowerCase().includes("unique constraint")
+          ) {
+            errorMsg = `Class '${data.name}' already exists of same name.`;
+          } else {
+            errorMsg = detail;
+          }
+        } else if (
+          err.response?.status === 400 ||
+          err.response?.status === 409 ||
+          err.response?.status === 409
+        ) {
+          errorMsg = `Class '${data.name}' already exists of same name.`;
+        }
+      }
+      set({ error: errorMsg });
+      console.error("Error creating class:", err);
+      return { success: false, error: errorMsg };
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  deleteClass: async (classId: string) => {
+    set({ loading: true, error: "" });
+    try {
+      await api.delete(`/api/v1/classes/${classId}`);
+      set((state) => ({
+        classes: state.classes.filter((c) => c.id !== classId),
+      }));
       return true;
-    } catch (error: unknown) {
-      set({ error: "Failed to create class" });
-      console.error("Error creating class:", error);
+    } catch (err: unknown) {
+      console.error("Error deleting class:", err);
+      set({ error: "Failed to delete class" });
       return false;
     } finally {
       set({ loading: false });

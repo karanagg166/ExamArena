@@ -13,6 +13,7 @@ from app.users.schemas import UserResponse
 
 from .crud import (
     create_school_class,
+    delete_school_class,
     get_school_class_by_id,
     get_school_classes_by_school_id,
 )
@@ -133,3 +134,19 @@ async def get_students_for_class(
             )
 
     return await get_students_by_class_id(class_id)
+
+
+@router.delete("/{class_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_class(
+    class_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Delete a school class."""
+    success = await delete_school_class(class_id, current_user.id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Class not found or you do not have permission to delete it.",
+        )
+    return None
+
