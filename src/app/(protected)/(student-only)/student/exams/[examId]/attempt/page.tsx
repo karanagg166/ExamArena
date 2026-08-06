@@ -25,8 +25,7 @@ export default function ExamAttemptPage() {
         activeQuestionId, 
         setActiveQuestion,
         answers,
-        submitAttemptLocal,
-        clearAttempt
+        submitAttemptLocal
     } = useAttemptEngine();
 
     const [exam, setExam] = useState<Exam | null>(null);
@@ -83,7 +82,6 @@ export default function ExamAttemptPage() {
             });
 
             submitAttemptLocal();
-            clearAttempt();
 
             if (document.fullscreenElement) {
                 document.exitFullscreen().catch(()=>{});
@@ -96,7 +94,7 @@ export default function ExamAttemptPage() {
             alert(msg);
             setSubmitting(false);
         }
-    }, [answers, attemptId, examId, submitAttemptLocal, clearAttempt, router]);
+    }, [answers, attemptId, examId, submitAttemptLocal, router]);
 
     const proctoring = useProctoring({
         maxWarnings: 3,

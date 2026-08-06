@@ -9,16 +9,16 @@ interface StudentState {
 
   fetchStudentByUserId: (userId: string) => Promise<void>;
   fetchStudentById: (studentId: string) => Promise<void>;
-  fecthStudentsByClassId: (classId: string) => Promise<void>;
+  fetchStudentsByClassId: (classId: string) => Promise<void>;
   updateStudent: (data: Student) => Promise<boolean>;
 
   reset: () => void;
 }
 
-const intial = { student: null, loading: false, error: "" };
+const initial = { student: null, loading: false, error: "" };
 
 export const useStudentStore = create<StudentState>((set) => ({
-  ...intial,
+  ...initial,
 
   fetchStudentByUserId: async (userId) => {
     set({ loading: true, error: "" });
@@ -44,7 +44,7 @@ export const useStudentStore = create<StudentState>((set) => ({
     }
   },
 
-  fecthStudentsByClassId: async (classId) => {
+  fetchStudentsByClassId: async (classId) => {
     set({ loading: true, error: "" });
     try {
       const res = await api.get(`/api/v1/students/class/${classId}`);
@@ -69,5 +69,5 @@ export const useStudentStore = create<StudentState>((set) => ({
     }
   },
 
-  reset: () => set(intial),
+  reset: () => set(initial),
 }));

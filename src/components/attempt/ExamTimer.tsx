@@ -3,8 +3,8 @@ import { useAttemptEngine } from '@/hooks/useAttemptEngine';
 import { Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export const ExamTimer = ({ examId, onTimeUp }: { examId: string, onTimeUp: () => void }) => {
-  const { timeRemainingSeconds, decrementTime, status } = useAttemptEngine();
+export const ExamTimer = ({ onTimeUp }: { examId?: string; onTimeUp: () => void }) => {
+  const { timeRemainingSeconds, status } = useAttemptEngine();
   const hasCalledTimeUp = useRef(false);
 
   useEffect(() => {
@@ -24,9 +24,10 @@ export const ExamTimer = ({ examId, onTimeUp }: { examId: string, onTimeUp: () =
       return null;
   }
 
-  const hours = Math.floor(timeRemainingSeconds / 3600);
-  const minutes = Math.floor((timeRemainingSeconds % 3600) / 60);
-  const seconds = timeRemainingSeconds % 60;
+  const safeTime = Math.max(0, timeRemainingSeconds);
+  const hours = Math.floor(safeTime / 3600);
+  const minutes = Math.floor((safeTime % 3600) / 60);
+  const seconds = safeTime % 60;
 
   const isWarning = timeRemainingSeconds < 300; // less than 5 mins
   const isCritical = timeRemainingSeconds < 60; // less than 1 min

@@ -1,28 +1,19 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
-import { useAttemptEngine } from '@/hooks/useAttemptEngine';
+import { useAttemptStore } from '@/stores/useAttemptStore';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 export default function ExamResultPage() {
-    const { examId } = useParams();
     const router = useRouter();
-    const { clearAttempt, attemptId } = useAttemptEngine();
-    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setMounted(true);
         // Ensure state is cleared so user can't resume
-        if (attemptId) {
-            clearAttempt();
-        }
-    }, [attemptId, clearAttempt]);
-
-    if (!mounted) return null;
+        useAttemptStore.getState().clearAttempt();
+    }, []);
 
     return (
         <div className="page-shell flex items-center justify-center min-h-[80vh]">

@@ -1,14 +1,14 @@
 import { useCallback } from 'react';
 import { useAttemptStore, QuestionAttemptState } from '@/stores/useAttemptStore';
-import { api } from '@/lib/axios';
 import type { QuestionType } from '@/types';
 
 export function useExamLifeCycle() {
   const store = useAttemptStore();
 
   const initializeAttempt = useCallback((examId: string, attemptId: string, initialAnswers: { id: string; questionId: string; questionType: QuestionType; textAnswer?: string; selectedOptions?: { optionId: string }[] }[], startedAt: string, defaultTimeLimitSeconds?: number) => {
+    const currentState = useAttemptStore.getState();
     // Only initialize if we're starting a new attempt or forcing a refresh of the SAME attempt.
-    if (store.attemptId === attemptId && Object.keys(store.answers).length > 0) {
+    if (currentState.attemptId === attemptId && Object.keys(currentState.answers).length > 0) {
       return; 
     }
 

@@ -77,7 +77,6 @@ export const useSchoolClassStore = create<SchoolClassState>((set) => ({
           }
         } else if (
           err.response?.status === 400 ||
-          err.response?.status === 409 ||
           err.response?.status === 409
         ) {
           errorMsg = `Class '${data.name}' already exists of same name.`;

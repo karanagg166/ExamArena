@@ -6,25 +6,27 @@ export function useExamTimer() {
   const timeRemainingSeconds = store.timeRemainingSeconds;
   
   useEffect(() => {
-    if (timeRemainingSeconds === null || timeRemainingSeconds <= 0 || store.status !== "IN_PROGRESS") {
-      return;
-    }
+    if (store.status !== "IN_PROGRESS") return;
 
     const timer = setInterval(() => {
-      store.setAllState({ timeRemainingSeconds: timeRemainingSeconds - 1 });
+      const current = useAttemptStore.getState().timeRemainingSeconds;
+      if (current !== null && current > 0) {
+        useAttemptStore.getState().setAllState({ timeRemainingSeconds: current - 1 });
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeRemainingSeconds, store]);
+  }, [store.status]);
 
   const decrementTime = () => {
-    if (timeRemainingSeconds !== null && timeRemainingSeconds > 0) {
-      store.setAllState({ timeRemainingSeconds: timeRemainingSeconds - 1 });
+    const current = useAttemptStore.getState().timeRemainingSeconds;
+    if (current !== null && current > 0) {
+      useAttemptStore.getState().setAllState({ timeRemainingSeconds: current - 1 });
     }
   };
 
   return {
-    timeRemainingSeconds,
+    timeRemainingSeconds: timeRemainingSeconds !== null ? Math.max(0, timeRemainingSeconds) : null,
     decrementTime
   };
 }
