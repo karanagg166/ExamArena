@@ -21,6 +21,17 @@ Complete backend API for ExamArena exam platform built with **FastAPI**, **Prism
 
 ---
 
+## 🔑 Test Credentials
+
+| Role | Email | Password | Scope |
+|------|-------|----------|-------|
+| **Admin** | `admin@gmail.com` | `admin123` | System Administrator |
+| **Principal** | `principal@gmail.com` | `principal123` | Principal / Administration |
+| **Teacher** | `teacher@gmail.com` | `karan166` | Teacher (Science Dept) |
+| **Student** | `student@gmail.com` | `student123` | Student (Class 10-A, Roll: R001) |
+
+---
+
 ## 🎯 Project Overview
 
 ExamArena backend provides:
