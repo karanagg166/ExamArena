@@ -27,8 +27,13 @@ export function ExamCard({ exam }: ExamCardProps) {
         )}
 
         <div className="flex justify-between items-start mb-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
             <Badge variant="default">{exam.type}</Badge>
+            {exam.examCode && (
+              <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                🔑 {exam.examCode}
+              </span>
+            )}
             {exam.subject && (
               <Badge variant="neutral">{exam.subject.replace("_", " ")}</Badge>
             )}

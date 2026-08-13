@@ -1,15 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isAxiosError } from "axios";
 import { User, BookOpen, Mail, Edit2, Save, X } from "lucide-react";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loading";
+import {
+  blockNonAlpha,
+  blockNonPhone,
+  sanitizeAlpha,
+  sanitizePhoneNo,
+  validateEmailField,
+  validatePhoneField,
+  validateNameField,
+} from "@/lib/utils";
 
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [touched, setTouched] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,8 +34,37 @@ export default function StudentDashboard() {
     class: "",
     parentName: "",
     parentEmail: "",
+    fatherName: "",
+    fatherEmail: "",
+    fatherPhoneNo: "",
+    motherName: "",
+    motherEmail: "",
+    motherPhoneNo: "",
+    guardianName: "",
+    guardianRelation: "",
+    guardianEmail: "",
+    guardianPhoneNo: "",
   });
   const router = useRouter();
+
+  const getFieldErrors = () => {
+    return {
+      name: validateNameField(formData.name, "Full Name", false),
+      email: validateEmailField(formData.email, false),
+      phoneNo: validatePhoneField(formData.phoneNo, false),
+      fatherName: validateNameField(formData.fatherName, "Father's Name", false),
+      fatherEmail: validateEmailField(formData.fatherEmail, false),
+      fatherPhoneNo: validatePhoneField(formData.fatherPhoneNo, false),
+      motherName: validateNameField(formData.motherName, "Mother's Name", false),
+      motherEmail: validateEmailField(formData.motherEmail, false),
+      motherPhoneNo: validatePhoneField(formData.motherPhoneNo, false),
+      guardianName: validateNameField(formData.guardianName, "Guardian Name", false),
+      guardianEmail: validateEmailField(formData.guardianEmail, false),
+      guardianPhoneNo: validatePhoneField(formData.guardianPhoneNo, false),
+    };
+  };
+
+  const fieldErrors = getFieldErrors();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,24 +73,63 @@ export default function StudentDashboard() {
           withCredentials: true,
         });
         const data = response.data;
+        const userObj = data?.user || {};
+
+        let displayClass = data?.className || "";
+        if (!displayClass && data?.classId) {
+          try {
+            const classRes = await api.get(`/api/v1/classes/${data.classId}`);
+            displayClass = classRes.data?.name || "Assigned Class";
+          } catch {
+            displayClass = "Assigned Class";
+          }
+        }
 
         setFormData({
-          name: data.user.name || "",
-          email: data.user.email || "",
-          phoneNo: data.user.phoneNo || "",
-          city: data.user.city || "",
-          state: data.user.state || "",
-          country: data.user.country || "",
-          pincode: data.user.pincode || "",
-          rollNo: data.rollNo || "",
-          dob: data.dob ? data.dob.split("T")[0] : "",
-          class: data.classId || "",
-          parentName: data.parentName || "",
-          parentEmail: data.parentEmail || "",
+          name: userObj.name || "",
+          email: userObj.email || "",
+          phoneNo: userObj.phoneNo || "",
+          city: userObj.city || "",
+          state: userObj.state || "",
+          country: userObj.country || "",
+          pincode: userObj.pincode || "",
+          rollNo: data?.rollNo || "",
+          dob: data?.dob ? data.dob.split("T")[0] : (data?.dateOfAdmission ? data.dateOfAdmission.split("T")[0] : ""),
+          class: displayClass,
+          parentName: data?.parentName || "",
+          parentEmail: data?.parentEmail || "",
+          fatherName: data?.fatherName || "",
+          fatherEmail: data?.fatherEmail || "",
+          fatherPhoneNo: data?.fatherPhoneNo || "",
+          motherName: data?.motherName || "",
+          motherEmail: data?.motherEmail || "",
+          motherPhoneNo: data?.motherPhoneNo || "",
+          guardianName: data?.guardianName || "",
+          guardianRelation: data?.guardianRelation || "",
+          guardianEmail: data?.guardianEmail || "",
+          guardianPhoneNo: data?.guardianPhoneNo || "",
         });
       } catch (error: unknown) {
-        router.push("/login");
         console.error("Error fetching student data:", error);
+        if (isAxiosError(error)) {
+          const status = error.response?.status;
+          if (status === 404) {
+            toast.info("Please complete your student profile setup.");
+            router.push("/signup/student");
+            return;
+          }
+          if (status === 403) {
+            toast.error("Access restricted. Redirecting to dashboard.");
+            router.push("/dashboard");
+            return;
+          }
+          if (status === 401) {
+            toast.error("Session expired. Please log in again.");
+            router.push("/login");
+            return;
+          }
+        }
+        toast.error("Failed to load student profile. Please refresh.");
       } finally {
         setLoading(false);
       }
@@ -60,7 +139,27 @@ export default function StudentDashboard() {
   }, [router]);
 
   const handleSave = async () => {
+    setTouched(true);
+
+    const currentErrors = getFieldErrors();
+    if (Object.values(currentErrors).some(Boolean)) {
+      toast.error("Please fix invalid fields before saving.");
+      return;
+    }
+
     try {
+      const computedParentName =
+        formData.fatherName ||
+        formData.motherName ||
+        formData.guardianName ||
+        formData.parentName;
+
+      const computedParentEmail =
+        formData.fatherEmail ||
+        formData.motherEmail ||
+        formData.guardianEmail ||
+        formData.parentEmail;
+
       // Update student data (includes user data)
       await api.put(
         "/api/v1/students/me",
@@ -74,11 +173,19 @@ export default function StudentDashboard() {
             country: formData.country,
             pincode: formData.pincode,
           },
-          rollNo: formData.rollNo,
           dob: formData.dob,
-          classId: formData.class,
-          parentName: formData.parentName,
-          parentEmail: formData.parentEmail,
+          parentName: computedParentName,
+          parentEmail: computedParentEmail,
+          fatherName: formData.fatherName || undefined,
+          fatherEmail: formData.fatherEmail || undefined,
+          fatherPhoneNo: formData.fatherPhoneNo || undefined,
+          motherName: formData.motherName || undefined,
+          motherEmail: formData.motherEmail || undefined,
+          motherPhoneNo: formData.motherPhoneNo || undefined,
+          guardianName: formData.guardianName || undefined,
+          guardianRelation: formData.guardianRelation || undefined,
+          guardianEmail: formData.guardianEmail || undefined,
+          guardianPhoneNo: formData.guardianPhoneNo || undefined,
         },
         { withCredentials: true },
       );
@@ -133,12 +240,16 @@ export default function StudentDashboard() {
                 <input
                   type="text"
                   value={formData.name}
+                  onKeyDown={blockNonAlpha}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, name: sanitizeAlpha(e.target.value) })
                   }
                   disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-2 disabled:opacity-50 ${isEditing && (touched || formData.name) && fieldErrors.name ? "border-red-500" : "border-zinc-800"}`}
                 />
+                {isEditing && (touched || formData.name) && fieldErrors.name && (
+                  <p className="text-xs text-red-400 mt-1">{fieldErrors.name}</p>
+                )}
               </div>
               <div>
                 <label className="text-sm text-zinc-400">Email</label>
@@ -149,20 +260,27 @@ export default function StudentDashboard() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-2 disabled:opacity-50 ${isEditing && (touched || formData.email) && fieldErrors.email ? "border-red-500" : "border-zinc-800"}`}
                 />
+                {isEditing && (touched || formData.email) && fieldErrors.email && (
+                  <p className="text-xs text-red-400 mt-1">{fieldErrors.email}</p>
+                )}
               </div>
               <div>
                 <label className="text-sm text-zinc-400">Phone Number</label>
                 <input
-                  type="text"
+                  type="tel"
                   value={formData.phoneNo}
+                  onKeyDown={blockNonPhone}
                   onChange={(e) =>
-                    setFormData({ ...formData, phoneNo: e.target.value })
+                    setFormData({ ...formData, phoneNo: sanitizePhoneNo(e.target.value) })
                   }
                   disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-2 disabled:opacity-50 ${isEditing && (touched || formData.phoneNo) && fieldErrors.phoneNo ? "border-red-500" : "border-zinc-800"}`}
                 />
+                {isEditing && (touched || formData.phoneNo) && fieldErrors.phoneNo && (
+                  <p className="text-xs text-red-400 mt-1">{fieldErrors.phoneNo}</p>
+                )}
               </div>
               <div>
                 <label className="text-sm text-zinc-400">City</label>
@@ -211,15 +329,13 @@ export default function StudentDashboard() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-zinc-400">Roll Number</label>
+                <label className="text-sm text-zinc-400">Roll Number (Read-only)</label>
                 <input
                   type="text"
                   value={formData.rollNo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, rollNo: e.target.value })
-                  }
-                  disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  disabled
+                  readOnly
+                  className="w-full mt-1 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-400 cursor-not-allowed opacity-75"
                 />
               </div>
               <div>
@@ -235,50 +351,214 @@ export default function StudentDashboard() {
                 />
               </div>
               <div>
-                <label className="text-sm text-zinc-400">Class</label>
+                <label className="text-sm text-zinc-400">Class (Read-only)</label>
                 <input
                   type="text"
                   value={formData.class}
-                  onChange={(e) =>
-                    setFormData({ ...formData, class: e.target.value })
-                  }
-                  disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  disabled
+                  readOnly
+                  className="w-full mt-1 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-400 cursor-not-allowed opacity-75"
                 />
               </div>
             </div>
           </div>
 
-          {/* Parent Information */}
-          <div className="lg:col-span-3 bg-zinc-950 border border-zinc-800 rounded-xl p-6">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          {/* Parent & Guardian Information */}
+          <div className="lg:col-span-3 bg-zinc-950 border border-zinc-800 rounded-xl p-6 space-y-6">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
               <Mail className="w-5 h-5 text-indigo-400" />
-              Parent Information
+              Parent & Guardian Information
             </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-zinc-400">Parent Name</label>
-                <input
-                  type="text"
-                  value={formData.parentName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, parentName: e.target.value })
-                  }
-                  disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
-                />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Father Details */}
+              <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
+                <h3 className="text-sm font-semibold text-indigo-400 uppercase tracking-wider">
+                  👨 Father&apos;s Details
+                </h3>
+                <div>
+                  <label className="text-xs text-zinc-400">Father&apos;s Name</label>
+                  <input
+                    type="text"
+                    value={formData.fatherName}
+                    onKeyDown={blockNonAlpha}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fatherName: sanitizeAlpha(e.target.value) })
+                    }
+                    disabled={!isEditing}
+                    placeholder="e.g. John Doe"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.fatherName ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.fatherName && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.fatherName}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-400">Father&apos;s Email</label>
+                  <input
+                    type="email"
+                    value={formData.fatherEmail}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fatherEmail: e.target.value })
+                    }
+                    disabled={!isEditing}
+                    placeholder="father@example.com"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.fatherEmail ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.fatherEmail && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.fatherEmail}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-400">Father&apos;s Phone Number</label>
+                  <input
+                    type="tel"
+                    value={formData.fatherPhoneNo}
+                    onKeyDown={blockNonPhone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fatherPhoneNo: sanitizePhoneNo(e.target.value) })
+                    }
+                    disabled={!isEditing}
+                    placeholder="+1 234 567 890"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.fatherPhoneNo ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.fatherPhoneNo && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.fatherPhoneNo}</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="text-sm text-zinc-400">Parent Email</label>
-                <input
-                  type="email"
-                  value={formData.parentEmail}
-                  onChange={(e) =>
-                    setFormData({ ...formData, parentEmail: e.target.value })
-                  }
-                  disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
-                />
+
+              {/* Mother Details */}
+              <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
+                <h3 className="text-sm font-semibold text-indigo-400 uppercase tracking-wider">
+                  👩 Mother&apos;s Details
+                </h3>
+                <div>
+                  <label className="text-xs text-zinc-400">Mother&apos;s Name</label>
+                  <input
+                    type="text"
+                    value={formData.motherName}
+                    onKeyDown={blockNonAlpha}
+                    onChange={(e) =>
+                      setFormData({ ...formData, motherName: sanitizeAlpha(e.target.value) })
+                    }
+                    disabled={!isEditing}
+                    placeholder="e.g. Jane Doe"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.motherName ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.motherName && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.motherName}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-400">Mother&apos;s Email</label>
+                  <input
+                    type="email"
+                    value={formData.motherEmail}
+                    onChange={(e) =>
+                      setFormData({ ...formData, motherEmail: e.target.value })
+                    }
+                    disabled={!isEditing}
+                    placeholder="mother@example.com"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.motherEmail ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.motherEmail && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.motherEmail}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-400">Mother&apos;s Phone Number</label>
+                  <input
+                    type="tel"
+                    value={formData.motherPhoneNo}
+                    onKeyDown={blockNonPhone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, motherPhoneNo: sanitizePhoneNo(e.target.value) })
+                    }
+                    disabled={!isEditing}
+                    placeholder="+1 234 567 890"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.motherPhoneNo ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.motherPhoneNo && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.motherPhoneNo}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Guardian Details */}
+              <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800 space-y-3">
+                <h3 className="text-sm font-semibold text-indigo-400 uppercase tracking-wider">
+                  🛡️ Guardian Details (Optional)
+                </h3>
+                <div>
+                  <label className="text-xs text-zinc-400">Guardian Name</label>
+                  <input
+                    type="text"
+                    value={formData.guardianName}
+                    onKeyDown={blockNonAlpha}
+                    onChange={(e) =>
+                      setFormData({ ...formData, guardianName: sanitizeAlpha(e.target.value) })
+                    }
+                    disabled={!isEditing}
+                    placeholder="e.g. Robert Smith"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.guardianName ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.guardianName && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.guardianName}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-400">Relation to Student</label>
+                  <input
+                    type="text"
+                    value={formData.guardianRelation}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        guardianRelation: e.target.value,
+                      })
+                    }
+                    disabled={!isEditing}
+                    placeholder="e.g. Uncle / Grandparent"
+                    className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-400">Guardian Email</label>
+                  <input
+                    type="email"
+                    value={formData.guardianEmail}
+                    onChange={(e) =>
+                      setFormData({ ...formData, guardianEmail: e.target.value })
+                    }
+                    disabled={!isEditing}
+                    placeholder="guardian@example.com"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.guardianEmail ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.guardianEmail && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.guardianEmail}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-400">Guardian Phone Number</label>
+                  <input
+                    type="tel"
+                    value={formData.guardianPhoneNo}
+                    onKeyDown={blockNonPhone}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        guardianPhoneNo: sanitizePhoneNo(e.target.value),
+                      })
+                    }
+                    disabled={!isEditing}
+                    placeholder="+1 234 567 890"
+                    className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 ${isEditing && fieldErrors.guardianPhoneNo ? "border-red-500" : "border-zinc-800"}`}
+                  />
+                  {isEditing && fieldErrors.guardianPhoneNo && (
+                    <p className="text-xs text-red-400 mt-1">{fieldErrors.guardianPhoneNo}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

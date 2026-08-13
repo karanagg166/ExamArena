@@ -19,6 +19,10 @@ import {
   sanitizePhoneNo,
   blockNonDigits,
   blockNonPhone,
+  validateEmailField,
+  validatePhoneField,
+  validatePincodeField,
+  validateNameField,
 } from "@/lib/utils";
 
 type SchoolType = "PUBLIC" | "PRIVATE" | "CHARTER" | "INTERNATIONAL";
@@ -54,11 +58,31 @@ const INITIAL_FORM: FormState = {
 export default function PrincipalCreateSchoolPage() {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getFieldErrors = () => {
+    return {
+      name: validateNameField(form.name, "School Name", true),
+      pincode: validatePincodeField(form.pincode, true),
+      email: validateEmailField(form.email, false),
+      phoneNo: validatePhoneField(form.phoneNo, false),
+    };
+  };
+
+  const fieldErrors = getFieldErrors();
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setTouched(true);
+
+    const currentErrors = getFieldErrors();
+    if (Object.values(currentErrors).some(Boolean)) {
+      setError("Please fix invalid fields before submitting.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -112,6 +136,7 @@ export default function PrincipalCreateSchoolPage() {
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, name: event.target.value }))
                   }
+                  error={touched || form.name ? fieldErrors.name : undefined}
                   required
                 />
               </div>
@@ -191,6 +216,7 @@ export default function PrincipalCreateSchoolPage() {
                       pincode: sanitizePincode(event.target.value),
                     }))
                   }
+                  error={touched || form.pincode ? fieldErrors.pincode : undefined}
                   required
                 />
               </div>
@@ -218,10 +244,12 @@ export default function PrincipalCreateSchoolPage() {
               <div>
                 <Label className="mb-1.5 block">Email (optional)</Label>
                 <Input
+                  type="email"
                   value={form.email}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, email: event.target.value }))
                   }
+                  error={touched || form.email ? fieldErrors.email : undefined}
                 />
               </div>
               <div>
@@ -252,6 +280,7 @@ export default function PrincipalCreateSchoolPage() {
                     phoneNo: sanitizePhoneNo(event.target.value),
                   }))
                 }
+                error={touched || form.phoneNo ? fieldErrors.phoneNo : undefined}
               />
             </div>
 

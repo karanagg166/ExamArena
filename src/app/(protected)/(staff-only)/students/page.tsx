@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/axios";
+import { blockNonDigits } from "@/lib/utils";
 import StudentCard, { StudentListItem } from "@/components/student/StudentCard";
 
 type Filters = {
@@ -226,6 +227,8 @@ function FilterInput({
   onChange: (v: string) => void;
   type?: string;
 }) {
+  const isNumeric = label.toLowerCase().includes("roll");
+
   return (
     <div className="flex flex-col gap-1.5">
       <label
@@ -239,6 +242,7 @@ function FilterInput({
         type={type}
         placeholder={placeholder}
         value={value}
+        onKeyDown={isNumeric ? blockNonDigits : undefined}
         onChange={(e) => onChange(e.target.value)}
         className="h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-800 placeholder:text-gray-400 transition focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />

@@ -6,6 +6,7 @@ services:
       context: .
       dockerfile: backend/backend.Dockerfile
       target: dev
+      network: host
     container_name: exam_arena_backend
     restart: unless-stopped
     ports:
@@ -25,6 +26,7 @@ services:
       context: .
       dockerfile: frontend.Dockerfile
       target: dev                      # ← swap to "runner" for prod
+      network: host
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:8000
     container_name: exam_arena_frontend

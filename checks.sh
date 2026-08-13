@@ -83,11 +83,10 @@ fi
 echo ""
 
 # ─────────────────────────────────────────────────────────────
-#  CHECK 2 — Prisma Checks
-#  You use NeonDB (cloud) so no local db container needed.
+#  CHECK 2 — Database Checks (SQLAlchemy → NeonDB)
 #  We start only the backend container — it reaches NeonDB directly.
 # ─────────────────────────────────────────────────────────────
-echo -e "${BOLD}[2/4] 📦 Prisma Checks (inside backend container → NeonDB)${NC}"
+echo -e "${BOLD}[2/4] 📦 Database Checks (inside backend container → NeonDB)${NC}"
 
 # Start backend only (no local db needed — NeonDB is remote)
 docker compose up -d --no-deps backend > /dev/null 2>&1
@@ -108,20 +107,10 @@ if [ "${READY}" -eq 0 ]; then
 else
   echo -e "  Backend container is up"
 
-  run_check "Prisma Validate (schema syntax)" \
+  run_check "SQLAlchemy Init DB (NeonDB connectivity)" \
     docker compose exec -T \
       -e DATABASE_URL="${DATABASE_URL}" \
-      backend prisma validate
-
-  run_check "Prisma Generate (Python pyclient)" \
-    docker compose exec -T \
-      -e DATABASE_URL="${DATABASE_URL}" \
-      backend prisma generate --generator pyclient
-
-  run_check "Prisma DB Push (NeonDB connectivity)" \
-    docker compose exec -T \
-      -e DATABASE_URL="${DATABASE_URL}" \
-      backend prisma db push --accept-data-loss
+      backend python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
 fi
 
 echo ""

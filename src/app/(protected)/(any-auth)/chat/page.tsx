@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { StreamChat, Channel as StreamChannel } from "stream-chat";
+import { StreamChat } from "stream-chat";
 import {
   Chat,
   Channel,
@@ -21,15 +21,18 @@ import { Spinner } from "@/components/ui/loading";
 import {
   MessageSquare,
   Users,
-  Building2,
   Plus,
   X,
   Search,
-  School,
-  GraduationCap,
 } from "lucide-react";
-import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
+
+interface ChatDirectoryUser {
+  id: string;
+  name: string;
+  role: string;
+  email?: string;
+}
 
 export default function ChatPage() {
   const { user } = useAuthStore();
@@ -37,10 +40,9 @@ export default function ChatPage() {
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
   const [loading, setLoading] = useState(true);
   const [dmModalOpen, setDmModalOpen] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<ChatDirectoryUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [fetchingUsers, setFetchingUsers] = useState(false);
-  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
 
   // 1. Fetch token and initialize GetStream client
   useEffect(() => {
@@ -154,17 +156,17 @@ export default function ChatPage() {
   }, [user]);
 
   // Load available users for starting Direct Messages
-  const loadAvailableUsers = async () => {
+  const loadAvailableUsers = useCallback(async () => {
     if (!user) return;
     setFetchingUsers(true);
     try {
-      const usersList: any[] = [];
+      const usersList: ChatDirectoryUser[] = [];
 
       // 1. Fetch Students
       try {
         const studentRes = await api.get("/api/v1/students/");
         if (Array.isArray(studentRes.data)) {
-          studentRes.data.forEach((student: any) => {
+          studentRes.data.forEach((student: { userId?: string; user?: { id?: string; name?: string; email?: string }; name?: string; email?: string }) => {
             const studentUserId = student.userId || student.user?.id;
             const studentName = student.name || student.user?.name;
             if (studentUserId && studentUserId !== user.id) {
@@ -185,7 +187,7 @@ export default function ChatPage() {
       try {
         const teacherRes = await api.get("/api/v1/teachers/");
         if (Array.isArray(teacherRes.data)) {
-          teacherRes.data.forEach((teacher: any) => {
+          teacherRes.data.forEach((teacher: { userId?: string; user?: { id?: string; name?: string; email?: string }; name?: string; email?: string }) => {
             const teacherUserId = teacher.userId || teacher.user?.id;
             const teacherName = teacher.name || teacher.user?.name;
             if (teacherUserId && teacherUserId !== user.id) {
@@ -212,16 +214,16 @@ export default function ChatPage() {
     } finally {
       setFetchingUsers(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (dmModalOpen) {
       loadAvailableUsers();
     }
-  }, [dmModalOpen]);
+  }, [dmModalOpen, loadAvailableUsers]);
 
   // Handle starting a 1-to-1 Direct Message channel
-  const startDirectMessage = async (targetUser: any) => {
+  const startDirectMessage = async (targetUser: ChatDirectoryUser) => {
     if (!chatClient || !user) return;
     try {
       // Connect / watch the 1-to-1 conversation
@@ -232,8 +234,6 @@ export default function ChatPage() {
       await channel.watch();
 
       setDmModalOpen(false);
-      // Select the new channel
-      setActiveChannelId(channel.id || null);
     } catch (err) {
       console.error("Error initiating Direct Message channel:", err);
     }

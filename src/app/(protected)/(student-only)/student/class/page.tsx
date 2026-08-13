@@ -84,12 +84,13 @@ export default function StudentClassPage() {
           {/* Basic Info */}
           <div className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
             <p>
-              <span className="text-zinc-500">Class ID:</span> {schoolClass.id}
+              <span className="text-zinc-500">Class Name:</span> {schoolClass.name}
             </p>
-            <p>
-              <span className="text-zinc-500">School ID:</span>{" "}
-              {schoolClass.schoolId}
-            </p>
+            {schoolClass.year && (
+              <p>
+                <span className="text-zinc-500">Section:</span> {schoolClass.year} - {schoolClass.section}
+              </p>
+            )}
           </div>
 
           {/* Teachers */}

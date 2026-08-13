@@ -1,18 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAxiosError } from "axios";
-import {
-  sanitizePincode,
-  sanitizePhoneNo,
-  sanitizeAlpha,
-  blockNonDigits,
-  blockNonPhone,
-  blockNonAlpha,
-} from "@/lib/utils";
-import { api } from "@/lib/axios";
 import { Save, ArrowRight } from "lucide-react";
+import { api } from "@/lib/axios";
 import { User } from "@/types/user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +12,18 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/loading";
 import { FormMessage } from "@/components/ui/form-message";
+import {
+  sanitizePincode,
+  sanitizePhoneNo,
+  sanitizeAlpha,
+  blockNonDigits,
+  blockNonPhone,
+  blockNonAlpha,
+  validateEmailField,
+  validatePhoneField,
+  validatePincodeField,
+  validateNameField,
+} from "@/lib/utils";
 
 // All user fields except id, role, and server timestamps
 type UserForm = Omit<User, "id" | "role" | "createdAt" | "updatedAt">;
@@ -37,11 +41,23 @@ export default function ProfilePage() {
     country: "",
     pincode: "",
   });
+  const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(
     null,
   );
+
+  const getFieldErrors = () => {
+    return {
+      name: validateNameField(form.name, "Full Name", true),
+      email: validateEmailField(form.email, true),
+      phoneNo: validatePhoneField(form.phoneNo, false),
+      pincode: validatePincodeField(form.pincode, false),
+    };
+  };
+
+  const fieldErrors = getFieldErrors();
 
   useEffect(() => {
     api
@@ -79,6 +95,17 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTouched(true);
+
+    const currentErrors = getFieldErrors();
+    if (Object.values(currentErrors).some(Boolean)) {
+      setMessage({
+        text: "Please fix invalid fields before saving.",
+        ok: false,
+      });
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
     try {
@@ -135,6 +162,7 @@ export default function ProfilePage() {
                   value={form.name}
                   onChange={handleChange}
                   onKeyDown={blockNonAlpha}
+                  error={touched || form.name ? fieldErrors.name : undefined}
                   required
                 />
               </div>
@@ -146,6 +174,7 @@ export default function ProfilePage() {
                   name="email"
                   value={form.email}
                   onChange={handleChange}
+                  error={touched || form.email ? fieldErrors.email : undefined}
                   required
                 />
               </div>
@@ -162,6 +191,7 @@ export default function ProfilePage() {
                   value={form.phoneNo}
                   onChange={handleChange}
                   onKeyDown={blockNonPhone}
+                  error={touched || form.phoneNo ? fieldErrors.phoneNo : undefined}
                 />
               </div>
               <div className="space-y-1.5">
@@ -196,6 +226,7 @@ export default function ProfilePage() {
                   value={form.pincode}
                   onChange={handleChange}
                   onKeyDown={blockNonDigits}
+                  error={touched || form.pincode ? fieldErrors.pincode : undefined}
                 />
               </div>
             </div>

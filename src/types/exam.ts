@@ -16,6 +16,7 @@ export type Subject =
 // Matches Prisma: Exam model
 export type Exam = {
   id: string;
+  examCode?: string;
   name: string;
   description: string;
   scheduledAt: string; // Prisma field is "scheduledAt", not "date"

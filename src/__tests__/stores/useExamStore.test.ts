@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useExamStore } from '@/stores/useExamStore';
 import { api } from '@/lib/axios';

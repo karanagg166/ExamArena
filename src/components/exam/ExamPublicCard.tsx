@@ -28,8 +28,13 @@ export function ExamPublicCard({ exam, isStudent }: ExamPublicCardProps) {
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--accent)] to-violet-500 opacity-50 transition-opacity group-hover:opacity-100" />
 
         <div className="flex justify-between items-start mb-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 items-center">
             <Badge variant="default">{exam.type}</Badge>
+            {exam.examCode && (
+              <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                🔑 {exam.examCode}
+              </span>
+            )}
             {exam.subject && (
               <Badge variant="neutral">{exam.subject.replace("_", " ")}</Badge>
             )}

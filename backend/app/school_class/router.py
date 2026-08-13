@@ -1,10 +1,10 @@
 import logging
 from typing import Annotated  # noqa: I001
 
-from fastapi import APIRouter, Depends, HTTPException, status # type: ignore
-from app.generated.prisma.enums import Role
+from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
 
 from app.api.deps import get_current_user
+from app.core.models import Role
 from app.principals.crud import get_principal_by_teacher_id
 from app.students.crud import get_student_by_user_id, get_students_by_class_id
 from app.students.schemas import StudentResponse
@@ -31,7 +31,9 @@ async def create_class(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Create a new school class."""
-    logger.debug("Received class creation request: %s from user: %s", class_data, current_user.id)
+    logger.debug(
+        "Received class creation request: %s from user: %s", class_data, current_user.id
+    )
     created_class = await create_school_class(class_data, current_user.id)
     if not created_class:
         raise HTTPException(
@@ -149,4 +151,3 @@ async def delete_class(
             detail="Class not found or you do not have permission to delete it.",
         )
     return None
-

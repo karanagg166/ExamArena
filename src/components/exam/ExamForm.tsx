@@ -1,4 +1,5 @@
 import React from "react";
+import { blockNonDigits } from "@/lib/utils";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -125,8 +126,11 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
                 type="number"
                 min="5"
                 step="5"
+                inputMode="numeric"
+                onKeyDown={blockNonDigits}
                 value={exam.duration || ""}
                 onChange={(e) => onChange({ duration: parseInt(e.target.value) || 0 })}
+                error={exam.duration !== undefined && exam.duration < 5 ? "Minimum duration is 5 mins" : undefined}
               />
             </div>
             <div className="space-y-1.5">
@@ -135,8 +139,11 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
                 id="maxMarks"
                 type="number"
                 min="1"
+                inputMode="numeric"
+                onKeyDown={blockNonDigits}
                 value={exam.maxMarks || ""}
                 onChange={(e) => onChange({ maxMarks: parseInt(e.target.value) || 0 })}
+                error={exam.maxMarks !== undefined && exam.maxMarks < 1 ? "Max marks must be at least 1" : undefined}
               />
             </div>
           </div>

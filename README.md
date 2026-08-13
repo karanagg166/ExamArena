@@ -3,7 +3,7 @@
 ExamArena is a modern role-based examination and proctoring platform built for **Principals**, **Teachers**, and **Students**.
 
 - **Frontend**: Next.js 16 (React 19), Tailwind CSS, Zustand, Vitest
-- **Backend**: FastAPI, Prisma ORM, PostgreSQL
+- **Backend**: FastAPI, SQLAlchemy ORM, PostgreSQL
 
 ---
 

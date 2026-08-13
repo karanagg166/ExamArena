@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isAxiosError } from "axios";
 import { GraduationCap, Edit2, Save, X } from "lucide-react";
 import { api } from "@/lib/axios";
+import { blockNonDigits } from "@/lib/utils";
 import type { Teacher } from "@/types";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loading";
@@ -63,8 +65,18 @@ export default function TeacherDashboard() {
           department: data.department || "",
           subjects: toStringArray(data.subjects),
         });
-      } catch {
-        router.push("/login");
+      } catch (error: unknown) {
+        console.error("Error fetching teacher data:", error);
+        if (isAxiosError(error)) {
+          if (error.response?.status === 401) {
+            router.push("/login");
+            return;
+          }
+          if (error.response?.status === 403) {
+            router.push("/dashboard");
+            return;
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -196,12 +208,15 @@ export default function TeacherDashboard() {
                   )}
                 </div>
               </div>
+
               <div>
                 <label className="text-sm text-zinc-400">
                   Experience (years)
                 </label>
                 <input
                   type="number"
+                  min="0"
+                  onKeyDown={blockNonDigits}
                   value={formData.experience}
                   onChange={(e) =>
                     setFormData({

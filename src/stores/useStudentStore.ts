@@ -10,7 +10,7 @@ interface StudentState {
   fetchStudentByUserId: (userId: string) => Promise<void>;
   fetchStudentById: (studentId: string) => Promise<void>;
   fetchStudentsByClassId: (classId: string) => Promise<void>;
-  updateStudent: (data: Student) => Promise<boolean>;
+  updateStudent: (data: Partial<Student>) => Promise<boolean>;
 
   reset: () => void;
 }
@@ -59,7 +59,8 @@ export const useStudentStore = create<StudentState>((set) => ({
   updateStudent: async (data) => {
     set({ loading: true, error: "" });
     try {
-      await api.put("/api/v1/students/", data);
+      const res = await api.put("/api/v1/students/me", data);
+      set({ student: res.data });
       return true;
     } catch {
       set({ error: "Failed to update student" });

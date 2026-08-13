@@ -21,6 +21,7 @@ export default function StudentExamsDashboardPage() {
 
   const [filters, setFilters] = useState({
     name: "",
+    code: "",
     type: "",
     teacherName: "",
     schoolName: "",
@@ -90,6 +91,7 @@ export default function StudentExamsDashboardPage() {
             onClear={() =>
               setFilters({
                 name: "",
+                code: "",
                 type: "",
                 teacherName: "",
                 schoolName: "",

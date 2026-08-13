@@ -1,6 +1,6 @@
 # backend/tests/dummy_data/users.py
-from unittest.mock import MagicMock
 from datetime import datetime
+from unittest.mock import MagicMock
 
 # ── Reusable dummy data ───────────────────────────────────────
 TEST_USER_PAYLOAD = {

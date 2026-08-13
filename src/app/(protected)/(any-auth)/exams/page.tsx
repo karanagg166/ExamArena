@@ -19,6 +19,7 @@ export default function ExamsDiscoveryPage() {
 
   const [filters, setFilters] = useState({
     name: "",
+    code: "",
     type: "",
     teacherName: "",
     schoolName: "",
@@ -93,6 +94,7 @@ export default function ExamsDiscoveryPage() {
             onClear={() =>
               setFilters({
                 name: "",
+                code: "",
                 type: "",
                 teacherName: "",
                 schoolName: "",

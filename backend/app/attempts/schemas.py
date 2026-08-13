@@ -1,10 +1,12 @@
 from datetime import datetime
 from enum import StrEnum
+
 from pydantic import BaseModel
+
 from app.questions.schemas import QuestionType
 
-
 # ─── Enums (match Prisma) ────────────────────────────────────────────────────
+
 
 class AttemptStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
@@ -28,8 +30,10 @@ class Correctness(StrEnum):
 
 # ─── SelectedOption (Prisma: SelectedOption) ─────────────────────────────────
 
+
 class SelectedOptionCreate(BaseModel):
     """Frontend sends only optionId — server links it to the answer"""
+
     optionId: str
 
 
@@ -44,14 +48,17 @@ class SelectedOptionResponse(BaseModel):
 
 # ─── StudentExamAnswer (Prisma: StudentExamAnswer) ──────────────────────────
 
+
 class StudentAnswerCreate(BaseModel):
     """When starting exam: create empty answer shells per question"""
+
     questionId: str
     questionType: QuestionType
 
 
 class StudentAnswerUpdate(BaseModel):
     """When submitting: student fills in their answer for a question"""
+
     id: str
     textAnswer: str | None = None
     selectedOptions: list[SelectedOptionCreate] | None = None
@@ -59,6 +66,7 @@ class StudentAnswerUpdate(BaseModel):
 
 class StudentAnswerResponse(BaseModel):
     """Full answer record returned from server"""
+
     id: str
     studentExamId: str
     questionId: str
@@ -78,20 +86,24 @@ class StudentAnswerResponse(BaseModel):
 
 # ─── StudentExam (Prisma: StudentExam) ───────────────────────────────────────
 
+
 class StudentExamCreate(BaseModel):
     """When starting exam: frontend sends just examId
     Server injects studentId (from JWT), startedAt (now), status (IN_PROGRESS)"""
+
     examId: str
 
 
 class StudentExamSubmit(BaseModel):
     """When submitting exam: send all answers at once"""
+
     id: str
     answers: list[StudentAnswerUpdate]
 
 
 class StudentExamUpdate(BaseModel):
     """For teacher/admin grading or status updates"""
+
     id: str
     marksObtained: int | None = None
     status: AttemptStatus | None = None
@@ -100,6 +112,7 @@ class StudentExamUpdate(BaseModel):
 
 class StudentExamResponse(BaseModel):
     """Full attempt record returned from server"""
+
     id: str
     studentId: str
     examId: str
@@ -111,4 +124,3 @@ class StudentExamResponse(BaseModel):
 
     class Config:
         from_attributes = True
-

@@ -1,6 +1,6 @@
 # 🎓 ExamArena Backend API
 
-Complete backend API for ExamArena exam platform built with **FastAPI**, **Prisma ORM**, and **PostgreSQL**.
+Complete backend API for ExamArena exam platform built with **FastAPI**, **SQLAlchemy ORM**, and **PostgreSQL**.
 
 ---
 
@@ -39,7 +39,7 @@ ExamArena backend provides:
 - 👤 **User Management** - Signup, Login, Logout, Get Profile
 - 🔒 **Password Security** - bcrypt hashing
 - 📡 **RESTful API** - Clean endpoints with proper HTTP methods
-- 🗄️ **Database Integration** - Prisma ORM with PostgreSQL
+- 🗄️ **Database Integration** - SQLAlchemy ORM with PostgreSQL
 - 📝 **Type Safety** - Full TypeScript-like experience with Python type hints
 
 ---
@@ -50,7 +50,7 @@ ExamArena backend provides:
 |-------|-----------|---------|
 | **Web Framework** | FastAPI | 0.110.0 |
 | **Server** | Uvicorn | 0.27.1 |
-| **ORM** | Prisma | 0.13.1 |
+| **ORM** | SQLAlchemy | 2.0.28 |
 | **Database** | PostgreSQL | 12+ |
 | **Validation** | Pydantic | 2.6.4 |
 | **Authentication** | python-jose | 3.3.0 |
@@ -166,7 +166,7 @@ Ensure PostgreSQL is running, then:
 ```bash
 # From root project directory
 cd ..  # Go to ExamArena root
-npx prisma migrate dev --name init
+pnpm exec prisma migrate dev --name init
 ```
 
 This creates the database schema defined in `prisma/schema.prisma`
@@ -477,10 +477,10 @@ Handles authentication logic:
 
 ```python
 from app.core.security import (
-    hash_password,      # Hash plain passwords with bcrypt
-    verify_password,    # Check password against hash
-    create_access_token,# Generate JWT token
-    verify_token        # Validate and decode JWT
+    hash_password,  # Hash plain passwords with bcrypt
+    verify_password,  # Check password against hash
+    create_access_token,  # Generate JWT token
+    verify_token,  # Validate and decode JWT
 )
 ```
 
@@ -505,19 +505,21 @@ from app.schemas.user import LoginRequest, SignupRequest, UserResponse
 
 ```python
 class LoginRequest:
-    email: str      # Must be valid email
-    password: str   # Any string
+    email: str  # Must be valid email
+    password: str  # Any string
+
 
 class SignupRequest:
-    email: str      # Must be valid email
-    fullName: str   # Any string
-    password: str   # Any string
+    email: str  # Must be valid email
+    fullName: str  # Any string
+    password: str  # Any string
+
 
 class UserResponse:
-    id: int         # Auto from DB
+    id: int  # Auto from DB
     email: str
     fullName: str
-    role: str       # "student", "teacher", "admin"
+    role: str  # "student", "teacher", "admin"
 ```
 
 **Why Pydantic?**
@@ -532,9 +534,9 @@ Database operations:
 
 ```python
 from app.crud.user import (
-    get_user_by_email,    # Find user by email
-    get_user_by_id,       # Find user by ID
-    create_user           # Create new user
+    get_user_by_email,  # Find user by email
+    get_user_by_id,  # Find user by ID
+    create_user,  # Create new user
 )
 ```
 
@@ -555,8 +557,9 @@ Reusable authentication dependency:
 ```python
 from app.api.v1.dependencies import get_current_user
 
+
 @router.get("/me")
-async def get_profile(current_user = Depends(get_current_user)):
+async def get_profile(current_user=Depends(get_current_user)):
     return current_user
 ```
 
@@ -580,17 +583,19 @@ Create `app/schemas/exam.py`:
 from pydantic import BaseModel
 from typing import Optional
 
+
 class ExamCreate(BaseModel):
     title: str
     description: str
     duration_minutes: int
+
 
 class ExamResponse(BaseModel):
     id: int
     title: str
     description: str
     duration_minutes: int
-    
+
     class Config:
         from_attributes = True
 ```
@@ -602,18 +607,23 @@ Create `app/crud/exam.py`:
 ```python
 from app.core.security import hash_password
 
-async def create_exam(title: str, description: str, duration_minutes: int, created_by: int):
+
+async def create_exam(
+    title: str, description: str, duration_minutes: int, created_by: int
+):
     return await prisma.exam.create(
         data={
             "title": title,
             "description": description,
             "duration_minutes": duration_minutes,
-            "created_by": created_by
+            "created_by": created_by,
         }
     )
 
+
 async def get_exam_by_id(exam_id: int):
     return await prisma.exam.find_unique(where={"id": exam_id})
+
 
 async def get_all_exams():
     return await prisma.exam.find_many()
@@ -631,20 +641,19 @@ from app.api.v1.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1/exams", tags=["exams"])
 
+
 @router.post("/", response_model=ExamResponse)
-async def create_new_exam(
-    exam: ExamCreate,
-    current_user = Depends(get_current_user)
-):
+async def create_new_exam(exam: ExamCreate, current_user=Depends(get_current_user)):
     return await create_exam(
         title=exam.title,
         description=exam.description,
         duration_minutes=exam.duration_minutes,
-        created_by=current_user.id
+        created_by=current_user.id,
     )
 
+
 @router.get("/", response_model=list[ExamResponse])
-async def list_exams(current_user = Depends(get_current_user)):
+async def list_exams(current_user=Depends(get_current_user)):
     return await get_all_exams()
 ```
 
@@ -679,7 +688,7 @@ model Exam {
 Then migrate:
 
 ```bash
-npx prisma migrate dev --name add_exam_model
+pnpm exec prisma migrate dev --name add_exam_model
 ```
 
 Done! New exam endpoints ready to use! 🎉
@@ -758,6 +767,7 @@ async def create(data: dict):
     # No validation!
     return await prisma.user.create(data=data)
 
+
 # ✅ DO
 @router.post("/users", response_model=UserResponse)
 async def create(user: UserCreate):
@@ -775,9 +785,10 @@ async def get_user(request):
     token = request.cookies.get("access_token")
     # ... validate token, get user, etc.
 
+
 # ✅ DO
 @router.get("/me")
-async def get_user(current_user = Depends(get_current_user)):
+async def get_user(current_user=Depends(get_current_user)):
     # Reusable & DRY
     return current_user
 ```

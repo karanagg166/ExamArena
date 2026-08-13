@@ -1,6 +1,8 @@
 # backend/tests/principal/conftest.py
 from unittest.mock import AsyncMock
+
 import pytest
+
 
 @pytest.fixture
 def mock_principal_db(mocker):
@@ -20,9 +22,6 @@ def mock_principal_db(mocker):
         "get_teacher_by_user_id": mocker.patch(
             "app.principals.router.get_teacher_by_user_id",
             new_callable=AsyncMock,
-        ),
-        "db": mocker.patch(
-            "app.principals.router.db",
         ),
     }
     return patches

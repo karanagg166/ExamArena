@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
-interface FilterState {
+export interface FilterState {
   name: string;
+  code: string;
   type: string;
   teacherName: string;
   schoolName: string;
@@ -37,17 +38,29 @@ export function ExamSearchFilters({ filters, setFilters, onClear }: ExamSearchFi
       <div className="space-y-5">
         {/* Exam Name Search */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-[var(--text-dimmed)] uppercase tracking-wider">Exam Title</label>
+          <label className="text-xs font-semibold text-[var(--text-dimmed)] uppercase tracking-wider">Exam Title or Code</label>
           <div className="relative">
             <Input
               name="name"
-              placeholder="Search exams..."
+              placeholder="Search title or code..."
               value={filters.name}
               onChange={handleChange}
               className="pl-9"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
           </div>
+        </div>
+
+        {/* Dedicated Exam Code Search */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-[var(--text-dimmed)] uppercase tracking-wider">Unique Exam Code</label>
+          <Input
+            name="code"
+            placeholder="e.g. EXM-8X92K"
+            value={filters.code}
+            onChange={handleChange}
+            className="font-mono text-sm uppercase"
+          />
         </div>
 
         {/* Teacher Search */}

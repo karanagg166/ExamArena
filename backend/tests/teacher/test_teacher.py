@@ -1,15 +1,17 @@
 # backend/tests/teacher/test_teacher.py
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from tests.dummy_data.teachers import make_fake_teacher
+
 
 @pytest.mark.asyncio
 class TestTeachersApi:
-
     async def test_fetch_teachers_success(self, client, override_auth, mock_teacher_db):
         override_auth(role="STUDENT")
         fake_teacher = make_fake_teacher()
-        
+
         # Build list response dict / mock object
         teacher_item = MagicMock()
         teacher_item.id = fake_teacher.id
@@ -20,7 +22,7 @@ class TestTeachersApi:
         teacher_item.qualifications = ["BACHELORS"]
         teacher_item.department = fake_teacher.department
         teacher_item.subjects = ["MATHS", "SCIENCE"]
-        
+
         mock_teacher_db["get_teachers"].return_value = [teacher_item]
 
         response = await client.get("/api/v1/teachers")
@@ -44,7 +46,7 @@ class TestTeachersApi:
             "qualifications": ["BACHELORS"],
             "experience": 5,
             "department": "Science",
-            "subjects": ["MATHS", "SCIENCE"]
+            "subjects": ["MATHS", "SCIENCE"],
         }
         response = await client.post("/api/v1/teachers", json=payload)
         assert response.status_code == 201
@@ -61,7 +63,7 @@ class TestTeachersApi:
             "qualifications": ["BACHELORS"],
             "experience": 5,
             "department": "Science",
-            "subjects": ["MATHS"]
+            "subjects": ["MATHS"],
         }
         response = await client.post("/api/v1/teachers", json=payload)
         assert response.status_code == 409
@@ -73,7 +75,7 @@ class TestTeachersApi:
         payload = {
             "qualifications": ["BACHELORS"],
             "department": "Science",
-            "subjects": ["MATHS"]
+            "subjects": ["MATHS"],
         }
         response = await client.post("/api/v1/teachers", json=payload)
         assert response.status_code == 422
@@ -102,7 +104,7 @@ class TestTeachersApi:
         override_auth(role="TEACHER")
         fake_teacher = make_fake_teacher()
         mock_teacher_db["get_teacher_by_user_id"].return_value = fake_teacher
-        
+
         updated_teacher = make_fake_teacher({"experience": 8})
         mock_teacher_db["update_teacher"].return_value = updated_teacher
 
@@ -124,27 +126,39 @@ class TestTeachersApi:
         fake_teacher = make_fake_teacher({"schoolId": "clxfake_school_001"})
         mock_teacher_db["join_school"].return_value = fake_teacher
 
-        response = await client.post("/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_001"})
+        response = await client.post(
+            "/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_001"}
+        )
         assert response.status_code == 200
 
     async def test_join_school_no_teacher(self, client, override_auth, mock_teacher_db):
         override_auth(role="TEACHER")
         mock_teacher_db["join_school"].return_value = None
 
-        response = await client.post("/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_001"})
+        response = await client.post(
+            "/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_001"}
+        )
         assert response.status_code == 404
         assert "Teacher profile not found" in response.json()["detail"]
 
-    async def test_join_school_school_not_found(self, client, override_auth, mock_teacher_db):
+    async def test_join_school_school_not_found(
+        self, client, override_auth, mock_teacher_db
+    ):
         override_auth(role="TEACHER")
         mock_teacher_db["join_school"].return_value = False
 
-        response = await client.post("/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_999"})
+        response = await client.post(
+            "/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_999"}
+        )
         assert response.status_code == 404
         assert "School not found" in response.json()["detail"]
 
     async def test_get_qualifications(self, client, mock_teacher_db):
-        mock_teacher_db["get_all_qualifications"].return_value = ["BACHELORS", "MASTERS", "PHD"]
+        mock_teacher_db["get_all_qualifications"].return_value = [
+            "BACHELORS",
+            "MASTERS",
+            "PHD",
+        ]
         response = await client.get("/api/v1/teachers/qualifications")
         assert response.status_code == 200
         assert response.json() == ["BACHELORS", "MASTERS", "PHD"]

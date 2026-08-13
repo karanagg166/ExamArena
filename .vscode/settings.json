@@ -1,6 +1,28 @@
 {
-    "python.REPL.enableREPLSmartSend": false,
-    "prisma.enableDiagnostics": false,
-    "prisma.pinToPrisma6": true,
-    "prisma.scriptRunner": "pnpm"
+  "python.REPL.enableREPLSmartSend": false,
+  "prisma.enableDiagnostics": false,
+  "prisma.pinToPrisma6": true,
+  "prisma.scriptRunner": "pnpm",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit",
+      "source.fixAll.ruff": "explicit"
+    }
+  },
+  "editor.formatOnSave": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "html"
+  },
+  "diffEditor.renderSideBySide": false,
+  "scm.diffDecorations": "all",
+  "editor.inlineSuggest.enabled": true
 }

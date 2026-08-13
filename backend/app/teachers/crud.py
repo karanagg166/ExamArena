@@ -1,9 +1,11 @@
 import json
-from typing import Any, cast
 
-from app.generated.prisma.enums import Qualification, Subject  # type: ignore
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 import app.core.database as db
+from app.core.models import Qualification, Subject, Teacher, User
 from app.school.crud import get_school_by_id
 from app.teachers.schemas import (
     TeacherCreate,
@@ -13,18 +15,38 @@ from app.teachers.schemas import (
 )
 
 
-async def get_teacher_by_user_id(user_id: str):
+async def get_teacher_by_user_id(user_id: str, session: AsyncSession | None = None):
     """Get teacher by user ID with user data"""
-    return await db.prisma.teacher.find_unique(
-        where={"userId": user_id}, include={"user": True}
-    )
+
+    async def _do_get(s: AsyncSession):
+        stmt = (
+            select(Teacher)
+            .where(Teacher.userId == user_id)
+            .options(selectinload(Teacher.user))
+        )
+        return (await s.execute(stmt)).scalar_one_or_none()
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)
 
 
-async def get_teacher_by_id(teacher_id: str):
+async def get_teacher_by_id(teacher_id: str, session: AsyncSession | None = None):
     """Get teacher by primary ID with user data"""
-    return await db.prisma.teacher.find_unique(
-        where={"id": teacher_id}, include={"user": True}
-    )
+
+    async def _do_get(s: AsyncSession):
+        stmt = (
+            select(Teacher)
+            .where(Teacher.id == teacher_id)
+            .options(selectinload(Teacher.user))
+        )
+        return (await s.execute(stmt)).scalar_one_or_none()
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)
 
 
 def _parse_json_list(value: str | None) -> list[str]:
@@ -43,112 +65,158 @@ def _contains_ci(source: str | None, target: str | None) -> bool:
     return target.lower() in (source or "").lower()
 
 
-async def get_teachers(filters: TeacherFilterParams) -> list[TeacherListItemResponse]:
-    where: dict[str, object] = {}
+async def get_teachers(
+    filters: TeacherFilterParams, session: AsyncSession | None = None
+) -> list[TeacherListItemResponse]:
+    """Get teachers with filters"""
 
-    if filters.department:
-        where["department"] = {
-            "contains": filters.department,
-            "mode": "insensitive",
-        }
+    async def _do_get_all(s: AsyncSession):
+        stmt = select(Teacher).options(selectinload(Teacher.user))
 
-    experience_range: dict[str, int] = {}
-    if filters.min_experience is not None:
-        experience_range["gte"] = filters.min_experience
-    if filters.max_experience is not None:
-        experience_range["lte"] = filters.max_experience
-    if experience_range:
-        where["experience"] = experience_range
+        if filters.department:
+            stmt = stmt.where(Teacher.department.ilike(f"%{filters.department}%"))
 
-    teachers = await db.prisma.teacher.find_many(
-        where=cast(Any, where),
-        include={"user": True},
-    )
+        if filters.min_experience is not None:
+            stmt = stmt.where(Teacher.experience >= filters.min_experience)
+        if filters.max_experience is not None:
+            stmt = stmt.where(Teacher.experience <= filters.max_experience)
 
-    results: list[TeacherListItemResponse] = []
-    for teacher in teachers:
-        user = getattr(teacher, "user", None)
-        qualifications = _parse_json_list(getattr(teacher, "qualification", None))
-        subjects = _parse_json_list(getattr(teacher, "subjects", None))
+        teachers = (await s.execute(stmt)).scalars().all()
 
-        if not _contains_ci(getattr(user, "name", None), filters.name):
-            continue
-        if not _contains_ci(getattr(user, "email", None), filters.email):
-            continue
-        if not _contains_ci(getattr(user, "phoneNo", None), filters.phone_no):
-            continue
-        if filters.subject and not any(
-            _contains_ci(subject, filters.subject) for subject in subjects
-        ):
-            continue
-        if filters.qualification and not any(
-            _contains_ci(qualification, filters.qualification)
-            for qualification in qualifications
-        ):
-            continue
+        results: list[TeacherListItemResponse] = []
+        for teacher in teachers:
+            user = getattr(teacher, "user", None)
+            qualifications = _parse_json_list(getattr(teacher, "qualification", None))
+            subjects = _parse_json_list(getattr(teacher, "subjects", None))
 
-        results.append(
-            TeacherListItemResponse(
-                id=teacher.id,
-                name=getattr(user, "name", "") or "",
-                email=getattr(user, "email", "") or "",
-                phoneNo=getattr(user, "phoneNo", "") or "",
-                experience=getattr(teacher, "experience", 0) or 0,
-                qualifications=qualifications,
-                department=getattr(teacher, "department", "") or "",
-                subjects=subjects,
+            if not _contains_ci(getattr(user, "name", None), filters.name):
+                continue
+            if not _contains_ci(getattr(user, "email", None), filters.email):
+                continue
+            if not _contains_ci(getattr(user, "phoneNo", None), filters.phone_no):
+                continue
+            if filters.subject and not any(
+                _contains_ci(subject, filters.subject) for subject in subjects
+            ):
+                continue
+            if filters.qualification and not any(
+                _contains_ci(qualification, filters.qualification)
+                for qualification in qualifications
+            ):
+                continue
+
+            results.append(
+                TeacherListItemResponse(
+                    id=teacher.id,
+                    name=getattr(user, "name", "") or "",
+                    email=getattr(user, "email", "") or "",
+                    phoneNo=getattr(user, "phoneNo", "") or "",
+                    experience=getattr(teacher, "experience", 0) or 0,
+                    qualifications=qualifications,
+                    department=getattr(teacher, "department", "") or "",
+                    subjects=subjects,
+                )
             )
-        )
 
-    return results
+        return results
+
+    if session:
+        return await _do_get_all(session)
+    async with db.get_session() as s:
+        return await _do_get_all(s)
 
 
-async def create_teacher(teacher_data: TeacherCreate):
+async def create_teacher(
+    teacher_data: TeacherCreate, session: AsyncSession | None = None
+):
     """Create teacher record — serialize qualifications/subjects lists to JSON strings"""
-    await db.prisma.teacher.create(
-        data={
-            "userId": teacher_data.userId,
-            "qualification": json.dumps(teacher_data.qualifications),
-            "experience": teacher_data.experience,
-            "department": teacher_data.department,
-            "subjects": json.dumps(teacher_data.subjects),
-        }
-    )
-    # Re-fetch with user relation included for the response
-    return await get_teacher_by_user_id(teacher_data.userId)
+
+    async def _do_create(s: AsyncSession):
+        teacher = Teacher(
+            userId=teacher_data.userId,
+            qualification=json.dumps(teacher_data.qualifications),
+            experience=teacher_data.experience,
+            department=teacher_data.department,
+            subjects=json.dumps(teacher_data.subjects),
+        )
+        s.add(teacher)
+        await s.commit()
+        await s.refresh(teacher)
+
+        stmt = (
+            select(Teacher)
+            .where(Teacher.userId == teacher_data.userId)
+            .options(selectinload(Teacher.user))
+        )
+        return (await s.execute(stmt)).scalar_one_or_none()
+
+    if session:
+        return await _do_create(session)
+    async with db.get_session() as s:
+        return await _do_create(s)
 
 
-async def update_teacher(user_id: str, teacher_data: TeacherUpdate):
+async def update_teacher(
+    user_id: str, teacher_data: TeacherUpdate, session: AsyncSession | None = None
+):
     """Update teacher record and associated user data"""
     update_dict = teacher_data.model_dump(exclude_unset=True)
-
     user_data = update_dict.pop("user", None)
 
-    if user_data:
-        await db.prisma.user.update(where={"id": user_id}, data=user_data)
-
-    # Serialize list fields to JSON strings for DB storage
     teacher_fields = {}
     if "qualifications" in update_dict:
         teacher_fields["qualification"] = json.dumps(update_dict.pop("qualifications"))
     if "subjects" in update_dict:
         teacher_fields["subjects"] = json.dumps(update_dict.pop("subjects"))
 
-    # Remaining scalar fields (experience, department)
     teacher_fields.update(update_dict)
 
-    if teacher_fields:
-        await db.prisma.teacher.update(
-            where={"userId": user_id},
-            data=cast(Any, teacher_fields),
+    async def _do_update(s: AsyncSession):
+        if user_data:
+            user_stmt = select(User).where(User.id == user_id)
+            user = (await s.execute(user_stmt)).scalar_one_or_none()
+            if user:
+                for k, v in user_data.items():
+                    setattr(user, k, v)
+
+        if teacher_fields:
+            teacher_stmt = select(Teacher).where(Teacher.userId == user_id)
+            teacher = (await s.execute(teacher_stmt)).scalar_one_or_none()
+            if teacher:
+                for k, v in teacher_fields.items():
+                    setattr(teacher, k, v)
+
+        await s.commit()
+
+        stmt = (
+            select(Teacher)
+            .where(Teacher.userId == user_id)
+            .options(selectinload(Teacher.user))
         )
+        return (await s.execute(stmt)).scalar_one_or_none()
 
-    return await get_teacher_by_user_id(user_id)
+    if session:
+        return await _do_update(session)
+    async with db.get_session() as s:
+        return await _do_update(s)
 
 
-async def delete_teacher(user_id: str):
+async def delete_teacher(user_id: str, session: AsyncSession | None = None):
     """Delete teacher record"""
-    return await db.prisma.teacher.delete(where={"userId": user_id})
+
+    async def _do_delete(s: AsyncSession):
+        stmt = select(Teacher).where(Teacher.userId == user_id)
+        teacher = (await s.execute(stmt)).scalar_one_or_none()
+        if teacher:
+            await s.delete(teacher)
+            await s.commit()
+            return teacher
+        return None
+
+    if session:
+        return await _do_delete(session)
+    async with db.get_session() as s:
+        return await _do_delete(s)
 
 
 async def get_all_qualifications():
@@ -159,18 +227,30 @@ async def get_all_subjects():
     return [s.value for s in Subject]
 
 
-async def join_school(user_id: str, school_id: str):
+async def join_school(
+    user_id: str, school_id: str, session: AsyncSession | None = None
+):
     """Assign the teacher profile to a school by school ID."""
-    teacher = await get_teacher_by_user_id(user_id)
-    if not teacher:
-        return None
-
-    school = await get_school_by_id(school_id)
+    school = await get_school_by_id(school_id, session=session)
     if not school:
         return False
 
-    await db.prisma.teacher.update(
-        where={"userId": user_id},
-        data=cast(Any, {"schoolId": school_id}),
-    )
-    return await get_teacher_by_user_id(user_id)
+    async def _do_join(s: AsyncSession):
+        teacher_stmt = select(Teacher).where(Teacher.userId == user_id)
+        teacher = (await s.execute(teacher_stmt)).scalar_one_or_none()
+        if not teacher:
+            return None
+        teacher.schoolId = school_id
+        await s.commit()
+
+        stmt = (
+            select(Teacher)
+            .where(Teacher.userId == user_id)
+            .options(selectinload(Teacher.user))
+        )
+        return (await s.execute(stmt)).scalar_one_or_none()
+
+    if session:
+        return await _do_join(session)
+    async with db.get_session() as s:
+        return await _do_join(s)

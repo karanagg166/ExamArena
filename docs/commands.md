@@ -239,75 +239,46 @@ docker compose exec backend mypy app/
 ```
 
 ## 9. Frontend Lint + Type Commands (Next.js)
+# Check lint errors (ESLint)
+docker compose exec frontend pnpm lint
 
-### Check lint errors (ESLint):
+# Fix lint errors automatically (ESLint)
+docker compose exec frontend pnpm lint --fix
 
-```bash
- docker compose exec frontend npm run lint
-```
+# Check formatting errors (Prettier)
+docker compose exec frontend pnpm exec prettier --check src/
 
-### Fix lint errors automatically (ESLint):
+# Fix formatting errors automatically (Prettier)
+docker compose exec frontend pnpm exec prettier --write src/
 
-```bash
-docker compose exec frontend npm run lint -- --fix
-```
+# Check type errors (TypeScript)
+docker compose exec frontend pnpm exec tsc --noEmit
 
-### Check formatting errors (Prettier):
-
-```bash
-docker compose exec frontend npx prettier --check src/
-```
-
-### Fix formatting errors automatically (Prettier):
-
-```bash
-docker compose exec frontend npx prettier --write src/
-```
-
-### Check type errors (TypeScript):
-
-```bash
-docker compose exec frontend npx tsc --noEmit
-```
-
-Type errors cannot be auto-fixed — tsc tells you what is wrong and you fix them manually.
-
-### Run all three in order (recommended before every push):
-
-```bash
-docker compose exec frontend npx prettier --write src/
-docker compose exec frontend npx next lint --fix
-docker compose exec frontend npx tsc --noEmit
-```
+# Run all three in order (recommended before every push)
+docker compose exec frontend pnpm exec prettier --write src/
+docker compose exec frontend pnpm lint --fix
+docker compose exec frontend pnpm exec tsc --noEmit
 
 ## 10. Recommended Daily Flow
-
-1. `docker compose up -d`
-2. `docker compose ps`
+1. docker compose up -d
+2. docker compose ps
 3. Run your code changes
 4. If Prisma schema changed:
-   ```bash
    docker compose exec backend prisma db push
    docker compose exec backend prisma generate --generator pyclient
-   ```
 5. Before pushing code, run lint + type checks:
-   ```bash
-   # Backend
+   # Backend (Python / FastAPI)
    docker compose exec backend black app/
    docker compose exec backend ruff check app/ --fix
    docker compose exec backend mypy app/
 
-   # Frontend
-   docker compose exec frontend npx prettier --write src/
-   docker compose exec frontend npx next lint --fix
-   docker compose exec frontend npx tsc --noEmit
-   ```
+   # Frontend (Next.js / pnpm)
+   docker compose exec frontend pnpm exec prettier --write src/
+   docker compose exec frontend pnpm lint --fix
+   docker compose exec frontend pnpm exec tsc --noEmit
 6. Check logs if needed:
-   ```bash
    docker compose logs -f backend
-   ```
-7. End work with `docker compose stop` (or `docker compose down` if you want cleanup)
-
+7. End work with docker compose stop (or docker compose down if you want cleanup)
 ## 11. Makefile Commands
 
 There are two Makefiles in the project. Each command and what it does is listed below.

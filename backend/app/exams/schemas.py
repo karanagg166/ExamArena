@@ -38,6 +38,7 @@ class ExamBase(BaseModel):
     isPublished: bool = False
     subject: Subject | None = None
     type: ExamType
+    examCode: str | None = None
     questionCount: int | None = None
 
 
@@ -77,11 +78,13 @@ class TeacherInfo(BaseModel):
 
 class ExamResponse(ExamBase):
     id: str
+    examCode: str
     createdAt: datetime
     updatedAt: datetime
     teacher: TeacherInfo | None = None
     questions: list[QuestionResponse] | None = None
     model_config = ConfigDict(from_attributes=True)
+
 
 class StudentExamListItemResponse(ExamResponse):
     studentStatus: str | None = None

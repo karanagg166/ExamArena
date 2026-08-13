@@ -5,11 +5,13 @@ from contextlib import asynccontextmanager
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
-from app.core.redis import connect_redis, disconnect_redis
 from app.api.router import api_router
+from app.core import database as db
 from app.core.config import settings
+from app.core.redis import connect_redis, disconnect_redis
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +24,14 @@ if settings.SENTRY_DSN:
         send_default_pii=True,
     )
 
-import app.core.database as db
-
 
 async def connect_with_retry(attempts: int = 5, base_delay: int = 2) -> None:
     """Attempt to connect to the database with simple backoff to handle transient failures."""
 
     for attempt in range(1, attempts + 1):
         try:
-            await db.prisma.connect()
-            logger.info("✅ Database connected")
+            await db.init_db()
+            logger.info("✅ Database connected and initialized")
             return
         except Exception as exc:
             if attempt == attempts:
@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
     await connect_with_retry()
     await connect_redis()
     yield
-    await db.prisma.disconnect()
+    await db.close_db()
     await disconnect_redis()
     logger.info("🔌 Database and Redis disconnected")
 
@@ -71,6 +71,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    logger.exception(f"Unhandled server exception on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal server error occurred on the server."},
+    )
+
 
 # Include routers
 app.include_router(api_router)

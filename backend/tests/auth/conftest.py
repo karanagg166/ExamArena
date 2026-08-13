@@ -1,7 +1,10 @@
 # backend/tests/auth/conftest.py
 from unittest.mock import AsyncMock
+
 import pytest
+
 from tests.dummy_data.users import make_fake_user
+
 
 # ── Fake user object ──────────────────────────────────────────
 @pytest.fixture

@@ -42,16 +42,10 @@ down:
 	@echo "🧹 Stopping containers..."
 	$(COMPOSE) down
 
-# ── Prisma ────────────────────────────────────────────────────
+# ── SQLAlchemy Database ───────────────────────────────────────
 db-push:
-	@echo "📦 Prisma validate..."
-	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma validate
-
-	@echo "📦 Prisma generate (pyclient)..."
-	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma generate --generator pyclient
-
-	@echo "📦 Prisma DB push..."
-	$(COMPOSE) exec $(BACKEND_CONTAINER) prisma db pull
+	@echo "📦 Initializing SQLAlchemy database tables..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
 
 # ── Tests ─────────────────────────────────────────────────────
 test:

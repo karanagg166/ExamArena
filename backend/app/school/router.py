@@ -1,9 +1,8 @@
 import logging
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-import app.core.database as db
 from app.api.deps import get_current_user
 from app.principals.crud import (
     create_principal,
@@ -25,7 +24,6 @@ from app.users.schemas import UserResponse
 
 router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
 logger = logging.getLogger(__name__)
-
 
 
 @router.get("/me", response_model=SchoolResponse)
@@ -63,11 +61,9 @@ async def create_school(
                 teacher.id,
                 PrincipalUpdate(schoolId=school.id),
             )
-    teacher_updated = await db.prisma.teacher.update(
-        where={"userId": current_user.id},
-        data=cast(Any, {"schoolId": school.id}),
-    )
-    logger.debug("Updated teacher with new schoolId: %s", teacher_updated)
+        from app.teachers.crud import join_school
+
+        await join_school(current_user.id, school.id)
     return school
 
 

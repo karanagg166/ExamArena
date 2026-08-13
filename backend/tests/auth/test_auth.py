@@ -211,15 +211,17 @@ class TestMeUnit:
 
 @pytest.mark.integration
 class TestAuthIntegration:
-
     @pytest.mark.asyncio
     async def test_signup_writes_to_db(self, real_client, real_db, cleanup_real_user):
+        from sqlalchemy import select
+
+        from app.core.models import User
+
         response = await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
 
         assert response.status_code == 200
-        user_in_db = await real_db.user.find_unique(
-            where={"email": TEST_USER_PAYLOAD["email"]}
-        )
+        stmt = select(User).where(User.email == TEST_USER_PAYLOAD["email"])
+        user_in_db = (await real_db.execute(stmt)).scalar_one_or_none()
         assert user_in_db is not None
         assert user_in_db.email == TEST_USER_PAYLOAD["email"]
         assert user_in_db.password != TEST_USER_PAYLOAD["password"]

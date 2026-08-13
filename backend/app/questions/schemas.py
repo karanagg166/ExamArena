@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -22,10 +23,12 @@ class QuestionBase(BaseModel):
     examId: str | None = None
     section: str
 
+
 class QuestionOptionBase(BaseModel):
     text: str
     optionNumber: int
     imageUrl: str | None = None
+
 
 class QuestionOptionCreate(QuestionOptionBase):
     questionId: str | None = None
@@ -38,6 +41,8 @@ class QuestionOptionResponse(QuestionOptionBase):
     isCorrect: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
 class QuestionOptionUpdate(BaseModel):
     id: str | None = None
     questionId: str | None = None
@@ -45,7 +50,8 @@ class QuestionOptionUpdate(BaseModel):
     optionNumber: int | None = None
     imageUrl: str | None = None
     isCorrect: bool | None = None
-    
+
+
 class QuestionCreateRequest(QuestionBase):
     options: list[QuestionOptionCreate] | None = None
 
@@ -61,6 +67,7 @@ class QuestionUpdateRequest(BaseModel):
     explanation: str | None = None
     section: str | None = None
     options: list[QuestionOptionUpdate] | None = None
+
 
 class QuestionResponse(QuestionBase):
     id: str

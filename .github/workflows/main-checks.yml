@@ -65,12 +65,9 @@ jobs:
           docker compose logs backend
           exit 1
 
-      # 3. Prisma Schema & DB 
-      - name: Prisma Generate
-        run: docker compose exec -T backend prisma generate --generator pyclient
-
-      - name: Prisma DB Push
-        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma db push --accept-data-loss
+      # 3. SQLAlchemy Database
+      - name: SQLAlchemy Init DB
+        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
 
      
 
@@ -86,13 +83,13 @@ jobs:
 
       # 5. Frontend Checks (Next.js)
       - name: ⚡ Check Formatting (Prettier)
-        run: docker compose exec -T frontend npx prettier --check src/
+        run: docker compose exec -T frontend pnpm exec prettier --check src/
 
       - name: ⚡ Strict Linting (ESLint)
-        run: docker compose exec -T frontend npm run lint -- --max-warnings=0
+        run: docker compose exec -T frontend pnpm lint -- --max-warnings=0
 
       - name: ⚡ Strict Typing (TypeScript)
-        run: docker compose exec -T frontend npx tsc --noEmit
+        run: docker compose exec -T frontend pnpm exec tsc --noEmit
 
 
 

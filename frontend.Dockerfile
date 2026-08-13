@@ -1,9 +1,8 @@
 FROM node:20-alpine AS base
-RUN npm install -g pnpm
+RUN corepack enable
 
 # ── Dev Stage (Hot Reload) ────────────────────────────────────────────────────
 FROM base AS dev
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install
@@ -14,7 +13,6 @@ CMD ["pnpm", "dev"]
 
 # ── Deps ──────────────────────────────────────────────────────────────────────
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install

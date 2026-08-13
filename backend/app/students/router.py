@@ -1,9 +1,9 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.generated.prisma.enums import Role
 
 from app.api.deps import get_current_user
+from app.core.models import Role
 from app.principals.crud import get_principal_by_teacher_id
 from app.students.crud import (
     create_student,
@@ -140,12 +140,15 @@ async def update_my_student_data(
     student_data: StudentUpdate,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    """Update current user's student data"""
+    """Update current user's student data (rollNo, classId & schoolId cannot be updated by student)"""
     existing = await get_student_by_user_id(current_user.id)
     if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Student profile not found"
         )
+    student_data.rollNo = None
+    student_data.classId = None
+    student_data.schoolId = None
     return await update_student(current_user.id, student_data)
 
 
@@ -197,3 +200,45 @@ async def get_student_by_id_endpoint(
             )
 
     return student
+
+
+@router.put("/{student_id}", response_model=StudentResponse)
+async def update_student_by_id_endpoint(
+    student_id: str,
+    student_data: StudentUpdate,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Update student data by ID (Teacher / Principal / Admin only)"""
+    if current_user.role == Role.STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Students cannot edit other students' profiles or roll numbers.",
+        )
+
+    student = await get_student_by_id(student_id)
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Student not found"
+        )
+
+    if current_user.role == Role.TEACHER:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher or teacher.schoolId != student.schoolId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You must be a teacher at this student's school.",
+            )
+    elif current_user.role == Role.PRINCIPAL:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied."
+            )
+        principal = await get_principal_by_teacher_id(teacher.id)
+        if not principal or principal.schoolId != student.schoolId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You must be the principal of this student's school.",
+            )
+
+    return await update_student(student.userId, student_data)

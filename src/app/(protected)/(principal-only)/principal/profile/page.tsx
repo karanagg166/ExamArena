@@ -1,15 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isAxiosError } from "axios";
 import { User, Award, Edit2, Save, X } from "lucide-react";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loading";
 
+import {
+  blockNonAlpha,
+  blockNonPhone,
+  blockNonDigits,
+  sanitizeAlpha,
+  sanitizePhoneNo,
+  validateEmailField,
+  validatePhoneField,
+  validateNameField,
+} from "@/lib/utils";
+
 export default function PrincipalDashboard() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [touched, setTouched] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -23,6 +36,16 @@ export default function PrincipalDashboard() {
   });
   const router = useRouter();
 
+  const getFieldErrors = () => {
+    return {
+      name: validateNameField(formData.name, "Full Name", false),
+      email: validateEmailField(formData.email, false),
+      phoneNo: validatePhoneField(formData.phoneNo, false),
+    };
+  };
+
+  const fieldErrors = getFieldErrors();
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -31,8 +54,8 @@ export default function PrincipalDashboard() {
           withCredentials: true,
         });
         const data = response.data;
-        const teacher = data.teacher ?? {};
-        const teacherUser = teacher.user ?? {};
+        const teacher = data?.teacher ?? {};
+        const teacherUser = teacher?.user ?? {};
 
         setFormData({
           name: teacherUser.name || "",
@@ -43,10 +66,20 @@ export default function PrincipalDashboard() {
           country: teacherUser.country || "",
           pincode: teacherUser.pincode || "",
           qualification: (teacher.qualifications || []).join(", "),
-          experience: data.experience || 0,
+          experience: data?.experience || 0,
         });
-      } catch {
-        router.push("/login");
+      } catch (error: unknown) {
+        console.error("Error fetching principal data:", error);
+        if (isAxiosError(error)) {
+          if (error.response?.status === 401) {
+            router.push("/login");
+            return;
+          }
+          if (error.response?.status === 403) {
+            router.push("/dashboard");
+            return;
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -56,6 +89,14 @@ export default function PrincipalDashboard() {
   }, [router]);
 
   const handleSave = async () => {
+    setTouched(true);
+
+    const currentErrors = getFieldErrors();
+    if (Object.values(currentErrors).some(Boolean)) {
+      toast.error("Please fix invalid fields before saving.");
+      return;
+    }
+
     try {
       await api.put(
         "/api/v1/teachers/me",
@@ -134,12 +175,16 @@ export default function PrincipalDashboard() {
                 <input
                   type="text"
                   value={formData.name}
+                  onKeyDown={blockNonAlpha}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, name: sanitizeAlpha(e.target.value) })
                   }
                   disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-2 disabled:opacity-50 ${isEditing && (touched || formData.name) && fieldErrors.name ? "border-red-500" : "border-zinc-800"}`}
                 />
+                {isEditing && (touched || formData.name) && fieldErrors.name && (
+                  <p className="text-xs text-red-400 mt-1">{fieldErrors.name}</p>
+                )}
               </div>
               <div>
                 <label className="text-sm text-zinc-400">Email</label>
@@ -150,20 +195,27 @@ export default function PrincipalDashboard() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-2 disabled:opacity-50 ${isEditing && (touched || formData.email) && fieldErrors.email ? "border-red-500" : "border-zinc-800"}`}
                 />
+                {isEditing && (touched || formData.email) && fieldErrors.email && (
+                  <p className="text-xs text-red-400 mt-1">{fieldErrors.email}</p>
+                )}
               </div>
               <div>
                 <label className="text-sm text-zinc-400">Phone Number</label>
                 <input
-                  type="text"
+                  type="tel"
                   value={formData.phoneNo}
+                  onKeyDown={blockNonPhone}
                   onChange={(e) =>
-                    setFormData({ ...formData, phoneNo: e.target.value })
+                    setFormData({ ...formData, phoneNo: sanitizePhoneNo(e.target.value) })
                   }
                   disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  className={`w-full mt-1 bg-zinc-900 border rounded-lg px-3 py-2 disabled:opacity-50 ${isEditing && (touched || formData.phoneNo) && fieldErrors.phoneNo ? "border-red-500" : "border-zinc-800"}`}
                 />
+                {isEditing && (touched || formData.phoneNo) && fieldErrors.phoneNo && (
+                  <p className="text-xs text-red-400 mt-1">{fieldErrors.phoneNo}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -219,6 +271,8 @@ export default function PrincipalDashboard() {
                 </label>
                 <input
                   type="number"
+                  min="0"
+                  onKeyDown={blockNonDigits}
                   value={formData.experience}
                   onChange={(e) =>
                     setFormData({

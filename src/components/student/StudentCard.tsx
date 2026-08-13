@@ -7,7 +7,9 @@ export type StudentListItem = {
   userId: string;
   rollNo: string;
   classId: string;
+  className?: string | null;
   schoolId: string;
+  schoolName?: string | null;
   name: string;
   email: string;
   phoneNo?: string | null;
@@ -41,11 +43,23 @@ export default function StudentCard({ student }: StudentCardProps) {
             <p className="mt-0.5 text-xs text-indigo-600 truncate">
               {student.email}
             </p>
+            {student.schoolName && (
+              <p className="mt-0.5 text-[11px] text-gray-500 truncate font-medium">
+                🏫 {student.schoolName}
+              </p>
+            )}
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">
-          Roll #{student.rollNo}
-        </span>
+        <div className="flex flex-col items-end gap-1">
+          <span className="shrink-0 rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">
+            Roll #{student.rollNo}
+          </span>
+          {student.className && (
+            <span className="shrink-0 rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600">
+              {student.className}
+            </span>
+          )}
+        </div>
       </div>
 
       {student.phoneNo && (

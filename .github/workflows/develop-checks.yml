@@ -47,10 +47,10 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
 
   # ╔══════════════════════════════════════════╗
-  # ║  JOB 2 — Prisma Checks                   ║
+  # ║  JOB 2 — Database Checks                 ║
   # ╚══════════════════════════════════════════╝
-  prisma-checks:
-    name: 🗄️ Prisma Validate · Generate · DB Connect
+  database-checks:
+    name: 🗄️ SQLAlchemy Init DB · NeonDB Connect
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -103,20 +103,8 @@ jobs:
           docker compose logs backend
           exit 1
 
-      - name: Clear Prisma CLI cache (prevents ENOTEMPTY errors)
-        run: docker compose exec -T backend sh -c 'rm -rf /root/.cache/prisma-python'
-
-      - name: Prisma Format
-        run: docker compose exec -T backend prisma format
-
-      - name: Prisma Validate
-        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma validate
-
-      - name: Prisma Generate (pyclient)
-        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma generate --generator pyclient
-
-      - name: Prisma DB Push (NeonDB connectivity)
-        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend prisma db push --accept-data-loss
+      - name: SQLAlchemy Init DB (NeonDB connectivity)
+        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
 
       - name: Dump logs on failure
         if: failure()

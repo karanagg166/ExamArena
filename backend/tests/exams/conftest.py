@@ -1,9 +1,16 @@
 # backend/tests/exams/conftest.py
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
+
 
 @pytest.fixture
 def mock_exams_db(mocker):
+    mock_session = AsyncMock()
+    mock_session_ctx = MagicMock()
+    mock_session_ctx.__aenter__.return_value = mock_session
+    mock_session_ctx.__aexit__.return_value = None
+
     patches = {
         "create_exam": mocker.patch(
             "app.exams.router.crud.create_exam",
@@ -37,8 +44,10 @@ def mock_exams_db(mocker):
             "app.students.crud.get_student_by_user_id",
             new_callable=AsyncMock,
         ),
-        "prisma": mocker.patch(
-            "app.core.database.prisma",
+        "get_session": mocker.patch(
+            "app.core.database.get_session",
+            return_value=mock_session_ctx,
         ),
+        "mock_session": mock_session,
     }
     return patches

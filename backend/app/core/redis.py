@@ -1,6 +1,8 @@
-import redis.asyncio as aioredis
-import httpx
 import logging
+
+import httpx
+import redis.asyncio as aioredis
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -18,7 +20,9 @@ class UpstashRedisRESTClient:
 
     async def _execute(self, payload: list) -> any:
         try:
-            response = await self.client.post(self.url, json=payload, headers=self.headers)
+            response = await self.client.post(
+                self.url, json=payload, headers=self.headers
+            )
             response.raise_for_status()
             data = response.json()
             if "error" in data:
@@ -101,7 +105,9 @@ class InMemoryRedisFallback:
         return True
 
 
-redis_client: aioredis.Redis | UpstashRedisRESTClient | InMemoryRedisFallback | None = None
+redis_client: aioredis.Redis | UpstashRedisRESTClient | InMemoryRedisFallback | None = (
+    None
+)
 
 
 async def connect_redis() -> None:
@@ -123,8 +129,13 @@ async def connect_redis() -> None:
     # 2. Fall back to standard TCP Redis if configured
     if settings.REDIS_URL:
         try:
-            if settings.ENVIRONMENT == "production" and "localhost" in settings.REDIS_URL:
-                raise ConnectionError("Local Redis URL ignored in production environment")
+            if (
+                settings.ENVIRONMENT == "production"
+                and "localhost" in settings.REDIS_URL
+            ):
+                raise ConnectionError(
+                    "Local Redis URL ignored in production environment"
+                )
 
             client = aioredis.from_url(
                 settings.REDIS_URL,

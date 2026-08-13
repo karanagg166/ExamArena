@@ -1,12 +1,17 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Annotated
 
-from app.api.deps import get_current_user
-from app.users.schemas import UserResponse
+from fastapi import APIRouter, Depends, HTTPException, status
+
 import app.questions.crud as crud
-from app.questions.schemas import QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest
+from app.api.deps import get_current_user
+from app.questions.schemas import (
+    QuestionCreateRequest,
+    QuestionResponse,
+    QuestionUpdateRequest,
+)
 from app.teachers.crud import get_teacher_by_user_id
+from app.users.schemas import UserResponse
 
 router = APIRouter(prefix="/api/v1/questions", tags=["questions"])
 logger = logging.getLogger(__name__)
@@ -15,7 +20,9 @@ logger = logging.getLogger(__name__)
 async def _require_teacher(current_user: UserResponse):
     """Ensure the current user is a teacher and return their profile."""
     if current_user.role not in ("TEACHER", "PRINCIPAL"):
-        raise HTTPException(status_code=403, detail="Only teachers can manage questions")
+        raise HTTPException(
+            status_code=403, detail="Only teachers can manage questions"
+        )
     teacher = await get_teacher_by_user_id(current_user.id)
     if not teacher:
         raise HTTPException(status_code=403, detail="Teacher profile not found")
@@ -25,12 +32,14 @@ async def _require_teacher(current_user: UserResponse):
 @router.post("", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
 async def add_new_question(
     question_data: QuestionCreateRequest,
-    current_user: Annotated[UserResponse, Depends(get_current_user)]
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Add a question to an exam. Teachers only."""
     await _require_teacher(current_user)
     if not question_data.examId:
-        raise HTTPException(status_code=400, detail="examId is required to create a question")
+        raise HTTPException(
+            status_code=400, detail="examId is required to create a question"
+        )
     return await crud.create_question(question_data)
 
 
@@ -38,7 +47,7 @@ async def add_new_question(
 async def patch_question(
     question_id: str,
     update_data: QuestionUpdateRequest,
-    current_user: Annotated[UserResponse, Depends(get_current_user)]
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Update a question. Teachers only."""
     await _require_teacher(current_user)
@@ -50,8 +59,7 @@ async def patch_question(
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_question(
-    question_id: str,
-    current_user: Annotated[UserResponse, Depends(get_current_user)]
+    question_id: str, current_user: Annotated[UserResponse, Depends(get_current_user)]
 ):
     """Delete a question. Teachers only."""
     await _require_teacher(current_user)

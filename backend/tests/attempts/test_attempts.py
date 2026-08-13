@@ -1,11 +1,12 @@
 # backend/tests/attempts/test_attempts.py
+
 import pytest
-from unittest.mock import MagicMock
+
 from tests.dummy_data.exams import make_fake_student_exam
+
 
 @pytest.mark.asyncio
 class TestAttemptsApi:
-
     async def test_start_success(self, client, override_auth, mock_attempts_db):
         override_auth(role="STUDENT")
         fake_attempt = make_fake_student_exam()
@@ -24,7 +25,9 @@ class TestAttemptsApi:
 
     async def test_start_invalid(self, client, override_auth, mock_attempts_db):
         override_auth(role="STUDENT")
-        mock_attempts_db["start_exam_attempt"].side_effect = ValueError("Exam not found")
+        mock_attempts_db["start_exam_attempt"].side_effect = ValueError(
+            "Exam not found"
+        )
 
         response = await client.post(
             "/api/v1/attempts/start",
@@ -62,9 +65,9 @@ class TestAttemptsApi:
                 {
                     "id": "ans_001",
                     "textAnswer": "Some written text",
-                    "selectedOptions": []
+                    "selectedOptions": [],
                 }
-            ]
+            ],
         }
         response = await client.post("/api/v1/attempts/submit", json=payload)
         assert response.status_code == 200
@@ -73,12 +76,11 @@ class TestAttemptsApi:
 
     async def test_submit_invalid(self, client, override_auth, mock_attempts_db):
         override_auth(role="STUDENT")
-        mock_attempts_db["submit_exam_attempt"].side_effect = ValueError("Attempt already submitted")
+        mock_attempts_db["submit_exam_attempt"].side_effect = ValueError(
+            "Attempt already submitted"
+        )
 
-        payload = {
-            "id": "clxfake_se_001",
-            "answers": []
-        }
+        payload = {"id": "clxfake_se_001", "answers": []}
         response = await client.post("/api/v1/attempts/submit", json=payload)
         assert response.status_code == 400
         assert "Attempt already submitted" in response.json()["detail"]

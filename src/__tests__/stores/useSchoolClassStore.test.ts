@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSchoolClassStore } from '@/stores/useSchoolClassStore';
 import { api } from '@/lib/axios';
@@ -33,12 +34,12 @@ describe('useSchoolClassStore', () => {
   });
 
   it('createClass returns success when API call succeeds', async () => {
-    const newClass = { id: 'c3', name: 'Grade 11A', year: 2026, section: 'A' };
+    const newClass = { id: 'c3', name: 'Grade 11A', year: '2026', section: 'A', schoolId: 'school-1', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
     (api.post as any).mockResolvedValueOnce({ data: newClass });
 
     const result = await useSchoolClassStore.getState().createClass({
       name: 'Grade 11A',
-      year: 2026,
+      year: '2026',
       section: 'A',
     });
 
@@ -57,7 +58,7 @@ describe('useSchoolClassStore', () => {
 
     const result = await useSchoolClassStore.getState().createClass({
       name: 'Grade 11A',
-      year: 2026,
+      year: '2026',
       section: 'A',
     });
 
@@ -66,8 +67,10 @@ describe('useSchoolClassStore', () => {
   });
 
   it('deleteClass removes class by id', async () => {
+    const c1 = { id: 'c1', name: 'Class 1', year: '2026', section: 'A', schoolId: 's1', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+    const c2 = { id: 'c2', name: 'Class 2', year: '2026', section: 'B', schoolId: 's1', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
     useSchoolClassStore.setState({
-      classes: [{ id: 'c1', name: 'Class 1' }, { id: 'c2', name: 'Class 2' }],
+      classes: [c1, c2],
     });
 
     (api.delete as any).mockResolvedValueOnce({});
@@ -75,6 +78,6 @@ describe('useSchoolClassStore', () => {
     const success = await useSchoolClassStore.getState().deleteClass('c1');
 
     expect(success).toBe(true);
-    expect(useSchoolClassStore.getState().classes).toEqual([{ id: 'c2', name: 'Class 2' }]);
+    expect(useSchoolClassStore.getState().classes).toEqual([c2]);
   });
 });

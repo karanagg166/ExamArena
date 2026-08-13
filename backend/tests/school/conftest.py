@@ -1,6 +1,8 @@
 # backend/tests/school/conftest.py
 from unittest.mock import AsyncMock
+
 import pytest
+
 
 @pytest.fixture
 def mock_school_db(mocker):
@@ -57,8 +59,9 @@ def mock_school_db(mocker):
             "app.school.router.get_school_classes_by_school_id",
             new_callable=AsyncMock,
         ),
-        "db": mocker.patch(
-            "app.school.router.db",
+        "join_school": mocker.patch(
+            "app.teachers.crud.join_school",
+            new_callable=AsyncMock,
         ),
     }
     return patches

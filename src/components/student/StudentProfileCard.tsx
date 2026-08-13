@@ -43,8 +43,9 @@ export default function StudentProfileCard({
               </h1>
               <p className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center md:justify-start gap-2 mt-1">
                 <Hash size={16} />
-                Roll No: {student.rollNo} • Admitted{" "}
-                {formatDate(student.dateOfAdmission)}
+                Roll No: {student.rollNo}
+                {student.className ? ` • Class: ${student.className}` : ""} •
+                Admitted {formatDate(student.dateOfAdmission)}
               </p>
             </div>
             <div className="mb-2 hidden md:block">
@@ -94,24 +95,91 @@ export default function StudentProfileCard({
             <div className="space-y-4">
               <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 <Users size={16} />
-                Guardian Details
+                Parent & Guardian Details
               </h3>
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-500">Parent Name</span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                    {student.parentName}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-500">Parent Email</span>
-                  <a
-                    href={`mailto:${student.parentEmail}`}
-                    className="font-medium text-emerald-600 hover:underline"
-                  >
-                    {student.parentEmail}
-                  </a>
-                </div>
+              <div className="space-y-3">
+                {student.fatherName && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">👨 Father</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Name</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{student.fatherName}</span>
+                    </div>
+                    {student.fatherEmail && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Email</span>
+                        <a href={`mailto:${student.fatherEmail}`} className="font-medium text-emerald-600 hover:underline">{student.fatherEmail}</a>
+                      </div>
+                    )}
+                    {student.fatherPhoneNo && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Phone</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200">{student.fatherPhoneNo}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {student.motherName && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">👩 Mother</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Name</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{student.motherName}</span>
+                    </div>
+                    {student.motherEmail && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Email</span>
+                        <a href={`mailto:${student.motherEmail}`} className="font-medium text-emerald-600 hover:underline">{student.motherEmail}</a>
+                      </div>
+                    )}
+                    {student.motherPhoneNo && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Phone</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200">{student.motherPhoneNo}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {student.guardianName && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-1.5">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">🛡️ Guardian ({student.guardianRelation || "Guardian"})</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-500">Name</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{student.guardianName}</span>
+                    </div>
+                    {student.guardianEmail && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Email</span>
+                        <a href={`mailto:${student.guardianEmail}`} className="font-medium text-emerald-600 hover:underline">{student.guardianEmail}</a>
+                      </div>
+                    )}
+                    {student.guardianPhoneNo && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500">Phone</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200">{student.guardianPhoneNo}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!student.fatherName && !student.motherName && !student.guardianName && (
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
+                    {student.parentName && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-500">Parent Name</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200">{student.parentName}</span>
+                      </div>
+                    )}
+                    {student.parentEmail && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-500">Parent Email</span>
+                        <a href={`mailto:${student.parentEmail}`} className="font-medium text-emerald-600 hover:underline">{student.parentEmail}</a>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

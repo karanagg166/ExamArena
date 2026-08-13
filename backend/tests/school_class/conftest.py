@@ -1,6 +1,8 @@
 # backend/tests/school_class/conftest.py
 from unittest.mock import AsyncMock
+
 import pytest
+
 
 @pytest.fixture
 def mock_class_db(mocker):

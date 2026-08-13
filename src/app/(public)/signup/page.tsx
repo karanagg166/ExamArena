@@ -23,6 +23,10 @@ import {
   blockNonDigits,
   blockNonPhone,
   blockNonAlpha,
+  validateEmailField,
+  validatePhoneField,
+  validatePincodeField,
+  validateNameField,
 } from "@/lib/utils";
 
 type ValidationError = {
@@ -46,11 +50,33 @@ const SignUpPage = () => {
     country: "",
   });
 
+  const [touched, setTouched] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const getFieldErrors = () => {
+    return {
+      name: validateNameField(form.name, "Full Name", true),
+      email: validateEmailField(form.email, true),
+      password:
+        form.password && form.password.length < 6
+          ? "Password must be at least 6 characters"
+          : !form.password
+          ? "Password is required"
+          : undefined,
+      confirmPassword:
+        form.confirmPassword && form.password !== form.confirmPassword
+          ? "Passwords do not match"
+          : undefined,
+      phoneNo: validatePhoneField(form.phoneNo, false),
+      pincode: validatePincodeField(form.pincode, false),
+    };
+  };
+
+  const fieldErrors = getFieldErrors();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -72,25 +98,11 @@ const SignUpPage = () => {
 
   const onSubmit = async () => {
     if (loading) return;
+    setTouched(true);
 
-    const { name, email, password, confirmPassword } = form;
-
-    if (!name || !email || !password) {
-      const message = "Please fill all required fields";
-      setError(message);
-      toast.error(message);
-      return;
-    }
-
-    if (password.length < 6) {
-      const message = "Password must be at least 6 characters";
-      setError(message);
-      toast.error(message);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      const message = "Passwords do not match";
+    const currentErrors = getFieldErrors();
+    if (Object.values(currentErrors).some(Boolean)) {
+      const message = "Please fix invalid fields before submitting.";
       setError(message);
       toast.error(message);
       return;
@@ -205,6 +217,7 @@ const SignUpPage = () => {
                   value={form.name}
                   onChange={handleChange}
                   onKeyDown={blockNonAlpha}
+                  error={touched || form.name ? fieldErrors.name : undefined}
                   required
                 />
               </div>
@@ -218,6 +231,7 @@ const SignUpPage = () => {
                   placeholder="you@example.com"
                   value={form.email}
                   onChange={handleChange}
+                  error={touched || form.email ? fieldErrors.email : undefined}
                   required
                 />
               </div>
@@ -233,13 +247,14 @@ const SignUpPage = () => {
                       placeholder="••••••••"
                       value={form.password}
                       onChange={handleChange}
+                      error={touched || form.password ? fieldErrors.password : undefined}
                       className="pr-10"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--text-dimmed)] transition-colors hover:text-[var(--text-secondary)]"
+                      className="absolute right-3 top-3 text-[var(--text-dimmed)] transition-colors hover:text-[var(--text-secondary)] z-10"
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -260,6 +275,7 @@ const SignUpPage = () => {
                       placeholder="••••••••"
                       value={form.confirmPassword}
                       onChange={handleChange}
+                      error={touched || form.confirmPassword ? fieldErrors.confirmPassword : undefined}
                       className="pr-10"
                       required
                     />
@@ -268,7 +284,7 @@ const SignUpPage = () => {
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--text-dimmed)] transition-colors hover:text-[var(--text-secondary)]"
+                      className="absolute right-3 top-3 text-[var(--text-dimmed)] transition-colors hover:text-[var(--text-secondary)] z-10"
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -292,6 +308,7 @@ const SignUpPage = () => {
                     value={form.phoneNo}
                     onChange={handleChange}
                     onKeyDown={blockNonPhone}
+                    error={touched || form.phoneNo ? fieldErrors.phoneNo : undefined}
                   />
                 </div>
 
@@ -332,6 +349,7 @@ const SignUpPage = () => {
                     value={form.pincode}
                     onChange={handleChange}
                     onKeyDown={blockNonDigits}
+                    error={touched || form.pincode ? fieldErrors.pincode : undefined}
                   />
                 </div>
               </div>

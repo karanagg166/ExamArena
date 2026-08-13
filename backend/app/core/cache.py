@@ -1,5 +1,6 @@
-from typing import Any
 import json
+from typing import Any
+
 from app.core.redis import get_redis
 
 

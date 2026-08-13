@@ -121,18 +121,15 @@ async def get_stream_token(
     if not settings.STREAM_API_SECRET:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Stream API Secret not configured in backend Settings."
+            detail="Stream API Secret not configured in backend Settings.",
         )
-    
-    payload = {
-        "user_id": current_user.id
-    }
-    
+
+    payload = {"user_id": current_user.id}
+
     token = jwt.encode(payload, settings.STREAM_API_SECRET, algorithm="HS256")
-    
+
     return {
         "token": token,
         "apiKey": settings.STREAM_API_KEY,
-        "appId": settings.STREAM_APP_ID
+        "appId": settings.STREAM_APP_ID,
     }
-

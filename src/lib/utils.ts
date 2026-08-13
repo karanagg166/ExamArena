@@ -81,3 +81,63 @@ export function sanitizeAlpha(value: string): string {
 export function sanitizeNumber(value: string): string {
   return value.replace(/\D/g, "");
 }
+
+/**
+ * Validation Helpers
+ */
+export function isValidEmail(email: string): boolean {
+  if (!email || !email.trim()) return true;
+  return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim());
+}
+
+export function isValidPhoneNo(phone: string): boolean {
+  if (!phone || !phone.trim()) return true;
+  const digitsOnly = phone.replace(/\D/g, "");
+  return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+}
+
+export function isValidPincode(pincode: string): boolean {
+  if (!pincode || !pincode.trim()) return true;
+  return /^\d{6}$/.test(pincode.trim());
+}
+
+export function validateEmailField(email: string, required = false): string | undefined {
+  if (required && !email.trim()) {
+    return "Email is required";
+  }
+  if (email.trim() && !isValidEmail(email)) {
+    return "Please enter a valid email address (e.g. user@example.com)";
+  }
+  return undefined;
+}
+
+export function validatePhoneField(phone: string, required = false): string | undefined {
+  if (required && !phone.trim()) {
+    return "Phone number is required";
+  }
+  if (phone.trim() && !isValidPhoneNo(phone)) {
+    return "Phone number must contain between 10 and 15 digits";
+  }
+  return undefined;
+}
+
+export function validatePincodeField(pincode: string, required = false): string | undefined {
+  if (required && !pincode.trim()) {
+    return "Pincode is required";
+  }
+  if (pincode.trim() && !isValidPincode(pincode)) {
+    return "Pincode must be exactly 6 digits";
+  }
+  return undefined;
+}
+
+export function validateNameField(name: string, label = "Name", required = false): string | undefined {
+  if (required && !name.trim()) {
+    return `${label} is required`;
+  }
+  if (name.trim() && name.trim().length < 2) {
+    return `${label} must be at least 2 characters`;
+  }
+  return undefined;
+}
+

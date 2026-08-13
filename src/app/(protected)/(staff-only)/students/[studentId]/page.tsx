@@ -25,11 +25,23 @@ type StudentDetailResponse = {
   id: string;
   userId: string;
   rollNo: string;
-  parentName: string;
-  parentEmail: string;
+  parentName?: string | null;
+  parentEmail?: string | null;
+  fatherName?: string | null;
+  fatherEmail?: string | null;
+  fatherPhoneNo?: string | null;
+  motherName?: string | null;
+  motherEmail?: string | null;
+  motherPhoneNo?: string | null;
+  guardianName?: string | null;
+  guardianRelation?: string | null;
+  guardianEmail?: string | null;
+  guardianPhoneNo?: string | null;
   dateOfAdmission: string;
   schoolId: string;
+  schoolName?: string | null;
   classId: string;
+  className?: string | null;
   user: {
     id: string;
     name: string;
@@ -196,42 +208,75 @@ export default function StudentDetailPage() {
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2">
                   <Users size={16} />
-                  Guardian Details
+                  Parent & Guardian Details
                 </h3>
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
-                  <DetailRow label="Parent Name" value={student.parentName} />
-                  <DetailRow
-                    label="Parent Email"
-                    value={
-                      <a
-                        href={`mailto:${student.parentEmail}`}
-                        className="font-medium text-indigo-600 hover:underline"
-                      >
-                        {student.parentEmail}
-                      </a>
-                    }
-                  />
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-4">
+                  {student.fatherName && (
+                    <div className="space-y-1 pb-2 border-b border-slate-200 dark:border-slate-700/50">
+                      <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">👨 Father</p>
+                      <DetailRow label="Name" value={student.fatherName} />
+                      {student.fatherEmail && <DetailRow label="Email" value={<a href={`mailto:${student.fatherEmail}`} className="text-indigo-600 hover:underline">{student.fatherEmail}</a>} />}
+                      {student.fatherPhoneNo && <DetailRow label="Phone" value={student.fatherPhoneNo} />}
+                    </div>
+                  )}
+
+                  {student.motherName && (
+                    <div className="space-y-1 pb-2 border-b border-slate-200 dark:border-slate-700/50">
+                      <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">👩 Mother</p>
+                      <DetailRow label="Name" value={student.motherName} />
+                      {student.motherEmail && <DetailRow label="Email" value={<a href={`mailto:${student.motherEmail}`} className="text-indigo-600 hover:underline">{student.motherEmail}</a>} />}
+                      {student.motherPhoneNo && <DetailRow label="Phone" value={student.motherPhoneNo} />}
+                    </div>
+                  )}
+
+                  {student.guardianName && (
+                    <div className="space-y-1 pb-2 border-b border-slate-200 dark:border-slate-700/50">
+                      <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">🛡️ Guardian ({student.guardianRelation || "Guardian"})</p>
+                      <DetailRow label="Name" value={student.guardianName} />
+                      {student.guardianEmail && <DetailRow label="Email" value={<a href={`mailto:${student.guardianEmail}`} className="text-indigo-600 hover:underline">{student.guardianEmail}</a>} />}
+                      {student.guardianPhoneNo && <DetailRow label="Phone" value={student.guardianPhoneNo} />}
+                    </div>
+                  )}
+
+                  {!student.fatherName && !student.motherName && !student.guardianName && (
+                    <>
+                      {student.parentName && <DetailRow label="Parent Name" value={student.parentName} />}
+                      {student.parentEmail && (
+                        <DetailRow
+                          label="Parent Email"
+                          value={
+                            <a
+                              href={`mailto:${student.parentEmail}`}
+                              className="font-medium text-indigo-600 hover:underline"
+                            >
+                              {student.parentEmail}
+                            </a>
+                          }
+                        />
+                      )}
+                    </>
+                  )}
                 </div>
 
-                {/* School / Class IDs */}
+                {/* School / Class Details */}
                 <h3 className="text-sm font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-2 pt-2">
                   <School size={16} />
-                  Enrolment
+                  Enrolment Information
                 </h3>
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
                   <DetailRow
-                    label="School ID"
+                    label="School Name"
                     value={
-                      <span className="font-mono text-xs text-slate-600 dark:text-slate-300">
-                        {student.schoolId}
+                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                        {student.schoolName || "Assigned School"}
                       </span>
                     }
                   />
                   <DetailRow
-                    label="Class ID"
+                    label="Class Name"
                     value={
-                      <span className="font-mono text-xs text-slate-600 dark:text-slate-300">
-                        {student.classId}
+                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                        {student.className || "Assigned Class"}
                       </span>
                     }
                   />

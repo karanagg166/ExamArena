@@ -30,12 +30,22 @@ model User {
 }
 
 model Student {
-  id              String        @id @default(cuid())
-  userId          String        @unique
-  rollNo          String        @unique
-  parentName      String
-  parentEmail     String
-  dateOfAdmission DateTime      @default(now())
+  id               String        @id @default(cuid())
+  userId           String        @unique
+  rollNo           String        @unique
+  parentName       String?
+  parentEmail      String?
+  fatherName       String?
+  fatherEmail      String?
+  fatherPhoneNo    String?
+  motherName       String?
+  motherEmail      String?
+  motherPhoneNo    String?
+  guardianName     String?
+  guardianRelation String?
+  guardianEmail    String?
+  guardianPhoneNo  String?
+  dateOfAdmission  DateTime      @default(now())
   classId         String
   schoolId        String
   createdAt       DateTime      @default(now())

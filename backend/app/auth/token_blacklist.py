@@ -7,6 +7,7 @@ checks this blacklist before authorizing requests.
 """
 
 import logging
+
 from app.core.redis import get_redis
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,8 @@
 # backend/tests/questions/conftest.py
 from unittest.mock import AsyncMock
+
 import pytest
+
 
 @pytest.fixture
 def mock_questions_db(mocker):
