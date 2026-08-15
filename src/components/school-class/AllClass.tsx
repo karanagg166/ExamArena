@@ -33,7 +33,10 @@ export const Page = () => {
           setError("No school associated with your account.");
         }
       } catch (error: unknown) {
-        console.error("Failed to fetch classes:", error);
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status !== 404) {
+          console.error("Failed to fetch classes:", error);
+        }
         setError("No school associated with your account.");
       } finally {
         setLoading(false);

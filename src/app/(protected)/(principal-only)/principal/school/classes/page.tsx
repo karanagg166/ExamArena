@@ -40,10 +40,21 @@ export default function PrincipalSchoolClassPage() {
 
   if (!school) {
     return (
-      <div className="flex min-h-[80vh] items-center justify-center">
-        <p className="text-zinc-500">
-          No school found. Please set up your school first.
-        </p>
+      <div className="page-shell flex min-h-[70vh] flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-md rounded-2xl border border-zinc-800 bg-zinc-950/60 p-8 shadow-xl space-y-4">
+          <h2 className="text-xl font-bold text-white">No School Associated</h2>
+          <p className="text-sm text-zinc-400">
+            You must establish or join a school before managing classes and student rosters.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <Button onClick={() => router.push("/signup/principal/create-school")}>
+              Create School
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/signup/principal/join-school")}>
+              Join School
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }

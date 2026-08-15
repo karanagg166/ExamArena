@@ -20,28 +20,33 @@ export const useSchoolStore = create<SchoolState>((set) => ({
 
   fetchSchool: async () => {
     set({ loading: true, error: "" });
-    console.log("Fetching school data...");
     try {
       const res = await api.get("/api/v1/schools/me");
-      console.log("Fetched school data:", res.data);
-      set({ school: res.data });
+      set({ school: res.data, error: "" });
     } catch (error: unknown) {
-      console.error("Error fetching school data:", error);
-      set({ error: "Failed to load school" });
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        // User has not created or joined a school yet — normal valid state
+        set({ school: null, error: "" });
+      } else {
+        set({ error: "Failed to load school" });
+      }
     } finally {
       set({ loading: false });
     }
   },
   fetchSchoolById: async (schoolId: string) => {
     set({ loading: true, error: "" });
-    console.log(`Fetching school data for ID: ${schoolId}...`);
     try {
       const res = await api.get(`/api/v1/schools/${schoolId}`);
-      console.log("Fetched school data:", res.data);
-      set({ school: res.data });
+      set({ school: res.data, error: "" });
     } catch (error: unknown) {
-      console.error("Error fetching school data:", error);
-      set({ error: "Failed to load school" });
+      const status = (error as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        set({ school: null, error: "" });
+      } else {
+        set({ error: "Failed to load school" });
+      }
     } finally {
       set({ loading: false });
     }
