@@ -9,6 +9,8 @@ export type Section = {
   questionType: QuestionType;
   marksPerQuestion: number;
   durationMinutes?: number;
+  negativeMarking?: boolean;
+  negativeMarks?: number;
   sortOrder: number;
   examId: string;
   createdAt: string;
@@ -23,6 +25,8 @@ export type SectionCreate = {
   questionType: QuestionType;
   marksPerQuestion: number;
   durationMinutes?: number;
+  negativeMarking?: boolean;
+  negativeMarks?: number;
   examId: string;
 };
 
@@ -32,4 +36,6 @@ export type SectionUpdate = {
   questionType?: QuestionType;
   marksPerQuestion?: number;
   durationMinutes?: number;
+  negativeMarking?: boolean;
+  negativeMarks?: number;
 };

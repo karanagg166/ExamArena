@@ -22,6 +22,8 @@ class SectionBase(BaseModel):
     questionType: QuestionType
     marksPerQuestion: int
     durationMinutes: int | None = None
+    negativeMarking: bool = False
+    negativeMarks: float = 0.0
 
     @field_validator("name")
     @classmethod
@@ -40,6 +42,15 @@ class SectionBase(BaseModel):
             raise ValueError("marksPerQuestion must be greater than 0")
         return v
 
+    @field_validator("negativeMarks")
+    @classmethod
+    def validate_negative_marks(cls, v: float) -> float:
+        if v < 0:
+            raise ValueError(
+                "negativeMarks cannot be negative (specify absolute deduction value)"
+            )
+        return v
+
 
 class SectionCreateRequest(SectionBase):
     examId: str
@@ -50,12 +61,21 @@ class SectionUpdateRequest(BaseModel):
     questionType: QuestionType | None = None
     marksPerQuestion: int | None = None
     durationMinutes: int | None = None
+    negativeMarking: bool | None = None
+    negativeMarks: float | None = None
 
     @field_validator("marksPerQuestion")
     @classmethod
     def validate_marks(cls, v: int | None) -> int | None:
         if v is not None and v <= 0:
             raise ValueError("marksPerQuestion must be greater than 0")
+        return v
+
+    @field_validator("negativeMarks")
+    @classmethod
+    def validate_negative_marks(cls, v: float | None) -> float | None:
+        if v is not None and v < 0:
+            raise ValueError("negativeMarks cannot be negative")
         return v
 
 

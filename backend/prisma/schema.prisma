@@ -189,25 +189,32 @@ model School {
 }
 
 model Exam {
-  id           String        @id @default(cuid())
-  name         String
-  description  String
-  scheduledAt  DateTime
-  duration     Int
-  maxMarks     Int
-  instructions String?
-  isPublished  Boolean       @default(false)
-  subject      Subject?
-  type         ExamType
-  teacherId    String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  teacher      Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  questions    Question[]
-  sections     ExamSection[]
-  studentExams StudentExam[]
+  id                String        @id @default(cuid())
+  examCode          String        @default("")
+  accessPassword    String?
+  name              String
+  description       String
+  scheduledAt       DateTime
+  duration          Int
+  maxMarks          Int
+  instructions      String?
+  isPublished       Boolean       @default(false)
+  isPublic          Boolean       @default(true)
+  isResultsReleased Boolean       @default(false)
+  negativeMarking   Boolean       @default(false)
+  negativeMarks     Float         @default(0.0)
+  subject           Subject?
+  type              ExamType
+  teacherId         String
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  teacher           Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  questions         Question[]
+  sections          ExamSection[]
+  studentExams      StudentExam[]
 
   @@index([teacherId])
+  @@index([examCode])
 }
 
 model ExamSection {
@@ -216,6 +223,9 @@ model ExamSection {
   description      String?
   questionType     QuestionType
   marksPerQuestion Int
+  durationMinutes  Int?
+  negativeMarking  Boolean      @default(false)
+  negativeMarks    Float        @default(0.0)
   sortOrder        Int
   examId           String
   createdAt        DateTime     @default(now())

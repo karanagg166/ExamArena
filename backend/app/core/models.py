@@ -483,8 +483,9 @@ class Exam(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
     examCode: Mapped[str] = mapped_column(
-        String, unique=True, default=generate_exam_code, nullable=False
+        String, default=generate_exam_code, nullable=False
     )
+    accessPassword: Mapped[str | None] = mapped_column(String, nullable=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=False)
     scheduledAt: Mapped[datetime] = mapped_column(
@@ -550,6 +551,10 @@ class ExamSection(Base):
     )
     marksPerQuestion: Mapped[int] = mapped_column(Integer, nullable=False)
     durationMinutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    negativeMarking: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    negativeMarks: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     sortOrder: Mapped[int] = mapped_column(Integer, nullable=False)  # A=1, B=2, etc.
     examId: Mapped[str] = mapped_column(
         String, ForeignKey("Exam.id", ondelete="CASCADE"), nullable=False

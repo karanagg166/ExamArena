@@ -19,6 +19,7 @@ interface ExamFormProps {
     isPublished: boolean;
     isPublic?: boolean;
     examCode?: string;
+    accessPassword?: string;
     negativeMarking?: boolean;
     negativeMarks?: number;
     subject?: Subject;
@@ -74,10 +75,10 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
     <GlassCard padding="lg" className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-[var(--text-primary)]">
-          Exam Details
+          Exam Details & Settings
         </h2>
         <p className="text-[var(--text-muted)] text-sm mb-6 mt-1">
-          Configure the core settings, scheduling, access code, and marking policies for this assessment.
+          Configure title, scheduling, search identifier, privacy password, and marking rules.
         </p>
       </div>
 
@@ -91,6 +92,26 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
               value={exam.name}
               onChange={(e) => onChange({ name: e.target.value })}
             />
+          </div>
+
+          {/* Exam Search Code / Identifier */}
+          <div className="space-y-1.5 md:col-span-2">
+            <Label htmlFor="examCode">Exam Search Code / Identifier</Label>
+            <div className="flex gap-2">
+              <Input
+                id="examCode"
+                placeholder="e.g., Np008, mock-test1, chem-term1"
+                value={exam.examCode || ""}
+                onChange={(e) => onChange({ examCode: e.target.value })}
+                className="font-mono"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={generateRandomCode}>
+                Generate Code
+              </Button>
+            </div>
+            <p className="text-[11px] text-[var(--text-muted)]">
+              🔍 A quick identifier for your exam. Students can search for this exam using this code or by title (case-insensitive, e.g. &quot;np008&quot; or &quot;mock-test1&quot;).
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -165,13 +186,13 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
           </div>
         </div>
 
-        {/* Access Control & Exam Code */}
+        {/* Privacy, Public Exam & Access Password */}
         <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]/40 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <Label className="text-sm font-semibold text-[var(--text-primary)]">Exam Access Type</Label>
+              <Label className="text-sm font-semibold text-[var(--text-primary)]">Exam Visibility & Access</Label>
               <p className="text-xs text-[var(--text-muted)]">
-                Choose whether any enrolled student can take this exam or if an access code is required.
+                Choose whether this exam is open to any student in the school, or protected with a secret password.
               </p>
             </div>
             <div className="inline-flex rounded-xl border border-[var(--border-default)] p-1 bg-[var(--surface-1)] shrink-0">
@@ -181,7 +202,7 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
                 variant={exam.isPublic !== false ? "secondary" : "ghost"}
                 onClick={() => onChange({ isPublic: true })}
               >
-                Public to School
+                Public Exam
               </Button>
               <Button
                 type="button"
@@ -189,28 +210,28 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
                 variant={exam.isPublic === false ? "secondary" : "ghost"}
                 onClick={() => onChange({ isPublic: false })}
               >
-                Code Required
+                Password Protected
               </Button>
             </div>
           </div>
 
+          <p className="text-[11px] text-[var(--text-muted)]">
+            💡 Teachers and Principals can switch an exam between Public and Password-Protected at any time in the future.
+          </p>
+
           {exam.isPublic === false && (
             <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
-              <Label htmlFor="examCode">Secret Exam Code</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="examCode"
-                  placeholder="e.g., EXM-AB12CD"
-                  value={exam.examCode || ""}
-                  onChange={(e) => onChange({ examCode: e.target.value.toUpperCase() })}
-                  className="font-mono uppercase tracking-wider"
-                />
-                <Button type="button" variant="outline" size="sm" onClick={generateRandomCode}>
-                  Auto-generate
-                </Button>
-              </div>
+              <Label htmlFor="accessPassword">Exam Access Password / Secret Key</Label>
+              <Input
+                id="accessPassword"
+                type="text"
+                placeholder="e.g., SECRET-PASS-123"
+                value={exam.accessPassword || ""}
+                onChange={(e) => onChange({ accessPassword: e.target.value })}
+                className="font-mono tracking-wider"
+              />
               <p className="text-xs text-[var(--text-muted)]">
-                Students must enter this code to begin the exam.
+                Students must enter this password to begin the exam.
               </p>
             </div>
           )}
@@ -220,9 +241,9 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
         <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]/40 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <Label className="text-sm font-semibold text-[var(--text-primary)]">Negative Marking</Label>
+              <Label className="text-sm font-semibold text-[var(--text-primary)]">Default Exam Negative Marking</Label>
               <p className="text-xs text-[var(--text-muted)]">
-                Penalize incorrect answers for objective questions (MCQ / MSQ / True-False).
+                Default penalty for wrong answers across the exam. Note: you can also configure negative marking individually per Section below!
               </p>
             </div>
             <div className="inline-flex rounded-xl border border-[var(--border-default)] p-1 bg-[var(--surface-1)] shrink-0">
@@ -247,7 +268,7 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
 
           {exam.negativeMarking && (
             <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
-              <Label htmlFor="negativeMarks">Deduction per Wrong Answer (Marks)</Label>
+              <Label htmlFor="negativeMarks">Default Deduction per Wrong Answer (Marks)</Label>
               <Input
                 id="negativeMarks"
                 type="number"
@@ -258,7 +279,7 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
                 onChange={(e) => onChange({ negativeMarks: parseFloat(e.target.value) || 0 })}
               />
               <p className="text-xs text-[var(--text-muted)]">
-                For Multiple Select (MSQ): full marks if all correct; partial marks for correct subsets without wrong choices; 0 or negative penalty if any wrong option is selected.
+                Sections with their own negative marking settings will override this default.
               </p>
             </div>
           )}

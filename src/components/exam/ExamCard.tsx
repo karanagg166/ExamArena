@@ -31,7 +31,21 @@ export function ExamCard({ exam }: ExamCardProps) {
             <Badge variant="default">{exam.type}</Badge>
             {exam.examCode && (
               <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                🔑 {exam.examCode}
+                🔍 {exam.examCode}
+              </span>
+            )}
+            {exam.isPublic === false ? (
+              <span className="text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                🔒 Private
+              </span>
+            ) : (
+              <span className="text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
+                🌐 Public
+              </span>
+            )}
+            {exam.isResultsReleased && (
+              <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                🎯 Results Live
               </span>
             )}
             {exam.subject && (
@@ -39,11 +53,11 @@ export function ExamCard({ exam }: ExamCardProps) {
             )}
           </div>
           {exam.isPublished ? (
-            <Badge variant="success" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+            <Badge variant="success" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shrink-0">
               <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Published
             </Badge>
           ) : (
-            <Badge variant="warning" className="bg-amber-500/10 text-amber-400 border-amber-500/20">
+            <Badge variant="warning" className="bg-amber-500/10 text-amber-400 border-amber-500/20 shrink-0">
               <Circle className="w-3.5 h-3.5 mr-1" /> Draft
             </Badge>
           )}

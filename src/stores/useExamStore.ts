@@ -13,6 +13,7 @@ interface ExamState {
   fetchExamById: (examId: string) => Promise<void>;
   createExam: (data: ExamCreate) => Promise<Exam>;
   updateExam: (examId: string, data: ExamUpdate) => Promise<Exam>;
+  deleteExam: (examId: string) => Promise<void>;
   reset: () => void;
   setError: (error: string | null) => void;
 }
@@ -92,6 +93,25 @@ export const useExamStore = create<ExamState>((set) => ({
     } catch (error: unknown) {
       console.error("Error updating exam:", error);
       const msg = getErrorMessage(error, "Failed to update exam.");
+      set({ error: msg });
+      throw new Error(msg);
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  deleteExam: async (examId: string) => {
+    set({ loading: true, error: null });
+    try {
+      await api.delete(`/api/v1/exams/${examId}`);
+      set((state) => ({
+        exams: state.exams.filter((e) => e.id !== examId),
+        currentExam:
+          state.currentExam?.id === examId ? null : state.currentExam,
+      }));
+    } catch (error: unknown) {
+      console.error("Error deleting exam:", error);
+      const msg = getErrorMessage(error, "Failed to delete exam.");
       set({ error: msg });
       throw new Error(msg);
     } finally {

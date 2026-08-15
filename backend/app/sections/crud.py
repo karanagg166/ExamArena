@@ -26,6 +26,9 @@ async def create_section(
             description=section_data.description,
             questionType=section_data.questionType,
             marksPerQuestion=section_data.marksPerQuestion,
+            durationMinutes=section_data.durationMinutes,
+            negativeMarking=section_data.negativeMarking,
+            negativeMarks=section_data.negativeMarks,
             sortOrder=sort_order,
             examId=section_data.examId,
         )

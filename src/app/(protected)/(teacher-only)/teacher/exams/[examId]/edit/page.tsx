@@ -26,12 +26,17 @@ export default function EditExamPage() {
   const [exam, setExam] = useState<ExamUpdate>({
     id: examId as string,
     name: "",
+    examCode: "",
+    accessPassword: "",
     description: "",
     scheduledAt: "",
     duration: 60,
     type: "MIDTERM",
     maxMarks: 0,
     isPublished: false,
+    isPublic: true,
+    negativeMarking: false,
+    negativeMarks: 0,
     questions: [],
   });
 
@@ -45,12 +50,17 @@ export default function EditExamPage() {
         setExam({
           id: data.id,
           name: data.name,
+          examCode: data.examCode || "",
+          accessPassword: data.accessPassword || "",
           description: data.description,
           scheduledAt: data.scheduledAt,
           duration: data.duration,
           type: data.type,
           maxMarks: data.maxMarks,
           isPublished: data.isPublished,
+          isPublic: data.isPublic !== false,
+          negativeMarking: Boolean(data.negativeMarking),
+          negativeMarks: data.negativeMarks || 0,
           instructions: data.instructions,
           subject: data.subject,
           questions: (data.questions ?? []).map((q) => ({

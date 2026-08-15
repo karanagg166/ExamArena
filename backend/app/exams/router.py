@@ -49,7 +49,15 @@ async def create_new_exam(
 async def list_my_exams_teacher(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
+    if current_user.role == "ADMIN":
+        return await crud.get_all_exams_admin()
+
     teacher = await get_teacher_from_user(current_user)
+    if current_user.role == "PRINCIPAL":
+        if teacher.schoolId:
+            return await crud.get_exams_by_school(teacher.schoolId)
+        return await crud.get_exams_by_teacher(teacher.id)
+
     return await crud.get_exams_by_teacher(teacher.id)
 
 
@@ -167,8 +175,15 @@ async def patch_exam(
     if not is_owner:
         if current_user.role == "PRINCIPAL":
             exam_teacher = exam.teacher
-            if not exam_teacher or not exam_teacher.school or exam_teacher.school.id != teacher.schoolId:
-                if teacher.schoolId is None or (hasattr(exam_teacher, "schoolId") and exam_teacher.schoolId != teacher.schoolId):
+            if (
+                not exam_teacher
+                or not exam_teacher.school
+                or exam_teacher.school.id != teacher.schoolId
+            ):
+                if teacher.schoolId is None or (
+                    hasattr(exam_teacher, "schoolId")
+                    and exam_teacher.schoolId != teacher.schoolId
+                ):
                     raise HTTPException(
                         status_code=403,
                         detail="Not authorized to edit exams from other schools",
@@ -194,8 +209,15 @@ async def release_exam_results(
     if not is_owner:
         if current_user.role == "PRINCIPAL":
             exam_teacher = exam.teacher
-            if not exam_teacher or not exam_teacher.school or exam_teacher.school.id != teacher.schoolId:
-                if teacher.schoolId is None or (hasattr(exam_teacher, "schoolId") and exam_teacher.schoolId != teacher.schoolId):
+            if (
+                not exam_teacher
+                or not exam_teacher.school
+                or exam_teacher.school.id != teacher.schoolId
+            ):
+                if teacher.schoolId is None or (
+                    hasattr(exam_teacher, "schoolId")
+                    and exam_teacher.schoolId != teacher.schoolId
+                ):
                     raise HTTPException(
                         status_code=403,
                         detail="Not authorized to release results for exams from other schools",
@@ -228,9 +250,16 @@ async def get_exam_results_endpoint(
     if not is_owner:
         if current_user.role == "PRINCIPAL":
             exam_teacher = exam.teacher
-            if not exam_teacher or not exam_teacher.school or exam_teacher.school.id != teacher.schoolId:
+            if (
+                not exam_teacher
+                or not exam_teacher.school
+                or exam_teacher.school.id != teacher.schoolId
+            ):
                 # Also check direct school ID if school object not loaded
-                if teacher.schoolId is None or (hasattr(exam_teacher, "schoolId") and exam_teacher.schoolId != teacher.schoolId):
+                if teacher.schoolId is None or (
+                    hasattr(exam_teacher, "schoolId")
+                    and exam_teacher.schoolId != teacher.schoolId
+                ):
                     raise HTTPException(
                         status_code=403,
                         detail="Not authorized to view results for exams from other schools",
@@ -242,3 +271,39 @@ async def get_exam_results_endpoint(
             )
 
     return await crud.get_exam_results(exam_id)
+
+
+@router.delete("/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_exam_endpoint(
+    exam_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    teacher = await get_teacher_from_user(current_user)
+    exam = await crud.get_exam_by_id(exam_id)
+
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    is_owner = exam.teacher and exam.teacher.id == teacher.id
+    if not is_owner:
+        if current_user.role == "PRINCIPAL":
+            exam_teacher = exam.teacher
+            if (
+                not exam_teacher
+                or not exam_teacher.school
+                or exam_teacher.school.id != teacher.schoolId
+            ):
+                if teacher.schoolId is None or (
+                    hasattr(exam_teacher, "schoolId")
+                    and exam_teacher.schoolId != teacher.schoolId
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Not authorized to delete exams from other schools",
+                    )
+        elif current_user.role != "ADMIN":
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    deleted = await crud.delete_exam(exam_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Exam not found")

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { Users, Library, UserCircle, ArrowRight } from "lucide-react";
+import { Users, Library, UserCircle, ArrowRight, GraduationCap } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -10,6 +10,16 @@ export default function StudentDashboard() {
   const { user } = useAuthStore();
 
   const links = [
+    {
+      title: "Exams & Results",
+      description:
+        "Take scheduled assessments, search by exam code, and review scores and answer keys.",
+      href: "/student/exams",
+      icon: GraduationCap,
+      color: "text-indigo-400",
+      bg: "bg-indigo-500/15",
+      hoverBg: "group-hover:bg-indigo-500",
+    },
     {
       title: "My Class",
       description:

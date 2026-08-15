@@ -21,6 +21,8 @@ interface SectionConfig {
   questionType: QuestionType;
   marksPerQuestion: number;
   durationMinutes?: number;
+  negativeMarking?: boolean;
+  negativeMarks?: number;
   description?: string;
 }
 
@@ -72,6 +74,8 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
           name: secName,
           questionType: q.questionType || "MULTIPLE_CHOICE",
           marksPerQuestion: q.marks || 1,
+          negativeMarking: q.negativeMarks !== undefined && q.negativeMarks !== null && q.negativeMarks > 0,
+          negativeMarks: q.negativeMarks ?? 0,
         });
       }
     });
@@ -82,6 +86,8 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
           name: "Section A",
           questionType: "MULTIPLE_CHOICE",
           marksPerQuestion: 1,
+          negativeMarking: false,
+          negativeMarks: 0,
         },
       ];
     }
@@ -115,6 +121,8 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
       name: nextName,
       questionType: "MULTIPLE_CHOICE",
       marksPerQuestion: 2,
+      negativeMarking: false,
+      negativeMarks: 0,
     };
     setSectionConfigs((prev) => [...prev, newConfig]);
   };
@@ -137,11 +145,19 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
       prev.map((s) => (s.name === sectionName ? { ...s, ...updates } : s))
     );
 
-    // If questionType or marksPerQuestion changed, propagate to all questions in this section
+    // Propagate updates to all questions in this section
     const newQuestions = (questions || []).map((q) => {
       if (q.section === sectionName) {
         const updatedType = updates.questionType ?? q.questionType;
         const updatedMarks = updates.marksPerQuestion ?? q.marks;
+        let updatedNegativeMarks = q.negativeMarks;
+
+        if (updates.negativeMarking !== undefined) {
+          updatedNegativeMarks = updates.negativeMarking ? (updates.negativeMarks ?? (q.negativeMarks || 1.0)) : 0;
+        } else if (updates.negativeMarks !== undefined) {
+          updatedNegativeMarks = updates.negativeMarks;
+        }
+
         let updatedOptions = q.options;
 
         if (updates.questionType) {
@@ -162,6 +178,7 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
           ...q,
           questionType: updatedType,
           marks: updatedMarks,
+          negativeMarks: updatedNegativeMarks,
           options: updatedOptions,
         };
       }
@@ -177,6 +194,7 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
     const newQuestion: QuestionUpsert = {
       text: "",
       marks: section.marksPerQuestion,
+      negativeMarks: section.negativeMarking ? (section.negativeMarks || 1.0) : 0,
       questionNumber: (questions || []).length + 1,
       questionType: section.questionType,
       examId: "placeholder",
@@ -251,8 +269,7 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
             </h2>
           </div>
           <p className="text-[var(--text-muted)] text-sm mt-1">
-            Exams are organized into strict sections (e.g. Section A, Section B).
-            Each section enforces a fixed question type and marking scheme.
+            Exams are organized into sections. Each section can have its own question type, marks per question, and negative marking rules.
           </p>
         </div>
 
@@ -288,6 +305,11 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
               <Badge variant="default" className="text-[10px]">
                 {sec.marksPerQuestion}M/Q
               </Badge>
+              {sec.negativeMarking && (
+                <Badge variant="warning" className="text-[10px]">
+                  -{sec.negativeMarks} Neg
+                </Badge>
+              )}
               <Badge variant="neutral" className="text-[10px]">
                 {qCount} Q ({secMarks} Marks)
               </Badge>
@@ -325,8 +347,8 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
                         <h3 className="text-lg font-bold text-white tracking-wide">
                           {sec.name}
                         </h3>
-                        <Badge variant="success" className="text-[10px]">
-                          Fixed Scheme
+                        <Badge variant={sec.negativeMarking ? "warning" : "success"} className="text-[10px]">
+                          {sec.negativeMarking ? `Negative: -${sec.negativeMarks}` : "No Negative Penalty"}
                         </Badge>
                       </div>
                       <p className="text-xs text-[var(--text-muted)]">
@@ -367,9 +389,9 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
 
                 {/* Section Parameters Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mt-4 pt-4 border-t border-white/5">
-                  <div className="sm:col-span-5 space-y-1">
+                  <div className="sm:col-span-4 space-y-1">
                     <Label className="text-xs text-[var(--text-muted)] font-medium">
-                      Fixed Question Type
+                      Question Type
                     </Label>
                     <Select
                       value={sec.questionType}
@@ -388,9 +410,9 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
                     </Select>
                   </div>
 
-                  <div className="sm:col-span-3 space-y-1">
+                  <div className="sm:col-span-2 space-y-1">
                     <Label className="text-xs text-[var(--text-muted)] font-medium">
-                      Marks Per Question
+                      Marks / Q
                     </Label>
                     <Input
                       type="number"
@@ -405,34 +427,47 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
                       }}
                       className={`bg-[var(--surface-2)] text-sm h-9 ${sec.marksPerQuestion <= 0 ? "border-amber-500 ring-1 ring-amber-500/50" : ""}`}
                     />
-                    {sec.marksPerQuestion <= 0 && (
-                      <p className="text-[10px] text-amber-400 font-medium">
-                        ⚠️ Please enter marks ≥ 1
-                      </p>
-                    )}
                   </div>
 
-                  <div className="sm:col-span-2 space-y-1">
+                  {/* Section Negative Marking Setting */}
+                  <div className="sm:col-span-3 space-y-1">
                     <Label className="text-xs text-[var(--text-muted)] font-medium">
-                      Duration (mins)
+                      Negative Penalty / Q
                     </Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="Optional"
-                      value={sec.durationMinutes ?? ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const parsed = parseInt(val);
-                        updateSectionConfig(sec.name, {
-                          durationMinutes: isNaN(parsed) || parsed <= 0 ? undefined : parsed,
-                        });
-                      }}
-                      className="bg-[var(--surface-2)] text-sm h-9"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={sec.negativeMarking ? "secondary" : "ghost"}
+                        onClick={() =>
+                          updateSectionConfig(sec.name, {
+                            negativeMarking: !sec.negativeMarking,
+                            negativeMarks: !sec.negativeMarking ? (sec.negativeMarks || 0.25) : 0,
+                          })
+                        }
+                        className="h-9 px-2 text-xs"
+                      >
+                        {sec.negativeMarking ? "On" : "Off"}
+                      </Button>
+                      {sec.negativeMarking && (
+                        <Input
+                          type="number"
+                          step="0.25"
+                          min="0.25"
+                          placeholder="Deduction"
+                          value={sec.negativeMarks ?? 0.25}
+                          onChange={(e) =>
+                            updateSectionConfig(sec.name, {
+                              negativeMarks: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className="bg-[var(--surface-2)] text-sm h-9 w-20"
+                        />
+                      )}
+                    </div>
                   </div>
 
-                  <div className="sm:col-span-2 flex items-end">
+                  <div className="sm:col-span-3 flex items-end">
                     <Button
                       type="button"
                       variant="primary"

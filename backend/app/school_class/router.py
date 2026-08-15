@@ -16,6 +16,7 @@ from .crud import (
     assign_teacher_to_class,
     create_school_class,
     delete_school_class,
+    get_class_exam_results,
     get_school_class_by_id,
     get_school_classes_by_school_id,
 )
@@ -262,3 +263,46 @@ async def assign_teacher_endpoint(
             detail="Failed to assign teacher to class. Verify teacher exists.",
         )
     return {"message": "Teacher successfully assigned to class"}
+
+
+@router.get("/{class_id}/results")
+async def get_class_results_endpoint(
+    class_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Get aggregated exam results, leaderboard, and student scores for a class."""
+    school_class = await get_school_class_by_id(class_id)
+    if not school_class:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
+        )
+
+    # Authorization checks
+    if current_user.role == Role.STUDENT:
+        student = await get_student_by_user_id(current_user.id)
+        if not student or student.classId != school_class.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You can only view your own class results.",
+            )
+    elif current_user.role == Role.TEACHER:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher or teacher.schoolId != school_class.schoolId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You must be a teacher at this school.",
+            )
+    elif current_user.role == Role.PRINCIPAL:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied."
+            )
+        principal = await get_principal_by_teacher_id(teacher.id)
+        if not principal or principal.schoolId != school_class.schoolId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied for this school.",
+            )
+
+    return await get_class_exam_results(class_id)

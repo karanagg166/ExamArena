@@ -10,7 +10,8 @@ import {
   FileText,
   AlertCircle,
   ChevronRight,
-  Target
+  Target,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -28,6 +29,7 @@ export default function ExamViewPage() {
   const router = useRouter();
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,6 +46,37 @@ export default function ExamViewPage() {
 
     if (examId) fetchExam();
   }, [examId]);
+
+  const handleDeleteExam = async () => {
+    if (!exam) return;
+    if (!window.confirm(`Are you sure you want to delete '${exam.name}'? This action cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await api.delete(`/api/v1/exams/${examId}`);
+      toast.success("Exam deleted successfully.");
+      router.push("/teacher/exams");
+    } catch {
+      toast.error("Failed to delete exam.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleTogglePublic = async () => {
+    if (!exam) return;
+    const newIsPublic = !exam.isPublic;
+    try {
+      const res = await api.patch(`/api/v1/exams/${examId}`, {
+        isPublic: newIsPublic,
+      });
+      setExam(res.data);
+      toast.success(newIsPublic ? "Exam is now Public to all students." : "Exam is now Password-Protected.");
+    } catch {
+      toast.error("Failed to update exam visibility.");
+    }
+  };
 
   if (loading) {
     return (
@@ -84,7 +117,7 @@ export default function ExamViewPage() {
           title={exam.name}
           subtitle={exam.description}
           actions={
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Link href="/teacher/exams">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
@@ -100,6 +133,14 @@ export default function ExamViewPage() {
                   <Edit3 className="mr-2 h-4 w-4" /> Edit Exam
                 </Button>
               </Link>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDeleteExam}
+                disabled={deleting}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+              </Button>
             </div>
           }
         />
@@ -295,21 +336,36 @@ export default function ExamViewPage() {
                     <span className="text-white font-medium">{exam.maxMarks}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-[var(--text-muted)]">Access Mode</span>
-                    <Badge variant={exam.isPublic !== false ? "success" : "warning"} className="text-[10px]">
-                      {exam.isPublic !== false ? "Public" : "Code Required"}
-                    </Badge>
+                    <span className="text-[var(--text-muted)]">Search Code</span>
+                    <span className="font-mono text-xs bg-zinc-800 px-2 py-0.5 rounded text-amber-300 font-bold">
+                      {exam.examCode || "None"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-[var(--text-muted)]">Visibility</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={exam.isPublic !== false ? "success" : "warning"} className="text-[10px]">
+                        {exam.isPublic !== false ? "Public" : "Password Protected"}
+                      </Badge>
+                      <button
+                        type="button"
+                        onClick={handleTogglePublic}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 underline"
+                      >
+                        Change
+                      </button>
+                    </div>
                   </div>
                   {exam.isPublic === false && (
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-[var(--text-muted)]">Exam Code</span>
-                      <span className="font-mono text-xs bg-zinc-800 px-2 py-0.5 rounded text-amber-300 font-bold">
-                        {exam.examCode || "N/A"}
+                      <span className="text-[var(--text-muted)]">Access Password</span>
+                      <span className="font-mono text-xs bg-zinc-800 px-2 py-0.5 rounded text-rose-300 font-bold">
+                        {exam.accessPassword || "Not Set"}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-[var(--text-muted)]">Negative Marking</span>
+                    <span className="text-[var(--text-muted)]">Default Negative</span>
                     <span className="text-white font-medium text-xs">
                       {exam.negativeMarking ? `-${exam.negativeMarks} Marks` : "Disabled"}
                     </span>

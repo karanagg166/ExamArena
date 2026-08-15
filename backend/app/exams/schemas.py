@@ -44,6 +44,7 @@ class ExamBase(BaseModel):
     subject: Subject | None = None
     type: ExamType
     examCode: str | None = None
+    accessPassword: str | None = None
     questionCount: int | None = None
 
 
@@ -65,6 +66,8 @@ class ExamUpdateRequest(BaseModel):
     negativeMarks: float | None = None
     subject: Subject | None = None
     type: ExamType | None = None
+    examCode: str | None = None
+    accessPassword: str | None = None
     questions: list[QuestionUpdateRequest] | None = None
 
 

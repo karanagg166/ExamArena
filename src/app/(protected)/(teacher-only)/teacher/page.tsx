@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Crown,
   School,
+  FileSpreadsheet,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -18,9 +19,19 @@ export default function TeacherDashboard() {
 
   const links = [
     {
+      title: "Exams & Results",
+      description:
+        "Create exams, manage questions, configure section negative marking, and evaluate & release results.",
+      href: "/teacher/exams",
+      icon: FileSpreadsheet,
+      color: "text-indigo-400",
+      bg: "bg-indigo-500/15",
+      hoverBg: "group-hover:bg-indigo-500",
+    },
+    {
       title: "My Classes",
       description:
-        "View your assigned classes, manage student rosters, and track progress.",
+        "View your assigned classes, manage student rosters, and view class-wide exam results.",
       href: "/teacher/classes",
       icon: GraduationCap,
       color: "text-[var(--info)]",

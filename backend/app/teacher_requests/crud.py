@@ -45,11 +45,7 @@ def _to_response(req: TeacherClassJoinRequest) -> TeacherClassJoinRequestRespons
             if hasattr(req.subject, "value")
             else (str(req.subject) if req.subject else None)
         ),
-        status=(
-            req.status.value
-            if hasattr(req.status, "value")
-            else str(req.status)
-        ),
+        status=(req.status.value if hasattr(req.status, "value") else str(req.status)),
         requestedAt=req.requestedAt,
         decidedAt=req.decidedAt,
         decidedBy=req.decidedBy,

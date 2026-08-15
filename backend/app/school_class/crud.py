@@ -208,3 +208,132 @@ async def assign_teacher_to_class(
         return await _do_assign(session)
     async with db.get_session() as s:
         return await _do_assign(s)
+
+
+async def get_class_exam_results(
+    class_id: str, session: AsyncSession | None = None
+) -> dict:
+    """Get aggregated exam results and student performance for a specific class."""
+    from sqlalchemy.orm import selectinload
+
+    from app.core.models import Student, StudentExam
+
+    async def _do_get(s: AsyncSession):
+        # Fetch all students in the class
+        students_stmt = (
+            select(Student)
+            .where(Student.classId == class_id)
+            .options(
+                selectinload(Student.user),
+                selectinload(Student.studentExams).selectinload(StudentExam.exam),
+            )
+            .order_by(Student.rollNo)
+        )
+        students = (await s.execute(students_stmt)).scalars().all()
+
+        student_results = []
+        exam_map = {}
+        all_percentages = []
+
+        for st in students:
+            user = st.user
+            attempts_list = []
+            for se in st.studentExams or []:
+                exam = se.exam
+                if not exam:
+                    continue
+                max_m = exam.maxMarks if exam.maxMarks > 0 else 1
+                pct = round((se.marksObtained / max_m) * 100, 2)
+                all_percentages.append(pct)
+
+                att_dict = {
+                    "attemptId": se.id,
+                    "examId": exam.id,
+                    "examTitle": exam.name,
+                    "examCode": exam.examCode,
+                    "subject": (
+                        exam.subject.value
+                        if exam.subject and hasattr(exam.subject, "value")
+                        else (exam.subject or "General")
+                    ),
+                    "marksObtained": se.marksObtained,
+                    "maxMarks": exam.maxMarks,
+                    "percentage": pct,
+                    "status": (
+                        se.status.value
+                        if hasattr(se.status, "value")
+                        else str(se.status)
+                    ),
+                    "isResultsReleased": exam.isResultsReleased,
+                    "submittedAt": se.submittedAt,
+                }
+                attempts_list.append(att_dict)
+
+                # Group by exam for class exam breakdown
+                if exam.id not in exam_map:
+                    exam_map[exam.id] = {
+                        "examId": exam.id,
+                        "examTitle": exam.name,
+                        "examCode": exam.examCode,
+                        "subject": (
+                            exam.subject.value
+                            if exam.subject and hasattr(exam.subject, "value")
+                            else (exam.subject or "General")
+                        ),
+                        "maxMarks": exam.maxMarks,
+                        "attemptsCount": 0,
+                        "totalMarksSum": 0.0,
+                        "highestScore": 0.0,
+                        "isResultsReleased": exam.isResultsReleased,
+                    }
+                e_stat = exam_map[exam.id]
+                e_stat["attemptsCount"] += 1
+                e_stat["totalMarksSum"] += se.marksObtained
+                e_stat["highestScore"] = max(e_stat["highestScore"], se.marksObtained)
+
+            student_results.append(
+                {
+                    "studentId": st.id,
+                    "userId": st.userId,
+                    "studentName": user.name if user else "Unknown Student",
+                    "email": user.email if user else "",
+                    "rollNo": st.rollNo,
+                    "totalAttempts": len(attempts_list),
+                    "attempts": attempts_list,
+                }
+            )
+
+        # Calculate exam-level averages
+        exams_summary = []
+        for _e_id, e_info in exam_map.items():
+            count = e_info["attemptsCount"]
+            avg_score = round(e_info["totalMarksSum"] / count, 2) if count > 0 else 0.0
+            max_m = e_info["maxMarks"] if e_info["maxMarks"] > 0 else 1
+            avg_pct = round((avg_score / max_m) * 100, 2)
+            exams_summary.append(
+                {
+                    **e_info,
+                    "averageScore": avg_score,
+                    "averagePercentage": avg_pct,
+                }
+            )
+
+        class_avg = (
+            round(sum(all_percentages) / len(all_percentages), 2)
+            if all_percentages
+            else 0.0
+        )
+
+        return {
+            "classId": class_id,
+            "totalStudents": len(students),
+            "totalSubmissions": len(all_percentages),
+            "classAveragePercentage": class_avg,
+            "students": student_results,
+            "examsSummary": exams_summary,
+        }
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)

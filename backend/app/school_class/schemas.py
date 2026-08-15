@@ -39,4 +39,3 @@ class AssignStudentRequest(BaseModel):
 
 class AssignTeacherRequest(BaseModel):
     teacherId: str
-

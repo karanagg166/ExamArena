@@ -195,15 +195,15 @@ export function ExamSearchFilters({
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
                 <Hash className="w-3.5 h-3.5 text-[var(--accent)]" />
-                <span>Unique Exam Code</span>
+                <span>Exam Search Code</span>
               </label>
               <div className="relative">
                 <Input
                   name="code"
-                  placeholder="e.g. EXM-8X92K"
+                  placeholder="e.g. Np008, mock-test1"
                   value={filters.code}
                   onChange={handleChange}
-                  className="pl-9 font-mono text-sm uppercase bg-black/20 border-white/10 focus:border-[var(--accent)] text-white placeholder:text-zinc-500 rounded-xl"
+                  className="pl-9 font-mono text-sm bg-black/20 border-white/10 focus:border-[var(--accent)] text-white placeholder:text-zinc-500 rounded-xl"
                 />
                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
               </div>

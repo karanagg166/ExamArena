@@ -92,7 +92,51 @@ async def init_db() -> None:
             )
             await conn.execute(
                 text(
-                    'CREATE UNIQUE INDEX IF NOT EXISTS exam_examcode_idx ON "Exam" ("examCode");'
+                    'ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "accessPassword" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "isPublic" BOOLEAN NOT NULL DEFAULT TRUE;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "isResultsReleased" BOOLEAN NOT NULL DEFAULT FALSE;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "negativeMarking" BOOLEAN NOT NULL DEFAULT FALSE;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "negativeMarks" DOUBLE PRECISION NOT NULL DEFAULT 0.0;'
+                )
+            )
+            # Add section negative marking columns
+            await conn.execute(
+                text(
+                    'ALTER TABLE "ExamSection" ADD COLUMN IF NOT EXISTS "negativeMarking" BOOLEAN NOT NULL DEFAULT FALSE;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "ExamSection" ADD COLUMN IF NOT EXISTS "negativeMarks" DOUBLE PRECISION NOT NULL DEFAULT 0.0;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "ExamSection" ADD COLUMN IF NOT EXISTS "durationMinutes" INTEGER;'
+                )
+            )
+
+            # Convert unique index on examCode to non-unique index if needed
+            await conn.execute(text("DROP INDEX IF EXISTS exam_examcode_key;"))
+            await conn.execute(
+                text(
+                    'CREATE INDEX IF NOT EXISTS exam_examcode_idx ON "Exam" ("examCode");'
                 )
             )
 
@@ -107,7 +151,7 @@ async def init_db() -> None:
                     {"code": code, "id": row.id},
                 )
         except Exception as err:
-            print("DB Migration notice (examCode):", err)
+            print("DB Migration notice (exam settings & section negative marks):", err)
 
         # Transitional compatibility for installations that relied on
         # ``create_all`` rather than applying Prisma migrations. The tracked

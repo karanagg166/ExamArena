@@ -43,8 +43,9 @@ export type Question = {
 // Teacher creating a question — no id/timestamps (server-generated)
 export type QuestionCreate = Omit<
   Question,
-  "id" | "createdAt" | "updatedAt" | "options"
+  "id" | "createdAt" | "updatedAt" | "options" | "examId"
 > & {
+  examId?: string;
   options?: QuestionOptionCreate[];
 };
 

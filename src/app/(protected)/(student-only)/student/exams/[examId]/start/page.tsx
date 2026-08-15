@@ -156,18 +156,18 @@ export default function ExamStartPage() {
            {exam.isPublic === false && (
              <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2">
                <label htmlFor="exam-code-input" className="text-xs font-semibold uppercase tracking-wider text-amber-300">
-                 Enter Exam Code to Begin
+                 Enter Exam Access Password to Begin
                </label>
                <input
                  id="exam-code-input"
-                 type="text"
-                 placeholder="e.g., EXM-XXXXXX"
+                 type="password"
+                 placeholder="Enter secret access password..."
                  value={examCodeInput}
-                 onChange={(e) => setExamCodeInput(e.target.value.toUpperCase())}
-                 className="w-full h-11 bg-zinc-900 border border-amber-500/40 rounded-xl px-4 text-base font-mono uppercase tracking-widest text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                 onChange={(e) => setExamCodeInput(e.target.value)}
+                 className="w-full h-11 bg-zinc-900 border border-amber-500/40 rounded-xl px-4 text-base tracking-wider text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                />
                <p className="text-xs text-zinc-400">
-                 This exam requires a secret code provided by your teacher.
+                 This private exam requires a secret access password provided by your teacher.
                </p>
              </div>
            )}

@@ -71,13 +71,16 @@ async def create_exam(
         "instructions": exam_data.instructions,
         "isPublished": exam_data.isPublished,
         "isPublic": exam_data.isPublic,
+        "accessPassword": exam_data.accessPassword,
         "isResultsReleased": exam_data.isResultsReleased,
         "negativeMarking": exam_data.negativeMarking,
         "negativeMarks": exam_data.negativeMarks,
         "type": exam_data.type,
         "teacherId": teacher_id,
         "questions": questions_list,
-        "examCode": exam_data.examCode if exam_data.examCode else generate_exam_code(),
+        "examCode": exam_data.examCode.strip()
+        if exam_data.examCode and exam_data.examCode.strip()
+        else generate_exam_code(),
     }
 
     if exam_data.subject:
@@ -119,8 +122,51 @@ async def get_exams_by_teacher(
 ) -> list[ExamResponse]:
 
     async def _do_get(s: AsyncSession):
-        stmt = select(Exam).where(Exam.teacherId == teacher_id).options(*EXAM_OPTIONS)
+        stmt = (
+            select(Exam)
+            .where(Exam.teacherId == teacher_id)
+            .options(*EXAM_OPTIONS)
+            .order_by(Exam.createdAt.desc())
+        )
         exams = (await s.execute(stmt)).scalars().all()
+        return [ExamResponse.model_validate(e) for e in exams]
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)
+
+
+async def get_exams_by_school(
+    school_id: str, session: AsyncSession | None = None
+) -> list[ExamResponse]:
+    """Retrieve all exams created by all teachers in a specific school (for Principals/Admins)."""
+
+    async def _do_get(s: AsyncSession):
+        stmt = (
+            select(Exam)
+            .join(Exam.teacher)
+            .where(Teacher.schoolId == school_id)
+            .options(*EXAM_OPTIONS)
+            .order_by(Exam.createdAt.desc())
+        )
+        exams = (await s.execute(stmt)).scalars().unique().all()
+        return [ExamResponse.model_validate(e) for e in exams]
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)
+
+
+async def get_all_exams_admin(
+    session: AsyncSession | None = None,
+) -> list[ExamResponse]:
+    """Retrieve all exams in system (Admin only)."""
+
+    async def _do_get(s: AsyncSession):
+        stmt = select(Exam).options(*EXAM_OPTIONS).order_by(Exam.createdAt.desc())
+        exams = (await s.execute(stmt)).scalars().unique().all()
         return [ExamResponse.model_validate(e) for e in exams]
 
     if session:
@@ -334,3 +380,21 @@ async def get_exam_results(
         return await _do_get(session)
     async with db.get_session() as s:
         return await _do_get(s)
+
+
+async def delete_exam(exam_id: str, session: AsyncSession | None = None) -> bool:
+    """Delete an exam and its associated questions and attempts."""
+
+    async def _do_delete(s: AsyncSession):
+        stmt = select(Exam).where(Exam.id == exam_id)
+        exam = (await s.execute(stmt)).scalar_one_or_none()
+        if not exam:
+            return False
+        await s.delete(exam)
+        await s.commit()
+        return True
+
+    if session:
+        return await _do_delete(session)
+    async with db.get_session() as s:
+        return await _do_delete(s)

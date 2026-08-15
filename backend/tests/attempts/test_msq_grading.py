@@ -79,19 +79,30 @@ class TestMsqAndNegativeGrading:
         mock_session.execute.return_value = mock_result
 
         with (
-            patch("app.attempts.crud.get_student_by_user_id", new=AsyncMock(return_value=MagicMock(id="student_1"))),
-            patch("app.attempts.crud.get_attempt_by_id", new=AsyncMock(return_value=attempt_mock)),
+            patch(
+                "app.attempts.crud.get_student_by_user_id",
+                new=AsyncMock(return_value=MagicMock(id="student_1")),
+            ),
+            patch(
+                "app.attempts.crud.get_attempt_by_id",
+                new=AsyncMock(return_value=attempt_mock),
+            ),
         ):
             submit_data = StudentExamSubmit(
                 id="att_1",
                 answers=[
                     StudentAnswerUpdate(
                         id="ans_1",
-                        selectedOptions=[SelectedOptionCreate(optionId="opt_1"), SelectedOptionCreate(optionId="opt_2")],
+                        selectedOptions=[
+                            SelectedOptionCreate(optionId="opt_1"),
+                            SelectedOptionCreate(optionId="opt_2"),
+                        ],
                     )
                 ],
             )
-            resp = await attempts_crud.submit_exam_attempt(submit_data, "user_1", session=mock_session)
+            resp = await attempts_crud.submit_exam_attempt(
+                submit_data, "user_1", session=mock_session
+            )
 
             assert ans_mock.marksAwarded == 4.0
             assert ans_mock.isCorrect == Correctness.FULLY_CORRECT
@@ -128,8 +139,14 @@ class TestMsqAndNegativeGrading:
         mock_session.execute.return_value = mock_result
 
         with (
-            patch("app.attempts.crud.get_student_by_user_id", new=AsyncMock(return_value=MagicMock(id="student_1"))),
-            patch("app.attempts.crud.get_attempt_by_id", new=AsyncMock(return_value=attempt_mock)),
+            patch(
+                "app.attempts.crud.get_student_by_user_id",
+                new=AsyncMock(return_value=MagicMock(id="student_1")),
+            ),
+            patch(
+                "app.attempts.crud.get_attempt_by_id",
+                new=AsyncMock(return_value=attempt_mock),
+            ),
         ):
             submit_data = StudentExamSubmit(
                 id="att_2",
@@ -140,7 +157,9 @@ class TestMsqAndNegativeGrading:
                     )
                 ],
             )
-            resp = await attempts_crud.submit_exam_attempt(submit_data, "user_1", session=mock_session)
+            resp = await attempts_crud.submit_exam_attempt(
+                submit_data, "user_1", session=mock_session
+            )
 
             assert ans_mock.marksAwarded == 2.0  # (1/2) * 4.0
             assert ans_mock.isCorrect == Correctness.PARTIALLY_CORRECT
@@ -177,19 +196,30 @@ class TestMsqAndNegativeGrading:
         mock_session.execute.return_value = mock_result
 
         with (
-            patch("app.attempts.crud.get_student_by_user_id", new=AsyncMock(return_value=MagicMock(id="student_1"))),
-            patch("app.attempts.crud.get_attempt_by_id", new=AsyncMock(return_value=attempt_mock)),
+            patch(
+                "app.attempts.crud.get_student_by_user_id",
+                new=AsyncMock(return_value=MagicMock(id="student_1")),
+            ),
+            patch(
+                "app.attempts.crud.get_attempt_by_id",
+                new=AsyncMock(return_value=attempt_mock),
+            ),
         ):
             submit_data = StudentExamSubmit(
                 id="att_3",
                 answers=[
                     StudentAnswerUpdate(
                         id="ans_3",
-                        selectedOptions=[SelectedOptionCreate(optionId="opt_1"), SelectedOptionCreate(optionId="opt_3")],
+                        selectedOptions=[
+                            SelectedOptionCreate(optionId="opt_1"),
+                            SelectedOptionCreate(optionId="opt_3"),
+                        ],
                     )
                 ],
             )
-            resp = await attempts_crud.submit_exam_attempt(submit_data, "user_1", session=mock_session)
+            resp = await attempts_crud.submit_exam_attempt(
+                submit_data, "user_1", session=mock_session
+            )
 
             assert ans_mock.marksAwarded == -1.0
             assert ans_mock.isCorrect == Correctness.INCORRECT

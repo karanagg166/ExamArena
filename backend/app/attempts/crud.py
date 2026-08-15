@@ -73,13 +73,15 @@ async def start_exam_attempt(
 
         # 3. Check access code if exam is not public
         if not exam.isPublic:
-            if (
-                not attempt_data.examCode
-                or attempt_data.examCode.strip().upper()
-                != exam.examCode.strip().upper()
-            ):
+            code_input = (attempt_data.examCode or "").strip().upper()
+            exam_code_match = code_input == (exam.examCode or "").strip().upper()
+            pwd_match = bool(
+                exam.accessPassword
+                and code_input == exam.accessPassword.strip().upper()
+            )
+            if not (exam_code_match or pwd_match):
                 raise ValueError(
-                    "This exam requires a valid exam code. Please enter the correct code to proceed."
+                    "This exam requires a valid access password or exam code. Please enter the correct code to proceed."
                 )
 
         # Check for existing attempt
@@ -171,7 +173,7 @@ async def submit_exam_attempt(
         raise ValueError("Not authorized to submit this attempt")
 
     async def _do_submit(s: AsyncSession):
-        # Fetch attempt with exam and all questions + options
+        # Fetch attempt with exam and all questions + options + sections
         attempt_stmt = (
             select(StudentExam)
             .where(StudentExam.id == submit_data.id)
@@ -179,6 +181,10 @@ async def submit_exam_attempt(
                 selectinload(StudentExam.exam)
                 .selectinload(Exam.questions)
                 .selectinload(Question.options),
+                selectinload(StudentExam.exam)
+                .selectinload(Exam.questions)
+                .selectinload(Question.examSection),
+                selectinload(StudentExam.exam).selectinload(Exam.sections),
                 selectinload(StudentExam.answers).selectinload(
                     StudentExamAnswer.selectedOptions
                 ),
@@ -190,6 +196,8 @@ async def submit_exam_attempt(
 
         exam = db_attempt.exam
         questions_by_id = {q.id: q for q in (exam.questions or [])}
+        sections_by_id = {sec.id: sec for sec in (exam.sections or [])}
+        sections_by_name = {sec.name: sec for sec in (exam.sections or [])}
 
         total_marks_obtained = 0.0
         has_pending_subjective = False
@@ -219,11 +227,31 @@ async def submit_exam_attempt(
                 continue
 
             q_marks = float(q.marks)
-            neg_marks = float(
-                q.negativeMarks
-                if q.negativeMarks is not None
-                else (exam.negativeMarks if exam.negativeMarking else 0.0)
+
+            # Determine section-level negative marking policy
+            section_obj = (
+                q.examSection
+                or (sections_by_id.get(q.sectionId) if q.sectionId else None)
+                or (sections_by_name.get(q.section) if q.section else None)
             )
+            if section_obj:
+                sec_has_neg = section_obj.negativeMarking
+                sec_neg_marks = float(section_obj.negativeMarks)
+            else:
+                sec_has_neg = exam.negativeMarking
+                sec_neg_marks = float(exam.negativeMarks)
+
+            if q.negativeMarks is not None:
+                neg_marks = float(q.negativeMarks)
+                has_neg = True
+            elif sec_has_neg:
+                neg_marks = sec_neg_marks
+                has_neg = sec_neg_marks > 0
+            else:
+                neg_marks = 0.0
+                has_neg = False
+
+            penalty = abs(neg_marks) if (has_neg and neg_marks > 0) else 0.0
 
             selected_opt_ids = {so.optionId for so in (db_ans.selectedOptions or [])}
             correct_opt_ids = {opt.id for opt in (q.options or []) if opt.isCorrect}
@@ -242,11 +270,6 @@ async def submit_exam_attempt(
                     db_ans.gradingStatus = GradingStatus.AUTO_GRADED
                     total_marks_obtained += q_marks
                 else:
-                    penalty = (
-                        abs(neg_marks)
-                        if (exam.negativeMarking and neg_marks > 0)
-                        else 0.0
-                    )
                     db_ans.marksAwarded = -penalty
                     db_ans.isCorrect = Correctness.INCORRECT
                     db_ans.gradingStatus = GradingStatus.AUTO_GRADED
@@ -264,11 +287,6 @@ async def submit_exam_attempt(
 
                     if wrong_selected:
                         # At least 1 wrong option selected
-                        penalty = (
-                            abs(neg_marks)
-                            if (exam.negativeMarking and neg_marks > 0)
-                            else 0.0
-                        )
                         db_ans.marksAwarded = -penalty
                         db_ans.isCorrect = Correctness.INCORRECT
                         db_ans.gradingStatus = GradingStatus.AUTO_GRADED

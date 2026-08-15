@@ -2,11 +2,11 @@
 import Link from "next/link";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, FileText, User as UserIcon, School } from "lucide-react";
+import { Calendar, Clock, User as UserIcon, School } from "lucide-react";
 import type { Exam } from "@/types";
 
 interface ExamPublicCardProps {
-  exam: Exam;
+  exam: Exam & { studentStatus?: string; attemptId?: string | null };
   isStudent?: boolean;
 }
 
@@ -19,7 +19,15 @@ export function ExamPublicCard({ exam, isStudent }: ExamPublicCardProps) {
     minute: "2-digit",
   }).format(new Date(exam.scheduledAt));
 
-  const targetHref = isStudent ? `/student/exams/${exam.id}/start` : `/exams/${exam.id}`;
+  const isSubmitted =
+    exam.studentStatus === "SUBMITTED" ||
+    exam.studentStatus === "COMPLETED";
+
+  const targetHref = isStudent
+    ? isSubmitted
+      ? `/student/exams/${exam.id}/result`
+      : `/student/exams/${exam.id}/start`
+    : `/exams/${exam.id}`;
 
   return (
     <Link href={targetHref}>
@@ -32,7 +40,12 @@ export function ExamPublicCard({ exam, isStudent }: ExamPublicCardProps) {
             <Badge variant="default">{exam.type}</Badge>
             {exam.examCode && (
               <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                🔑 {exam.examCode}
+                🔍 {exam.examCode}
+              </span>
+            )}
+            {exam.isPublic === false && (
+              <span className="text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
+                🔒 Password
               </span>
             )}
             {exam.subject && (

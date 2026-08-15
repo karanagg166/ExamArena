@@ -22,12 +22,17 @@ export default function CreateExamPage() {
 
   const [exam, setExam] = useState<ExamCreate>({
     name: "",
+    examCode: "",
+    accessPassword: "",
     description: "",
     scheduledAt: "",
     duration: 60,
     type: "MIDTERM",
     maxMarks: 0,
     isPublished: false,
+    isPublic: true,
+    negativeMarking: false,
+    negativeMarks: 0,
     questions: [],
   });
 

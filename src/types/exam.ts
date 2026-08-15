@@ -18,6 +18,7 @@ export type Subject =
 export type Exam = {
   id: string;
   examCode?: string;
+  accessPassword?: string;
   name: string;
   description: string;
   scheduledAt: string; // Prisma field is "scheduledAt", not "date"

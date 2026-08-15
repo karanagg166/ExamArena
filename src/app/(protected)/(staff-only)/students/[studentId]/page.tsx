@@ -17,14 +17,9 @@ import {
   Hash,
   Users,
   User,
-  School,
   ClipboardList,
   MessageSquare,
-  Award,
-  CheckCircle2,
-  Clock,
   FileText,
-  TrendingUp,
 } from "lucide-react";
 
 /** Shape returned by GET /api/v1/students/:id */
