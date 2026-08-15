@@ -162,9 +162,29 @@ model Exam {
   updatedAt    DateTime      @updatedAt
   teacher      Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   questions    Question[]
+  sections     ExamSection[]
   studentExams StudentExam[]
 
   @@index([teacherId])
+}
+
+model ExamSection {
+  id               String       @id @default(uuid())
+  name             String       // "Section A", "Section B", etc.
+  description      String?
+  questionType     QuestionType
+  marksPerQuestion Int
+  sortOrder        Int
+  examId           String
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  exam      Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@unique([examId, name])
+  @@unique([examId, sortOrder])
+  @@index([examId])
 }
 
 model Question {
@@ -178,13 +198,16 @@ model Question {
   explanation    String?
   questionType   QuestionType        @default(MULTIPLE_CHOICE)
   examId         String
+  sectionId      String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   exam           Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  examSection    ExamSection?        @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   options        QuestionOption[]
   answers        StudentExamAnswer[]
 
   @@unique([examId, questionNumber, section])
+  @@index([sectionId])
   @@index([examId])
 }
 

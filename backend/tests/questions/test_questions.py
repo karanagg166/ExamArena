@@ -19,6 +19,7 @@ def make_fake_question(overrides: dict = None) -> MagicMock:
     q.explanation = "2 + 2 = 4"
     q.examId = "clxfake_exam_001"
     q.section = "General"
+    q.sectionId = None
     q.createdAt = datetime(2026, 1, 1)
     q.updatedAt = datetime(2026, 1, 1)
     q.options = []

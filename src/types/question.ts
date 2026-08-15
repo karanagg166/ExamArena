@@ -33,6 +33,7 @@ export type Question = {
   explanation?: string;
   questionType: QuestionType; // Prisma field name is "questionType", not "type"
   examId: string;
+  sectionId?: string;
   createdAt: string;
   updatedAt: string;
   options?: QuestionOption[];

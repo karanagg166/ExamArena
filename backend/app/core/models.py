@@ -420,6 +420,45 @@ class Exam(Base):
     studentExams: Mapped[list["StudentExam"]] = relationship(
         "StudentExam", back_populates="exam", cascade="all, delete-orphan"
     )
+    sections: Mapped[list["ExamSection"]] = relationship(
+        "ExamSection", back_populates="exam", cascade="all, delete-orphan"
+    )
+
+
+class ExamSection(Base):
+    __tablename__ = "ExamSection"
+    __table_args__ = (
+        UniqueConstraint("examId", "name", name="examsection_examid_name_key"),
+        UniqueConstraint(
+            "examId", "sortOrder", name="examsection_examid_sortorder_key"
+        ),
+        Index("examsection_examid_idx", "examId"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
+    name: Mapped[str] = mapped_column(
+        String, nullable=False
+    )  # "Section A", "Section B", etc.
+    description: Mapped[str | None] = mapped_column(String, nullable=True)
+    questionType: Mapped[QuestionType] = mapped_column(
+        SQLEnum(QuestionType, native_enum=False), nullable=False
+    )
+    marksPerQuestion: Mapped[int] = mapped_column(Integer, nullable=False)
+    sortOrder: Mapped[int] = mapped_column(Integer, nullable=False)  # A=1, B=2, etc.
+    examId: Mapped[str] = mapped_column(
+        String, ForeignKey("Exam.id", ondelete="CASCADE"), nullable=False
+    )
+    createdAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updatedAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
+
+    exam: Mapped["Exam"] = relationship("Exam", back_populates="sections")
+    questions: Mapped[list["Question"]] = relationship(
+        "Question", back_populates="examSection", cascade="all, delete-orphan"
+    )
 
 
 class Question(Base):
@@ -432,6 +471,7 @@ class Question(Base):
             name="question_examid_questionnumber_section_key",
         ),
         Index("question_examid_idx", "examId"),
+        Index("question_sectionid_idx", "sectionId"),
     )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
@@ -450,6 +490,9 @@ class Question(Base):
     examId: Mapped[str] = mapped_column(
         String, ForeignKey("Exam.id", ondelete="CASCADE"), nullable=False
     )
+    sectionId: Mapped[str | None] = mapped_column(
+        String, ForeignKey("ExamSection.id", ondelete="CASCADE"), nullable=True
+    )
     createdAt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )
@@ -458,6 +501,9 @@ class Question(Base):
     )
 
     exam: Mapped["Exam"] = relationship("Exam", back_populates="questions")
+    examSection: Mapped["ExamSection | None"] = relationship(
+        "ExamSection", back_populates="questions"
+    )
     options: Mapped[list["QuestionOption"]] = relationship(
         "QuestionOption", back_populates="question", cascade="all, delete-orphan"
     )

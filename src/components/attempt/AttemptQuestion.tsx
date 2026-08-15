@@ -4,7 +4,6 @@ import { Question } from '@/types/question';
 import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 
 export const AttemptQuestion = ({ question }: { question: Question }) => {
   const { answers, updateAnswer, markQuestionForReview, unmarkQuestionForReview } = useAttemptEngine();
@@ -51,11 +50,16 @@ export const AttemptQuestion = ({ question }: { question: Question }) => {
       <div className="flex justify-between items-start mb-6">
         <div>
           <h2 className="text-xl font-bold text-white mb-2">Question {question.questionNumber}</h2>
-          {question.section && (
-            <span className="text-xs text-[var(--text-dimmed)] bg-[var(--surface-3)] px-2 py-1 rounded-md">
-                Section: {question.section}
+          <div className="flex items-center gap-2">
+            {question.section && (
+              <span className="text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-md">
+                {question.section}
+              </span>
+            )}
+            <span className="text-xs text-[var(--text-muted)] bg-[var(--surface-3)] px-2 py-0.5 rounded-md">
+              {question.questionType.replace(/_/g, " ")}
             </span>
-          )}
+          </div>
         </div>
         <div className="bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-lg">
           <span className="text-indigo-400 font-medium">{question.marks} Marks</span>

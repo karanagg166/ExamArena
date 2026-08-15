@@ -4,7 +4,6 @@ import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
-import type { AxiosError } from "axios";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -45,17 +44,23 @@ export default function CreateExamPage() {
     if (exam.duration < 5) return "Duration must be at least 5 minutes.";
     if ((exam.questions ?? []).length === 0) return "Add at least one question.";
 
+    const SECTION_PATTERN = /^Section [A-Z]$/;
+
     for (const q of exam.questions ?? []) {
       if (!q.text.trim()) return "All questions must have a prompt.";
-      if (!q.section?.trim()) return "All questions must have a section (e.g. Physics).";
+      if (!q.section?.trim()) return "All questions must belong to a section (e.g. Section A).";
+      if (!SECTION_PATTERN.test(q.section.trim())) {
+        return `Section "${q.section}" is invalid. Section names must strictly follow "Section A", "Section B", etc.`;
+      }
       if (!q.marks || q.marks < 1)
         return `Question ${q.questionNumber} must have marks greater than 0.`;
       if (
         q.questionType === "MULTIPLE_CHOICE" ||
-        q.questionType === "TRUE_FALSE"
+        q.questionType === "TRUE_FALSE" ||
+        q.questionType === "MULTIPLE_SELECT"
       ) {
         if (!q.options?.some((o) => o.isCorrect))
-          return `Question ${q.questionNumber} must have a correct option selected.`;
+          return `Question ${q.questionNumber} in ${q.section} must have a correct option selected.`;
       }
     }
 

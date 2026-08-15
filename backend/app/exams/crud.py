@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 import app.core.database as db
 from app.core.models import (
     Exam,
+    ExamSection,
     Question,
     QuestionOption,
     School,
@@ -21,6 +22,7 @@ from app.exams.schemas import (
 EXAM_OPTIONS = [
     selectinload(Exam.teacher).selectinload(Teacher.user),
     selectinload(Exam.teacher).selectinload(Teacher.school),
+    selectinload(Exam.sections),
     selectinload(Exam.questions).selectinload(Question.options),
 ]
 

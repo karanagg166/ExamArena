@@ -8,6 +8,7 @@ from app.questions.schemas import (
     QuestionResponse,
     QuestionUpdateRequest,
 )
+from app.sections.schemas import SectionResponse
 
 
 class ExamType(StrEnum):
@@ -82,6 +83,7 @@ class ExamResponse(ExamBase):
     createdAt: datetime
     updatedAt: datetime
     teacher: TeacherInfo | None = None
+    sections: list[SectionResponse] | None = None
     questions: list[QuestionResponse] | None = None
     model_config = ConfigDict(from_attributes=True)
 

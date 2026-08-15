@@ -7,6 +7,7 @@ from app.principals.router import router as principals_router
 from app.questions.router import router as questions_router
 from app.school.router import router as school_router
 from app.school_class.router import router as school_class_router
+from app.sections.router import router as sections_router
 from app.students.router import router as students_router
 from app.teachers.router import router as teachers_router
 
@@ -18,5 +19,6 @@ api_router.include_router(principals_router)
 api_router.include_router(school_router)
 api_router.include_router(school_class_router)
 api_router.include_router(exams_router)
+api_router.include_router(sections_router)
 api_router.include_router(questions_router)
 api_router.include_router(attempts_router)

@@ -45,7 +45,6 @@ def override_auth():
     app.dependency_overrides.clear()
 
 
-# ── Real DB fixtures (for integration tests only) ─────────────
 @pytest_asyncio.fixture
 async def real_db():
     """Initializes SQLAlchemy database and yields an AsyncSession."""
@@ -54,6 +53,7 @@ async def real_db():
     await db_module.init_db()
     async with db_module.AsyncSessionLocal() as session:
         yield session
+    await db_module.close_db()
 
 
 @pytest_asyncio.fixture

@@ -21,6 +21,7 @@ class QuestionBase(BaseModel):
     wordLimit: int | None = None
     explanation: str | None = None
     examId: str | None = None
+    sectionId: str | None = None
     section: str
 
 

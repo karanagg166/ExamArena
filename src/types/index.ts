@@ -6,4 +6,5 @@ export * from "./teacher";
 export * from "./user";
 export * from "./exam";
 export * from "./question";
+export * from "./section";
 export * from "./attempt";

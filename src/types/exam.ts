@@ -1,4 +1,5 @@
 import type { Question, QuestionCreate, QuestionUpsert } from "./question";
+import type { Section, SectionCreate } from "./section";
 
 // ─── Enums (match Prisma) ───────────────────────────────────────────────────
 export type ExamType = "MIDTERM" | "FINAL" | "QUIZ" | "ASSIGNMENT" | "MOCK";
@@ -30,6 +31,7 @@ export type Exam = {
   createdAt: string;
   updatedAt: string;
   questions?: Question[];
+  sections?: Section[];
   teacher?: {
     id: string;
     user: {
@@ -44,6 +46,7 @@ export type Exam = {
 // Teacher creating an exam — no id/timestamps/teacherId
 export type ExamCreate = Omit<Exam, "id" | "createdAt" | "updatedAt" | "questions" | "teacherId"> & {
   questions?: QuestionCreate[];
+  sections?: SectionCreate[];
 };
 
 // Teacher updating an exam — id required, rest optional

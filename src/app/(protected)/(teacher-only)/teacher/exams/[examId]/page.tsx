@@ -165,69 +165,112 @@ export default function ExamViewPage() {
               )}
             </GlassCard>
 
-            {/* Questions Summary */}
-            <div className="space-y-4">
+            {/* Sections & Questions */}
+            <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Questions ({(exam.questions ?? []).length})</h3>
+                <h3 className="text-lg font-semibold text-white">Exam Sections & Questions ({(exam.questions ?? []).length} Questions)</h3>
               </div>
 
-              <div className="space-y-3">
-                {(exam.questions ?? []).map((q, idx) => (
-                  <GlassCard key={q.id} padding="md" className="space-y-4 hover:bg-[var(--surface-2)] transition-colors">
-                    <div className="flex items-start gap-4">
-                      <div className="w-8 h-8 rounded-full bg-[var(--surface-3)] flex items-center justify-center text-xs font-bold text-indigo-400 shrink-0">
-                        {idx + 1}
-                      </div>
-                      <div className="flex-grow space-y-2 pe-4">
-                        <p className="text-[var(--text-primary)] font-medium whitespace-pre-wrap">{q.text}</p>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="neutral" className="text-[10px] lowercase">
-                            {q.questionType.replace("_", " ")}
+              {(() => {
+                // Group questions by section
+                const sectionMap = new Map<string, NonNullable<typeof exam.questions>>();
+                (exam.questions ?? []).forEach((q) => {
+                  const secName = q.section?.trim() || "Section A";
+                  if (!sectionMap.has(secName)) sectionMap.set(secName, []);
+                  sectionMap.get(secName)!.push(q);
+                });
+
+                const sortedSections = Array.from(sectionMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+
+                if (sortedSections.length === 0) {
+                  return (
+                    <GlassCard padding="md" className="text-center p-8 text-[var(--text-muted)]">
+                      No questions in this exam.
+                    </GlassCard>
+                  );
+                }
+
+                return sortedSections.map(([secName, secQuestions = []]) => {
+                  const firstQ = secQuestions[0];
+                  const secType = firstQ?.questionType || "MULTIPLE_CHOICE";
+                  const secMarksPerQ = firstQ?.marks || 1;
+                  const totalSecMarks = secQuestions.reduce((sum, q) => sum + (q.marks || 0), 0);
+
+                  return (
+                    <div key={secName} className="space-y-3">
+                      <div className="flex items-center justify-between bg-[var(--surface-2)] px-4 py-2.5 rounded-xl border border-[var(--border-subtle)]">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-base">{secName}</span>
+                          <Badge variant="neutral" className="text-[10px]">
+                            {secType.replace(/_/g, " ")}
                           </Badge>
                           <Badge variant="default" className="text-[10px]">
-                            {q.marks} Marks
+                            {secMarksPerQ} Marks / Q
                           </Badge>
-                          {q.section && (
-                            <span className="text-[10px] text-[var(--text-dimmed)] italic">Section: {q.section}</span>
-                          )}
-                          {q.wordLimit && (
-                            <span className="text-[10px] text-[var(--text-dimmed)] italic">Word Limit: {q.wordLimit}</span>
-                          )}
                         </div>
+                        <span className="text-xs text-[var(--text-muted)]">
+                          {secQuestions.length} {secQuestions.length === 1 ? "Question" : "Questions"} ({totalSecMarks} Marks)
+                        </span>
+                      </div>
+
+                      <div className="space-y-3 pl-2 border-l-2 border-indigo-500/20">
+                        {secQuestions.map((q, idx) => (
+                          <GlassCard key={q.id} padding="md" className="space-y-4 hover:bg-[var(--surface-2)] transition-colors">
+                            <div className="flex items-start gap-4">
+                              <div className="w-8 h-8 rounded-full bg-[var(--surface-3)] flex items-center justify-center text-xs font-bold text-indigo-400 shrink-0">
+                                {idx + 1}
+                              </div>
+                              <div className="flex-grow space-y-2 pe-4">
+                                <p className="text-[var(--text-primary)] font-medium whitespace-pre-wrap">{q.text}</p>
+                                <div className="flex flex-wrap gap-2">
+                                  <Badge variant="neutral" className="text-[10px] lowercase">
+                                    {q.questionType.replace("_", " ")}
+                                  </Badge>
+                                  <Badge variant="default" className="text-[10px]">
+                                    {q.marks} Marks
+                                  </Badge>
+                                  {q.wordLimit && (
+                                    <span className="text-[10px] text-[var(--text-dimmed)] italic">Word Limit: {q.wordLimit}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {(q.options ?? []).length > 0 && (
+                              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-2">
+                                <p className="text-xs font-semibold tracking-wider uppercase text-[var(--text-dimmed)]">Options</p>
+                                <div className="space-y-2">
+                                  {(q.options ?? []).map((opt) => (
+                                    <div
+                                      key={opt.id}
+                                      className={`flex items-start justify-between gap-3 rounded-lg px-3 py-2 border ${opt.isCorrect
+                                        ? "border-emerald-500/40 bg-emerald-500/10"
+                                        : "border-[var(--border-subtle)] bg-[var(--surface-2)]"
+                                        }`}
+                                    >
+                                      <p className="text-sm text-[var(--text-primary)]">{opt.optionNumber}. {opt.text || "--"}</p>
+                                      {opt.isCorrect && (
+                                        <Badge variant="success" className="text-[10px] shrink-0">Correct</Badge>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {q.explanation && (
+                              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-1">
+                                <p className="text-xs font-semibold tracking-wider uppercase text-[var(--text-dimmed)]">Explanation</p>
+                                <p className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">{q.explanation}</p>
+                              </div>
+                            )}
+                          </GlassCard>
+                        ))}
                       </div>
                     </div>
-
-                    {(q.options ?? []).length > 0 && (
-                      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-2">
-                        <p className="text-xs font-semibold tracking-wider uppercase text-[var(--text-dimmed)]">Options</p>
-                        <div className="space-y-2">
-                          {(q.options ?? []).map((opt) => (
-                            <div
-                              key={opt.id}
-                              className={`flex items-start justify-between gap-3 rounded-lg px-3 py-2 border ${opt.isCorrect
-                                ? "border-emerald-500/40 bg-emerald-500/10"
-                                : "border-[var(--border-subtle)] bg-[var(--surface-2)]"
-                                }`}
-                            >
-                              <p className="text-sm text-[var(--text-primary)]">{opt.optionNumber}. {opt.text || "--"}</p>
-                              {opt.isCorrect && (
-                                <Badge variant="success" className="text-[10px] shrink-0">Correct</Badge>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {q.explanation && (
-                      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 space-y-1">
-                        <p className="text-xs font-semibold tracking-wider uppercase text-[var(--text-dimmed)]">Explanation</p>
-                        <p className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">{q.explanation}</p>
-                      </div>
-                    )}
-                  </GlassCard>
-                ))}
-              </div>
+                  );
+                })
+              })()}
             </div>
           </div>
 

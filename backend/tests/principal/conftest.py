@@ -23,5 +23,9 @@ def mock_principal_db(mocker):
             "app.principals.router.get_teacher_by_user_id",
             new_callable=AsyncMock,
         ),
+        "join_school": mocker.patch(
+            "app.teachers.crud.join_school",
+            new_callable=AsyncMock,
+        ),
     }
     return patches
