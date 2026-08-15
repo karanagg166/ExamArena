@@ -3,10 +3,24 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAxiosError } from "axios";
-import { User, BookOpen, Mail, Edit2, Save, X } from "lucide-react";
+import {
+  User,
+  BookOpen,
+  Mail,
+  Edit2,
+  Save,
+  X,
+  KeyRound,
+  Clock3,
+  CircleCheck,
+  CircleX,
+} from "lucide-react";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loading";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useJoinRequestStore } from "@/stores";
 import {
   blockNonAlpha,
   blockNonPhone,
@@ -19,6 +33,8 @@ import {
 
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
+  const [hasStudentProfile, setHasStudentProfile] = useState<boolean | null>(null);
+  const [joinCode, setJoinCode] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [touched, setTouched] = useState(false);
   const [formData, setFormData] = useState({
@@ -46,6 +62,13 @@ export default function StudentDashboard() {
     guardianPhoneNo: "",
   });
   const router = useRouter();
+  const {
+    myRequests,
+    loading: joinRequestLoading,
+    error: joinRequestError,
+    fetchMyRequests,
+    joinByCode,
+  } = useJoinRequestStore();
 
   const getFieldErrors = () => {
     return {
@@ -73,6 +96,7 @@ export default function StudentDashboard() {
           withCredentials: true,
         });
         const data = response.data;
+        setHasStudentProfile(true);
         const userObj = data?.user || {};
 
         let displayClass = data?.className || "";
@@ -114,8 +138,8 @@ export default function StudentDashboard() {
         if (isAxiosError(error)) {
           const status = error.response?.status;
           if (status === 404) {
-            toast.info("Please complete your student profile setup.");
-            router.push("/signup/student");
+            await fetchMyRequests();
+            setHasStudentProfile(false);
             return;
           }
           if (status === 403) {
@@ -136,7 +160,18 @@ export default function StudentDashboard() {
     };
 
     fetchData();
-  }, [router]);
+  }, [fetchMyRequests, router]);
+
+  const handleJoinClass = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const result = await joinByCode(joinCode.trim().toUpperCase());
+    if (!result.success) {
+      toast.error(result.error ?? "Unable to submit the join request.");
+      return;
+    }
+    setJoinCode("");
+    toast.success("Join request sent to your teacher.");
+  };
 
   const handleSave = async () => {
     setTouched(true);
@@ -202,6 +237,78 @@ export default function StudentDashboard() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Spinner className="h-8 w-8 border-4" />
+      </div>
+    );
+  }
+
+  if (!hasStudentProfile) {
+    const latestRequest = myRequests[0];
+    const requestIcon =
+      latestRequest?.status === "APPROVED" ? (
+        <CircleCheck className="h-6 w-6 text-emerald-400" />
+      ) : latestRequest?.status === "REJECTED" ? (
+        <CircleX className="h-6 w-6 text-red-400" />
+      ) : (
+        <Clock3 className="h-6 w-6 text-amber-300" />
+      );
+
+    return (
+      <div className="page-shell text-white">
+        <div className="mx-auto max-w-2xl space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold">Class enrollment</h1>
+            <p className="mt-1 text-zinc-400">Join a class with the code shared by your teacher.</p>
+          </div>
+
+          {latestRequest && latestRequest.status !== "REJECTED" ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-xl">
+              <div className="flex items-start gap-4">
+                <div className="rounded-xl bg-zinc-900 p-3">{requestIcon}</div>
+                <div>
+                  <p className="text-sm font-medium uppercase tracking-wider text-zinc-500">{latestRequest.status}</p>
+                  <h2 className="mt-1 text-xl font-semibold">{latestRequest.className}</h2>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    {latestRequest.status === "PENDING"
+                      ? "Your teacher will review your request. You will be enrolled automatically after approval."
+                      : "Your enrollment was approved. Refresh this page in a moment to see your assigned profile."}
+                  </p>
+                </div>
+              </div>
+              {latestRequest.status === "APPROVED" && (
+                <Button className="mt-5" variant="outline" onClick={() => window.location.reload()}>
+                  Refresh enrollment
+                </Button>
+              )}
+            </div>
+          ) : (
+            <form onSubmit={handleJoinClass} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-xl">
+              {latestRequest?.status === "REJECTED" && (
+                <div className="mb-5 flex gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-200">
+                  {requestIcon}
+                  Your request for {latestRequest.className} was rejected. Check the code with your teacher and submit a new request if appropriate.
+                </div>
+              )}
+              <label htmlFor="profile-join-code" className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-200">
+                <KeyRound className="h-4 w-4 text-indigo-300" /> Class join code
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Input
+                  id="profile-join-code"
+                  value={joinCode}
+                  onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+                  placeholder="e.g. 8F2KQ9XA"
+                  autoCapitalize="characters"
+                  className="font-mono uppercase tracking-[0.14em]"
+                  required
+                />
+                <Button type="submit" disabled={joinRequestLoading || !joinCode.trim()}>
+                  {joinRequestLoading ? "Sending…" : "Request to join"}
+                </Button>
+              </div>
+              {joinRequestError && <p className="mt-3 text-sm text-red-300">{joinRequestError}</p>}
+            </form>
+          )}
+        </div>
       </div>
     );
   }

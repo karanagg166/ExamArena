@@ -47,8 +47,35 @@ async def create_class(
 @router.get("/school/{school_id}", response_model=list[SchoolClassResponse])
 async def get_classes_for_school(
     school_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    """Get all classes for a specific school."""
+    """Get classes for a school without exposing join codes publicly."""
+    if current_user.role == Role.STUDENT:
+        student = await get_student_by_user_id(current_user.id)
+        if not student or student.schoolId != school_id:
+            raise HTTPException(
+                status_code=403, detail="Access denied for this school."
+            )
+        classes = await get_school_classes_by_school_id(school_id)
+        return [
+            school_class
+            for school_class in classes
+            if school_class.id == student.classId
+        ]
+
+    if current_user.role in (Role.TEACHER, Role.PRINCIPAL):
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher or teacher.schoolId != school_id:
+            raise HTTPException(
+                status_code=403, detail="Access denied for this school."
+            )
+        if current_user.role == Role.PRINCIPAL:
+            principal = await get_principal_by_teacher_id(teacher.id)
+            if not principal or principal.schoolId != school_id:
+                raise HTTPException(
+                    status_code=403, detail="Access denied for this school."
+                )
+
     return await get_school_classes_by_school_id(school_id)
 
 

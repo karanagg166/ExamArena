@@ -1,3 +1,6 @@
+import secrets
+import string
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +12,12 @@ from app.school_class.schemas import (
     SchoolClassResponse,
     SchoolClassUpdateRequest,
 )
+
+
+def generate_join_code() -> str:
+    """Generate an easily shareable, case-insensitive class join code."""
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(8))
 
 
 async def create_school_class(
@@ -25,6 +34,19 @@ async def create_school_class(
     data_dict["schoolId"] = school.id
 
     async def _do_create(s: AsyncSession):
+        # A database unique constraint is the final guard; this pre-check makes a
+        # (very unlikely) random collision recoverable without exposing an error.
+        for _ in range(10):
+            join_code = generate_join_code()
+            exists = await s.scalar(
+                select(SchoolClass.id).where(SchoolClass.joinCode == join_code)
+            )
+            if not exists:
+                data_dict["joinCode"] = join_code
+                break
+        else:
+            raise RuntimeError("Unable to generate a unique class join code")
+
         school_class = SchoolClass(**data_dict)
         s.add(school_class)
         await s.commit()

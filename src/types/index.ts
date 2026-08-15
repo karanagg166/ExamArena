@@ -8,3 +8,4 @@ export * from "./exam";
 export * from "./question";
 export * from "./section";
 export * from "./attempt";
+export * from "./join-request";

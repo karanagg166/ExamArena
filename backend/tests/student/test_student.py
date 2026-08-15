@@ -88,54 +88,19 @@ class TestStudentsApi:
         assert filter_params.scopeSchoolId is None
         assert filter_params.scopeClassId is None
 
-    # ── Create Student ─────────────────────────────────────────
-    async def test_create_success(self, client, override_auth, mock_student_db):
-        user = override_auth(role="STUDENT")
-        mock_student_db["get_student_by_user_id"].return_value = None
-
-        fake_student = make_fake_student({"userId": user.id})
-        mock_student_db["create_student"].return_value = fake_student
-
-        payload = {
-            "rollNo": "STU001",
-            "parentName": "Parent User",
-            "parentEmail": "parent@test.dev",
-            "classId": "class_001",
-            "schoolId": "school_001",
-        }
-        response = await client.post("/api/v1/students", json=payload)
-        assert response.status_code == 201
-        data = response.json()
-        assert data["rollNo"] == "STU001"
-
-    async def test_create_duplicate_profile(
+    # ── Enrollment is join-request only ─────────────────────────
+    async def test_create_endpoint_is_not_available(
         self, client, override_auth, mock_student_db
     ):
         override_auth(role="STUDENT")
-        mock_student_db["get_student_by_user_id"].return_value = make_fake_student()
-
         payload = {
-            "rollNo": "STU001",
+            "rollNo": "1",
             "parentName": "Parent User",
-            "parentEmail": "parent@test.dev",
             "classId": "class_001",
             "schoolId": "school_001",
         }
         response = await client.post("/api/v1/students", json=payload)
-        assert response.status_code == 409
-        assert "Student profile already exists" in response.json()["detail"]
-
-    async def test_create_missing_fields(self, client, override_auth, mock_student_db):
-        override_auth(role="STUDENT")
-        # rollNo is required (omit it)
-        payload = {
-            "parentName": "Parent User",
-            "parentEmail": "parent@test.dev",
-            "classId": "class_001",
-            "schoolId": "school_001",
-        }
-        response = await client.post("/api/v1/students", json=payload)
-        assert response.status_code == 422
+        assert response.status_code == 405
 
     # ── Get Me / Update Me ─────────────────────────────────────
     async def test_get_me_success(self, client, override_auth, mock_student_db):

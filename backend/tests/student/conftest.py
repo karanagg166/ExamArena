@@ -7,10 +7,6 @@ import pytest
 @pytest.fixture
 def mock_student_db(mocker):
     patches = {
-        "create_student": mocker.patch(
-            "app.students.router.create_student",
-            new_callable=AsyncMock,
-        ),
         "get_student_by_id": mocker.patch(
             "app.students.router.get_student_by_id",
             new_callable=AsyncMock,

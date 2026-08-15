@@ -67,8 +67,8 @@ describe('useSchoolClassStore', () => {
   });
 
   it('deleteClass removes class by id', async () => {
-    const c1 = { id: 'c1', name: 'Class 1', year: '2026', section: 'A', schoolId: 's1', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
-    const c2 = { id: 'c2', name: 'Class 2', year: '2026', section: 'B', schoolId: 's1', createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+    const c1 = { id: 'c1', name: 'Class 1', year: '2026', section: 'A', schoolId: 's1', joinCode: 'CLASS001', nextRollNo: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' };
+    const c2 = { id: 'c2', name: 'Class 2', year: '2026', section: 'B', schoolId: 's1', joinCode: 'CLASS002', nextRollNo: 1, createdAt: '2026-01-01', updatedAt: '2026-01-01' };
     useSchoolClassStore.setState({
       classes: [c1, c2],
     });

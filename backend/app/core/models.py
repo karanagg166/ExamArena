@@ -98,6 +98,12 @@ class Correctness(enum.StrEnum):
     INCORRECT = "INCORRECT"
 
 
+class JoinRequestStatus(enum.StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
 # ── MODELS ─────────────────────────────────────────────────────
 
 
@@ -138,10 +144,18 @@ class User(Base):
     teacher: Mapped["Teacher | None"] = relationship(
         "Teacher", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
+    joinRequests: Mapped[list["ClassJoinRequest"]] = relationship(
+        "ClassJoinRequest", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Student(Base):
     __tablename__ = "Student"
+    __table_args__ = (
+        UniqueConstraint("classId", "rollNo", name="student_classid_rollno_key"),
+        Index("student_classid_idx", "classId"),
+        Index("student_userid_idx", "userId"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
     userId: Mapped[str] = mapped_column(
@@ -151,7 +165,7 @@ class Student(Base):
         nullable=False,
         index=True,
     )
-    rollNo: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    rollNo: Mapped[str] = mapped_column(String, nullable=False)
     parentName: Mapped[str | None] = mapped_column(String, nullable=True)
     parentEmail: Mapped[str | None] = mapped_column(String, nullable=True)
     fatherName: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -279,6 +293,8 @@ class SchoolClass(Base):
         String, ForeignKey("School.id", ondelete="CASCADE"), nullable=False
     )
     teacherId: Mapped[str | None] = mapped_column(String, nullable=True)
+    joinCode: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    nextRollNo: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     createdAt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )
@@ -292,6 +308,47 @@ class SchoolClass(Base):
     )
     teachers: Mapped[list["TeacherClass"]] = relationship(
         "TeacherClass", back_populates="schoolClass", cascade="all, delete-orphan"
+    )
+    joinRequests: Mapped[list["ClassJoinRequest"]] = relationship(
+        "ClassJoinRequest", back_populates="schoolClass", cascade="all, delete-orphan"
+    )
+
+
+class ClassJoinRequest(Base):
+    __tablename__ = "ClassJoinRequest"
+    __table_args__ = (
+        UniqueConstraint(
+            "studentUserId",
+            "classId",
+            name="classjoinrequest_studentuserid_classid_key",
+        ),
+        Index("classjoinrequest_classid_idx", "classId"),
+        Index("classjoinrequest_studentuserid_idx", "studentUserId"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
+    studentUserId: Mapped[str] = mapped_column(
+        String, ForeignKey("User.id", ondelete="CASCADE"), nullable=False
+    )
+    classId: Mapped[str] = mapped_column(
+        String, ForeignKey("SchoolClass.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[JoinRequestStatus] = mapped_column(
+        SQLEnum(JoinRequestStatus, name="JoinRequestStatus"),
+        default=JoinRequestStatus.PENDING,
+        nullable=False,
+    )
+    requestedAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    decidedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    decidedBy: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="joinRequests")
+    schoolClass: Mapped["SchoolClass"] = relationship(
+        "SchoolClass", back_populates="joinRequests"
     )
 
 

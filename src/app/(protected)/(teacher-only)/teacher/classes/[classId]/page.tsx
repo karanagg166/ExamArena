@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
 import { useSchoolClassStore } from "@/stores";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, ListChecks, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ClassPage() {
@@ -30,6 +30,16 @@ export default function ClassPage() {
       } else {
         toast.error("Failed to delete class");
       }
+    }
+  };
+
+  const copyJoinCode = async () => {
+    if (!schoolClass) return;
+    try {
+      await navigator.clipboard.writeText(schoolClass.joinCode);
+      toast.success("Join code copied to clipboard");
+    } catch {
+      toast.error("Unable to copy the join code");
     }
   };
 
@@ -86,6 +96,24 @@ export default function ClassPage() {
         </CardHeader>
 
         <CardContent className="space-y-6">
+          <div className="rounded-xl border border-indigo-400/25 bg-indigo-500/5 p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-300">Student enrollment code</p>
+                <p className="mt-1 font-mono text-2xl font-bold tracking-[0.2em] text-white">{schoolClass.joinCode}</p>
+                <p className="mt-1 text-sm text-zinc-400">Share this code with students; requests require your approval.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={copyJoinCode}>
+                  <Copy className="mr-2 h-4 w-4" /> Copy
+                </Button>
+                <Button size="sm" onClick={() => router.push(`/teacher/classes/${classId}/requests`)}>
+                  <ListChecks className="mr-2 h-4 w-4" /> Requests
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* Basic Info */}
           <div className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-2">
             <p>

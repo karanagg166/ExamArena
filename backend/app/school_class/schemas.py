@@ -24,6 +24,8 @@ class SchoolClassResponse(SchoolClassBase):
     id: str
     schoolId: str
     teacherId: str | None = None
+    joinCode: str
+    nextRollNo: int
     createdAt: datetime
     updatedAt: datetime
 

@@ -9,6 +9,8 @@ export type SchoolClass = {
   section: string; // batch/section, e.g. "A", "B", "C"
   schoolId: string;
   teacherId?: string; // class teacher / homeroom teacher
+  joinCode: string;
+  nextRollNo: number;
   createdAt: string;
   updatedAt: string;
   // Frontend-computed fields (from relations)

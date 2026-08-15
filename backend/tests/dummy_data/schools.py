@@ -41,6 +41,8 @@ def make_fake_school_class(overrides: dict = None) -> MagicMock:
     sc.section = "A"
     sc.schoolId = "clxfake_school_001"
     sc.teacherId = None
+    sc.joinCode = "CLASS1A2"
+    sc.nextRollNo = 1
     sc.createdAt = datetime(2026, 1, 1)
     sc.updatedAt = datetime(2026, 1, 1)
 

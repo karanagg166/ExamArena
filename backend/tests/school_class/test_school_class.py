@@ -31,7 +31,7 @@ class TestSchoolClassesApi:
         assert "only create classes for your own school" in response.json()["detail"]
 
     async def test_list_by_school(self, client, override_auth, mock_class_db):
-        override_auth(role="STUDENT")
+        override_auth(role="ADMIN")
         fake_class = make_fake_school_class()
         mock_class_db["get_school_classes_by_school_id"].return_value = [fake_class]
 

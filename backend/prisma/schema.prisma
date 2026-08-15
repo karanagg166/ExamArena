@@ -27,12 +27,13 @@ model User {
   school        School[]
   student       Student?
   teacher       Teacher?
+  joinRequests  ClassJoinRequest[]
 }
 
 model Student {
   id               String        @id @default(cuid())
   userId           String        @unique
-  rollNo           String        @unique
+  rollNo           String
   parentName       String?
   parentEmail      String?
   fatherName       String?
@@ -55,6 +56,7 @@ model Student {
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   studentExams    StudentExam[]
 
+  @@unique([classId, rollNo])
   @@index([classId])
   @@index([userId])
 }
@@ -98,15 +100,35 @@ model SchoolClass {
   section   String         @default("A")
   schoolId  String
   teacherId String?
+  joinCode  String         @unique
+  nextRollNo Int           @default(1)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   school    School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   students  Student[]
   teachers  TeacherClass[]
+  joinRequests ClassJoinRequest[]
 
   @@unique([schoolId, year, section])
   @@index([schoolId])
   @@index([teacherId])
+}
+
+model ClassJoinRequest {
+  id            String            @id @default(cuid())
+  studentUserId String
+  classId       String
+  status        JoinRequestStatus @default(PENDING)
+  requestedAt   DateTime          @default(now())
+  decidedAt     DateTime?
+  decidedBy     String?
+
+  user        User        @relation(fields: [studentUserId], references: [id], onDelete: Cascade)
+  schoolClass SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([studentUserId, classId])
+  @@index([classId])
+  @@index([studentUserId])
 }
 
 model Principal {
@@ -295,6 +317,12 @@ enum Role {
   TEACHER
   ADMIN
   PRINCIPAL
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum Subject {

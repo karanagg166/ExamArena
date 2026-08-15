@@ -6,15 +6,12 @@ from app.api.deps import get_current_user
 from app.core.models import Role
 from app.principals.crud import get_principal_by_teacher_id
 from app.students.crud import (
-    create_student,
     get_student_by_id,
     get_student_by_user_id,
     get_students,
     update_student,
 )
 from app.students.schemas import (
-    StudentCreate,
-    StudentCreateRequest,
     StudentFilterParams,
     StudentListItemResponse,
     StudentResponse,
@@ -94,31 +91,6 @@ async def fetch_students(
         )
 
     return await get_students(filters)
-
-
-@router.post(
-    "", response_model=StudentCreateRequest, status_code=status.HTTP_201_CREATED
-)
-async def create_my_student_profile(
-    student_data: StudentCreateRequest,
-    current_user: Annotated[UserResponse, Depends(get_current_user)],
-):
-    """Create student profile for the currently logged-in user"""
-    print(
-        "Received student profile creation request:",
-        student_data,
-        "from user:",
-        current_user.id,
-    )
-    existing = await get_student_by_user_id(current_user.id)
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Student profile already exists",
-        )
-    create_payload = StudentCreate(**student_data.model_dump(), userId=current_user.id)
-    print("Creating student profile with data:", create_payload)
-    return await create_student(create_payload)
 
 
 @router.get("/me", response_model=StudentResponse)

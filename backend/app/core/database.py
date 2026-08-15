@@ -109,6 +109,99 @@ async def init_db() -> None:
         except Exception as err:
             print("DB Migration notice (examCode):", err)
 
+        # Transitional compatibility for installations that relied on
+        # ``create_all`` rather than applying Prisma migrations. The tracked
+        # Prisma migration is authoritative; these statements only make an
+        # existing development database safe to start before it is deployed.
+        try:
+            await conn.execute(
+                text(
+                    'ALTER TABLE "SchoolClass" ADD COLUMN IF NOT EXISTS "joinCode" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "SchoolClass" ADD COLUMN IF NOT EXISTS "nextRollNo" INTEGER NOT NULL DEFAULT 1;'
+                )
+            )
+            class_rows = (
+                await conn.execute(
+                    text('SELECT "id" FROM "SchoolClass" WHERE "joinCode" IS NULL;')
+                )
+            ).fetchall()
+            import secrets
+            import string
+
+            alphabet = string.ascii_uppercase + string.digits
+            for row in class_rows:
+                while True:
+                    code = "".join(secrets.choice(alphabet) for _ in range(8))
+                    exists = await conn.execute(
+                        text('SELECT 1 FROM "SchoolClass" WHERE "joinCode" = :code;'),
+                        {"code": code},
+                    )
+                    if not exists.scalar_one_or_none():
+                        await conn.execute(
+                            text(
+                                'UPDATE "SchoolClass" SET "joinCode" = :code WHERE "id" = :id;'
+                            ),
+                            {"code": code, "id": row.id},
+                        )
+                        break
+
+            await conn.execute(
+                text(
+                    """
+                    UPDATE "SchoolClass" AS class
+                    SET "nextRollNo" = COALESCE((
+                      SELECT MAX(CASE WHEN student."rollNo" ~ '^[0-9]+$'
+                                      THEN student."rollNo"::INTEGER END)
+                      FROM "Student" AS student
+                      WHERE student."classId" = class."id"
+                    ), 0) + 1
+                    WHERE class."nextRollNo" = 1;
+                    """
+                )
+            )
+            await conn.execute(
+                text('ALTER TABLE "SchoolClass" ALTER COLUMN "joinCode" SET NOT NULL;')
+            )
+            await conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS schoolclass_joincode_key "
+                    'ON "SchoolClass" ("joinCode");'
+                )
+            )
+            await conn.execute(
+                text(
+                    """
+                    DO $$
+                    DECLARE constraint_name TEXT;
+                    BEGIN
+                      SELECT conname INTO constraint_name
+                      FROM pg_constraint
+                      WHERE conrelid = '"Student"'::regclass
+                        AND contype = 'u'
+                        AND conkey = ARRAY[
+                          (SELECT attnum::SMALLINT FROM pg_attribute
+                           WHERE attrelid = '"Student"'::regclass AND attname = 'rollNo')
+                        ]::SMALLINT[];
+                      IF constraint_name IS NOT NULL THEN
+                        EXECUTE format('ALTER TABLE "Student" DROP CONSTRAINT %I', constraint_name);
+                      END IF;
+                    END $$;
+                    """
+                )
+            )
+            await conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS student_classid_rollno_key "
+                    'ON "Student" ("classId", "rollNo");'
+                )
+            )
+        except Exception as err:
+            print("DB Migration notice (class enrollment):", err)
+
 
 async def close_db() -> None:
     """Dispose engine connections."""

@@ -38,9 +38,8 @@ class StudentListItemResponse(BaseModel):
 
 
 class StudentCreateRequest(BaseModel):
-    """What the frontend sends — no userId (injected from JWT)"""
+    """Non-enrollment details accepted only after a profile exists."""
 
-    rollNo: str
     parentName: str | None = None
     parentEmail: EmailStr | str | None = None
     fatherName: str | None = None
@@ -53,14 +52,27 @@ class StudentCreateRequest(BaseModel):
     guardianRelation: str | None = None
     guardianEmail: EmailStr | str | None = None
     guardianPhoneNo: str | None = None
-    schoolId: str
-    classId: str  # ID of the SchoolClass the student joins
 
 
-class StudentCreate(StudentCreateRequest):
-    """Internal use — includes userId injected server-side"""
+class StudentCreate(BaseModel):
+    """Trusted internal payload. Only join-request approval may construct this."""
 
     userId: str
+    rollNo: str
+    schoolId: str
+    classId: str
+    parentName: str | None = None
+    parentEmail: EmailStr | str | None = None
+    fatherName: str | None = None
+    fatherEmail: EmailStr | str | None = None
+    fatherPhoneNo: str | None = None
+    motherName: str | None = None
+    motherEmail: EmailStr | str | None = None
+    motherPhoneNo: str | None = None
+    guardianName: str | None = None
+    guardianRelation: str | None = None
+    guardianEmail: EmailStr | str | None = None
+    guardianPhoneNo: str | None = None
 
 
 class UserUpdateNested(BaseModel):
