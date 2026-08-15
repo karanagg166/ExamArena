@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="primary-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+    <linearGradient id="shield-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4338CA" />
+      <stop offset="100%" stop-color="#312E81" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Shield Container -->
+  <path d="M32 4 C48 4 56 12 56 26 C56 44 32 58 32 60 C32 60 8 44 8 26 C8 12 16 4 32 4 Z" 
+        fill="url(#primary-grad)" />
+
+  <!-- Shield Inner Layer -->
+  <path d="M32 8 C45 8 52 15 52 27 C52 42 32 54 32 55 C32 55 12 42 12 27 C12 15 19 8 32 8 Z" 
+        fill="url(#shield-grad)" />
+
+  <!-- Graduation Cap -->
+  <!-- Cap Rhombus Top -->
+  <polygon points="32,18 48,25 32,32 16,25" fill="#FFFFFF" opacity="0.95" />
+  
+  <!-- Cap Skull Base -->
+  <path d="M22 28 V35 C22 38 42 38 42 35 V28 L32 32 Z" fill="#E0E7FF" opacity="0.9" />
+
+  <!-- Tassel Ribbon & Bead -->
+  <path d="M44 26.5 V35 C44 36.5 45.5 37 46 37" stroke="#FDE047" stroke-width="2" stroke-linecap="round" fill="none" />
+  <circle cx="46" cy="38" r="1.5" fill="#FACC15" />
+</svg>

@@ -90,6 +90,11 @@ export default function ExamViewPage() {
                   <ArrowLeft className="mr-2 h-4 w-4" /> Back
                 </Button>
               </Link>
+              <Link href={`/teacher/exams/${examId}/results`}>
+                <Button variant="outline" size="sm">
+                  <Target className="mr-2 h-4 w-4" /> View Results
+                </Button>
+              </Link>
               <Link href={`/teacher/exams/${examId}/edit`}>
                 <Button variant="primary" size="sm" className="shadow-glow">
                   <Edit3 className="mr-2 h-4 w-4" /> Edit Exam

@@ -11,8 +11,6 @@ type Filters = {
   rollNo: string;
   classYear: string;
   section: string;
-  schoolName: string;
-  schoolCode: string;
 };
 
 const INITIAL_FILTERS: Filters = {
@@ -21,8 +19,6 @@ const INITIAL_FILTERS: Filters = {
   rollNo: "",
   classYear: "",
   section: "",
-  schoolName: "",
-  schoolCode: "",
 };
 
 export default function StudentsPage() {
@@ -139,20 +135,6 @@ export default function StudentsPage() {
                 placeholder="e.g. A"
                 value={filters.section}
                 onChange={(v) => handleFilterChange("section", v)}
-              />
-              <FilterInput
-                id="filter-schoolname"
-                label="School Name"
-                placeholder="e.g. Sunrise Public School"
-                value={filters.schoolName}
-                onChange={(v) => handleFilterChange("schoolName", v)}
-              />
-              <FilterInput
-                id="filter-schoolcode"
-                label="School Code"
-                placeholder="e.g. SPS-2026"
-                value={filters.schoolCode}
-                onChange={(v) => handleFilterChange("schoolCode", v)}
               />
             </div>
 

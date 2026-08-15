@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class QuestionType(StrEnum):
@@ -25,11 +25,25 @@ class QuestionBase(BaseModel):
     sectionId: str | None = None
     section: str
 
+    @field_validator("text")
+    @classmethod
+    def text_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Question text cannot be empty")
+        return v
+
 
 class QuestionOptionBase(BaseModel):
     text: str
     optionNumber: int
     imageUrl: str | None = None
+
+    @field_validator("text")
+    @classmethod
+    def text_must_not_be_empty(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Option text cannot be empty")
+        return v
 
 
 class QuestionOptionCreate(QuestionOptionBase):

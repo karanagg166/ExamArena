@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/axios";
 import type { AxiosError } from "axios";
 import type { StudentProfileResponse } from "@/types/student";
@@ -131,10 +132,18 @@ export function ClassStudentsList({ classId }: { classId: string }) {
                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-semibold">
                   Guardian Info
                 </p>
-                <p className="text-sm text-zinc-300">{student.parentName}</p>
+                <p className="text-sm text-zinc-300">{student.parentName || "—"}</p>
                 <p className="text-xs text-zinc-400 truncate">
-                  {student.parentEmail}
+                  {student.parentEmail || "No guardian email"}
                 </p>
+              </div>
+
+              <div className="pt-2">
+                <Link href={`/students/${student.id}`}>
+                  <button className="w-full text-center py-2 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-indigo-400 transition-colors">
+                    View Academic & Exam Records →
+                  </button>
+                </Link>
               </div>
             </CardContent>
           </Card>

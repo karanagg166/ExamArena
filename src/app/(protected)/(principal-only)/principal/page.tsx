@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { School, Users, UserCircle, ArrowRight } from "lucide-react";
+import {
+  School,
+  Users,
+  UserCircle,
+  ArrowRight,
+  Plus,
+  ClipboardList,
+  UserCheck,
+  GraduationCap,
+} from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -31,9 +40,49 @@ export default function PrincipalDashboard() {
       hoverBg: "group-hover:bg-[var(--success)]",
     },
     {
+      title: "Teacher Requests",
+      description:
+        "Review and decide pending teacher join and class teaching requests.",
+      href: "/principal/teacher-requests",
+      icon: UserCheck,
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
+      hoverBg: "group-hover:bg-amber-500",
+    },
+    {
+      title: "Create Exam",
+      description:
+        "Build school-wide assessments, midterms, quizzes, and mock tests.",
+      href: "/teacher/exams/create",
+      icon: Plus,
+      color: "text-indigo-500",
+      bg: "bg-indigo-500/10",
+      hoverBg: "group-hover:bg-indigo-500",
+    },
+    {
+      title: "School Exams",
+      description:
+        "View and manage created exams, release results, and inspect leaderboards.",
+      href: "/teacher/exams",
+      icon: ClipboardList,
+      color: "text-blue-500",
+      bg: "bg-blue-500/10",
+      hoverBg: "group-hover:bg-blue-500",
+    },
+    {
+      title: "Students Directory",
+      description:
+        "Inspect all enrolled students, exam history, and parent records.",
+      href: "/students",
+      icon: GraduationCap,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
+      hoverBg: "group-hover:bg-emerald-500",
+    },
+    {
       title: "My Profile",
       description:
-        "Update your personal credentials and professional experience.",
+        "Update your credentials, leadership details, and contact info.",
       href: "/principal/profile",
       icon: UserCircle,
       color: "text-[var(--warning)]",

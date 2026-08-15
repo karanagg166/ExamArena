@@ -125,3 +125,42 @@ class StudentExamResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class StudentExamHistoryItem(BaseModel):
+    """Row in a student's complete exam history table for staff viewing."""
+
+    id: str
+    examId: str
+    examTitle: str
+    examCode: str
+    subject: str | None = None
+    examType: str
+    scheduledAt: datetime
+    submittedAt: datetime | None = None
+    status: str
+    marksObtained: float
+    maxMarks: int
+    percentage: float
+    isResultsReleased: bool
+
+    class Config:
+        from_attributes = True
+
+
+class ExamScoreboardItem(BaseModel):
+    """Row in an exam's results scoreboard leaderboard."""
+
+    rank: int
+    studentId: str
+    studentName: str
+    rollNo: str
+    marksObtained: float
+    maxMarks: int
+    percentage: float
+    status: str
+    startedAt: datetime
+    submittedAt: datetime | None = None
+
+    class Config:
+        from_attributes = True

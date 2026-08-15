@@ -324,3 +324,57 @@ async def submit_exam_attempt(
         return await _do_submit(session)
     async with db.get_session() as s:
         return await _do_submit(s)
+
+
+async def get_student_exam_history(
+    student_id: str, session: AsyncSession | None = None
+) -> list[dict]:
+    """Get all exam attempts for a student with exam details, scores, and percentages."""
+
+    async def _do_get(s: AsyncSession):
+        stmt = (
+            select(StudentExam)
+            .where(StudentExam.studentId == student_id)
+            .options(selectinload(StudentExam.exam))
+            .order_by(StudentExam.startedAt.desc())
+        )
+        results = (await s.execute(stmt)).scalars().all()
+        items = []
+        for se in results:
+            exam = se.exam
+            max_marks = exam.maxMarks if exam and exam.maxMarks > 0 else 1
+            items.append(
+                {
+                    "id": se.id,
+                    "examId": exam.id if exam else se.examId,
+                    "examTitle": exam.name if exam else "Unknown Exam",
+                    "examCode": exam.examCode if exam else "",
+                    "subject": (
+                        exam.subject.value
+                        if exam and hasattr(exam.subject, "value")
+                        else (exam.subject if exam else None)
+                    ),
+                    "examType": (
+                        exam.type.value
+                        if exam and hasattr(exam.type, "value")
+                        else (exam.type if exam else "EXAM")
+                    ),
+                    "scheduledAt": exam.scheduledAt if exam else se.startedAt,
+                    "submittedAt": se.submittedAt,
+                    "status": (
+                        se.status.value
+                        if hasattr(se.status, "value")
+                        else str(se.status)
+                    ),
+                    "marksObtained": se.marksObtained,
+                    "maxMarks": exam.maxMarks if exam else 0,
+                    "percentage": round((se.marksObtained / max_marks) * 100, 2),
+                    "isResultsReleased": exam.isResultsReleased if exam else False,
+                }
+            )
+        return items
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)

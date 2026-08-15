@@ -107,6 +107,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { label: "My Profile", href: "/principal/profile", icon: User, matchPrefix: "/principal/profile" },
     { label: "My School", href: "/principal/school", icon: Building2, matchPrefix: "/principal/school" },
     { label: "Classes", href: "/principal/school/classes", icon: GraduationCap, matchPrefix: "/principal/school/classes" },
+    { label: "Teacher Requests", href: "/principal/teacher-requests", icon: Users, matchPrefix: "/principal/teacher-requests" },
     { label: "Create Exam", href: "/teacher/exams/create", icon: Plus, matchPrefix: "/teacher/exams/create" },
     { label: "My Exams", href: "/teacher/exams", icon: ClipboardList, matchPrefix: "/teacher/exams" },
     { label: "Teachers", href: "/teachers", icon: Users, matchPrefix: "/teachers" },

@@ -13,6 +13,7 @@ import { ExamForm } from "@/components/exam/ExamForm";
 import { QuestionList } from "@/components/question/QuestionList";
 import { api } from "@/lib/axios";
 import { getErrorMessage } from "@/lib/error";
+import { validateExam, computeMaxMarks } from "@/lib/exam-validation";
 import type { ExamUpdate, Exam } from "@/types";
 
 export default function EditExamPage() {
@@ -69,46 +70,15 @@ export default function EditExamPage() {
 
   // ── Auto-compute maxMarks from questions ─────────────────────────────────
   const computedMaxMarks = useMemo(
-    () => (exam.questions ?? []).reduce((sum, q) => sum + (q.marks ?? 0), 0),
+    () => computeMaxMarks(exam.questions ?? []),
     [exam.questions]
   );
-
-  // ── Validation ────────────────────────────────────────────────────────────
-  const validate = (): string | null => {
-    if (!exam.name?.trim()) return "Exam title is required.";
-    if (!exam.description?.trim()) return "Description is required.";
-    if (!exam.scheduledAt) return "Scheduled date is required.";
-    if ((exam.duration || 0) < 5) return "Duration must be at least 5 minutes.";
-    if ((exam.questions ?? []).length === 0) return "Add at least one question.";
-
-    const SECTION_PATTERN = /^Section [A-Z]$/;
-
-    for (const q of exam.questions ?? []) {
-      if (!q.text.trim()) return "All questions must have a prompt.";
-      if (!q.section?.trim()) return "All questions must belong to a section (e.g. Section A).";
-      if (!SECTION_PATTERN.test(q.section.trim())) {
-        return `Section "${q.section}" is invalid. Section names must strictly follow "Section A", "Section B", etc.`;
-      }
-      if (!q.marks || q.marks < 1)
-        return `Question ${q.questionNumber} must have marks greater than 0.`;
-      if (
-        q.questionType === "MULTIPLE_CHOICE" ||
-        q.questionType === "TRUE_FALSE" ||
-        q.questionType === "MULTIPLE_SELECT"
-      ) {
-        if (!q.options?.some((o) => o.isCorrect))
-          return `Question ${q.questionNumber} in ${q.section} must have a correct option selected.`;
-      }
-    }
-
-    return null;
-  };
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleUpdate = async () => {
     setErrorText(null);
 
-    const validationError = validate();
+    const validationError = validateExam(exam);
     if (validationError) return setErrorText(validationError);
 
     setLoading(true);

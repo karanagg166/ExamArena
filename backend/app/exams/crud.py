@@ -58,12 +58,16 @@ async def create_exam(
             )
             questions_list.append(question)
 
+    computed_max_marks = (
+        sum(q.marks for q in questions_list) if questions_list else exam_data.maxMarks
+    )
+
     data = {
         "name": exam_data.name,
         "description": exam_data.description,
         "scheduledAt": exam_data.scheduledAt,
         "duration": exam_data.duration,
-        "maxMarks": exam_data.maxMarks,
+        "maxMarks": computed_max_marks,
         "instructions": exam_data.instructions,
         "isPublished": exam_data.isPublished,
         "isPublic": exam_data.isPublic,
@@ -280,3 +284,53 @@ async def release_results(
         return await _do_release(session)
     async with db.get_session() as s:
         return await _do_release(s)
+
+
+async def get_exam_results(
+    exam_id: str, session: AsyncSession | None = None
+) -> list[dict]:
+    """Get all student attempt results for an exam with ranking, marks, and percentages."""
+    from app.core.models import Student, StudentExam
+
+    async def _do_get(s: AsyncSession):
+        exam_stmt = select(Exam).where(Exam.id == exam_id)
+        exam = (await s.execute(exam_stmt)).scalar_one_or_none()
+        max_marks = exam.maxMarks if exam and exam.maxMarks > 0 else 1
+
+        stmt = (
+            select(StudentExam)
+            .where(StudentExam.examId == exam_id)
+            .options(
+                selectinload(StudentExam.student).selectinload(Student.user),
+            )
+            .order_by(StudentExam.marksObtained.desc())
+        )
+        results = (await s.execute(stmt)).scalars().all()
+        items = []
+        for i, se in enumerate(results):
+            student = se.student
+            user = student.user if student else None
+            items.append(
+                {
+                    "rank": i + 1,
+                    "studentId": student.id if student else "",
+                    "studentName": user.name if user else "Unknown",
+                    "rollNo": student.rollNo if student else "",
+                    "marksObtained": se.marksObtained,
+                    "maxMarks": exam.maxMarks if exam else 0,
+                    "percentage": round((se.marksObtained / max_marks) * 100, 2),
+                    "status": (
+                        se.status.value
+                        if hasattr(se.status, "value")
+                        else str(se.status)
+                    ),
+                    "startedAt": se.startedAt,
+                    "submittedAt": se.submittedAt,
+                }
+            )
+        return items
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)

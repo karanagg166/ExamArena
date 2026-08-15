@@ -3,6 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user
+from app.attempts.crud import get_student_exam_history
+from app.attempts.schemas import StudentExamHistoryItem
 from app.core.models import Role
 from app.principals.crud import get_principal_by_teacher_id
 from app.students.crud import (
@@ -214,3 +216,40 @@ async def update_student_by_id_endpoint(
             )
 
     return await update_student(student.userId, student_data)
+
+
+@router.get("/{student_id}/exams", response_model=list[StudentExamHistoryItem])
+async def get_student_exam_history_endpoint(
+    student_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Get complete exam history and scores for a student (Staff from same school or self)"""
+    student = await get_student_by_id(student_id)
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Student not found"
+        )
+
+    if current_user.role == Role.STUDENT:
+        me = await get_student_by_user_id(current_user.id)
+        if not me or me.id != student_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Students can only view their own exam history.",
+            )
+    elif current_user.role == Role.TEACHER:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher or teacher.schoolId != student.schoolId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You must be a teacher at this student's school.",
+            )
+    elif current_user.role == Role.PRINCIPAL:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher or teacher.schoolId != student.schoolId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You must be the principal of this student's school.",
+            )
+
+    return await get_student_exam_history(student_id)

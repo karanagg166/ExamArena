@@ -31,3 +31,12 @@ class SchoolClassResponse(SchoolClassBase):
 
     class Config:
         from_attributes = True
+
+
+class AssignStudentRequest(BaseModel):
+    studentId: str
+
+
+class AssignTeacherRequest(BaseModel):
+    teacherId: str
+

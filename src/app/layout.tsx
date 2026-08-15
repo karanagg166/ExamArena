@@ -22,6 +22,10 @@ export const metadata: Metadata = {
   description:
     "Role-based exam platform for students, teachers, and principals.",
   keywords: ["exam", "education", "school", "testing", "assessment"],
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({

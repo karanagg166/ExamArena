@@ -1,9 +1,11 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
+from pydantic import ValidationError
 
 import app.exams.crud as crud
 from app.api.deps import get_current_user
+from app.attempts.schemas import ExamScoreboardItem
 from app.exams.schemas import (
     ExamCreateRequest,
     ExamResponse,
@@ -31,6 +33,11 @@ async def create_new_exam(
     teacher = await get_teacher_from_user(current_user)
     try:
         return await crud.create_exam(exam_data, teacher.id)
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:
         raise HTTPException(
             status_code=500,
@@ -156,8 +163,18 @@ async def patch_exam(
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
 
-    if not exam.teacher or exam.teacher.id != teacher.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    is_owner = exam.teacher and exam.teacher.id == teacher.id
+    if not is_owner:
+        if current_user.role == "PRINCIPAL":
+            exam_teacher = exam.teacher
+            if not exam_teacher or not exam_teacher.school or exam_teacher.school.id != teacher.schoolId:
+                if teacher.schoolId is None or (hasattr(exam_teacher, "schoolId") and exam_teacher.schoolId != teacher.schoolId):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Not authorized to edit exams from other schools",
+                    )
+        elif current_user.role != "ADMIN":
+            raise HTTPException(status_code=403, detail="Not authorized")
 
     return await crud.update_exam(exam_id, update_data)
 
@@ -173,13 +190,55 @@ async def release_exam_results(
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
 
-    if not exam.teacher or exam.teacher.id != teacher.id:
-        raise HTTPException(
-            status_code=403,
-            detail="Not authorized to release results for this exam",
-        )
+    is_owner = exam.teacher and exam.teacher.id == teacher.id
+    if not is_owner:
+        if current_user.role == "PRINCIPAL":
+            exam_teacher = exam.teacher
+            if not exam_teacher or not exam_teacher.school or exam_teacher.school.id != teacher.schoolId:
+                if teacher.schoolId is None or (hasattr(exam_teacher, "schoolId") and exam_teacher.schoolId != teacher.schoolId):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Not authorized to release results for exams from other schools",
+                    )
+        elif current_user.role != "ADMIN":
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to release results for this exam",
+            )
 
     released = await crud.release_results(exam_id)
     if not released:
         raise HTTPException(status_code=404, detail="Exam not found")
     return released
+
+
+@router.get("/{exam_id}/results", response_model=list[ExamScoreboardItem])
+async def get_exam_results_endpoint(
+    exam_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Get all student results and leaderboard for an exam (Teacher owner, Principal, or Admin)"""
+    exam = await crud.get_exam_by_id(exam_id)
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    teacher = await get_teacher_from_user(current_user)
+    is_owner = exam.teacher and exam.teacher.id == teacher.id
+
+    if not is_owner:
+        if current_user.role == "PRINCIPAL":
+            exam_teacher = exam.teacher
+            if not exam_teacher or not exam_teacher.school or exam_teacher.school.id != teacher.schoolId:
+                # Also check direct school ID if school object not loaded
+                if teacher.schoolId is None or (hasattr(exam_teacher, "schoolId") and exam_teacher.schoolId != teacher.schoolId):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Not authorized to view results for exams from other schools",
+                    )
+        elif current_user.role != "ADMIN":
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to view results for this exam",
+            )
+
+    return await crud.get_exam_results(exam_id)
