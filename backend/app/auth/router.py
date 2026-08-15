@@ -8,13 +8,22 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.security import create_access_token, verify_password
 from app.users.crud import (
+    change_user_password as crud_change_password,
+)
+from app.users.crud import (
     create_user as crud_create_user,
 )
 from app.users.crud import (
     get_user_by_email,
     update_user,
 )
-from app.users.schemas import LoginRequest, UserRequest, UserResponse, UserUpdate
+from app.users.schemas import (
+    ChangePasswordRequest,
+    LoginRequest,
+    UserRequest,
+    UserResponse,
+    UserUpdate,
+)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -109,6 +118,20 @@ async def update_current_user_info(
 ):
     """Update current authenticated user"""
     return await update_user(current_user.id, user_data)
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Change current user password"""
+    await crud_change_password(
+        user_id=current_user.id,
+        current_password=body.currentPassword,
+        new_password=body.newPassword,
+    )
+    return {"message": "Password changed successfully"}
 
 
 @router.get("/stream-token")

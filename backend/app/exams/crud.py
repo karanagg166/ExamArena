@@ -130,9 +130,7 @@ async def get_published_exams(
     session: AsyncSession | None = None,
 ):
     async def _do_get(s: AsyncSession):
-        stmt = (
-            select(Exam).where(Exam.isPublished == True).options(*EXAM_OPTIONS)
-        )  # noqa: E712
+        stmt = select(Exam).where(Exam.isPublished == True).options(*EXAM_OPTIONS)  # noqa: E712
 
         if code:
             stmt = stmt.where(Exam.examCode.ilike(f"%{code.strip()}%"))
@@ -181,9 +179,7 @@ async def get_published_exams_for_student(
         stmt = (
             select(Exam)
             .join(Exam.teacher)
-            .where(
-                Exam.isPublished == True, Teacher.schoolId == school_id
-            )  # noqa: E712
+            .where(Exam.isPublished == True, Teacher.schoolId == school_id)  # noqa: E712
             .options(
                 *EXAM_OPTIONS,
                 selectinload(Exam.studentExams),

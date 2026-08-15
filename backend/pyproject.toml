@@ -16,7 +16,7 @@ select = [
     "B",   # flake8-bugbear (common bugs)
     "UP",  # pyupgrade (modern Python syntax)
 ]
-ignore = ["E501"]  # ignore line-too-long if Black handles it
+ignore = ["E501", "E402", "F841", "E712", "F401"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]  # your app module name

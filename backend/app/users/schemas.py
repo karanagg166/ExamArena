@@ -61,3 +61,10 @@ class UserUpdate(BaseModel):
     dateOfBirth: datetime | None = None
     role: Roles | None = None
     password: str | None = None
+
+
+class ChangePasswordRequest(BaseModel):
+    """Request body for changing user password"""
+
+    currentPassword: str
+    newPassword: str

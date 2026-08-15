@@ -13,10 +13,10 @@ Use the following seeded accounts to test different role permissions in the appl
 
 | Role | Email | Password | Permissions & Scope |
 |------|-------|----------|---------------------|
-| **Admin** | `admin@gmail.com` | `admin123` | System Admin & School Creator |
-| **Principal** | `principal@gmail.com` | `principal123` | Principal Dashboard, School & Class Management |
+| **Admin** | `admin@gmail.com` | `karan166` | System Admin & School Creator |
+| **Principal** | `principal@gmail.com` | `karan166` | Principal Dashboard, School & Class Management |
 | **Teacher** | `teacher@gmail.com` | `karan166` | Exam Builder, Class Management, Auto/Manual Grading |
-| **Student** | `student@gmail.com` | `student123` | Student Assessments, Attempt Engine, Proctoring Enforcement |
+| **Student** | `student@gmail.com` | `karan166` | Student Assessments, Attempt Engine, Proctoring Enforcement |
 
 ---
 

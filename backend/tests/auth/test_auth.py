@@ -204,6 +204,45 @@ class TestMeUnit:
         assert response.status_code == 404
 
 
+class TestChangePasswordUnit:
+    """Tests for POST /api/v1/auth/change-password — unit tests."""
+
+    @pytest.mark.asyncio
+    async def test_change_password_success(self, client, override_auth, monkeypatch):
+        user = override_auth(role="STUDENT")
+
+        async def mock_change_password(user_id, current_password, new_password):
+            assert user_id == user.id
+            assert current_password == "oldpassword123"
+            assert new_password == "karan166"
+            return True
+
+        monkeypatch.setattr(
+            "app.auth.router.crud_change_password", mock_change_password
+        )
+
+        response = await client.post(
+            "/api/v1/auth/change-password",
+            json={
+                "currentPassword": "oldpassword123",
+                "newPassword": "karan166",
+            },
+        )
+        assert response.status_code == 200
+        assert response.json()["message"] == "Password changed successfully"
+
+    @pytest.mark.asyncio
+    async def test_change_password_unauthenticated(self, client):
+        response = await client.post(
+            "/api/v1/auth/change-password",
+            json={
+                "currentPassword": "oldpassword123",
+                "newPassword": "karan166",
+            },
+        )
+        assert response.status_code == 401
+
+
 # ═════════════════════════════════════════════════════════════
 #  INTEGRATION TESTS — hit real NeonDB, minimal set
 # ═════════════════════════════════════════════════════════════

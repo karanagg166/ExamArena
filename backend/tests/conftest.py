@@ -1,4 +1,9 @@
-# backend/tests/conftest.py
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

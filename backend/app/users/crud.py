@@ -1,9 +1,10 @@
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.core.database as db
 from app.core.models import User
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.users.schemas import UserRequest, UserUpdate
 
 
@@ -61,6 +62,8 @@ async def update_user(
 ) -> User | None:
     """Safely updates only the fields the user provided."""
     update_dict = user_data.model_dump(exclude_unset=True)
+    if "password" in update_dict and update_dict["password"]:
+        update_dict["password"] = hash_password(update_dict["password"])
 
     async def _do_update(s: AsyncSession):
         user = (
@@ -79,3 +82,41 @@ async def update_user(
         return await _do_update(session)
     async with db.get_session() as s:
         return await _do_update(s)
+
+
+async def change_user_password(
+    user_id: str,
+    current_password: str,
+    new_password: str,
+    session: AsyncSession | None = None,
+) -> bool:
+    """Changes the password for a specified user after verifying current password."""
+    if len(new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 6 characters long",
+        )
+
+    async def _do_change(s: AsyncSession):
+        user = (
+            await s.execute(select(User).where(User.id == user_id))
+        ).scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        if not verify_password(current_password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Incorrect current password",
+            )
+
+        user.password = hash_password(new_password)
+        await s.commit()
+        return True
+
+    if session:
+        return await _do_change(session)
+    async with db.get_session() as s:
+        return await _do_change(s)

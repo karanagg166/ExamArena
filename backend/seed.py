@@ -3,8 +3,11 @@ import os
 import sys
 from datetime import UTC, datetime
 
+from dotenv import load_dotenv
+
 # Ensure the backend directory is in sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"))
 
 from sqlalchemy import select
 
@@ -37,7 +40,7 @@ async def main():
                 admin_user = User(
                     name="System Admin",
                     email=admin_email,
-                    password=hash_password("admin123"),
+                    password=hash_password("karan166"),
                     phoneNo="1234567890",
                     role=Role.ADMIN,
                     dateOfBirth=datetime(1980, 1, 1, tzinfo=UTC),
@@ -50,6 +53,9 @@ async def main():
                 await session.commit()
                 await session.refresh(admin_user)
                 print("Created Admin User.")
+            else:
+                admin_user.password = hash_password("karan166")
+                await session.commit()
 
             # 2. Create School
             school_code = "SCH001"
@@ -81,7 +87,7 @@ async def main():
                 principal_user = User(
                     name="Dr. Principal",
                     email=principal_email,
-                    password=hash_password("principal123"),
+                    password=hash_password("karan166"),
                     phoneNo="9876543210",
                     role=Role.PRINCIPAL,
                     dateOfBirth=datetime(1975, 5, 5, tzinfo=UTC),
@@ -112,6 +118,9 @@ async def main():
                 session.add(principal)
                 await session.commit()
                 print("Created Principal User, Teacher profile, and Principal profile.")
+            else:
+                principal_user.password = hash_password("karan166")
+                await session.commit()
 
             # 4. Create Teacher User
             teacher_email = "teacher@gmail.com"
@@ -146,6 +155,8 @@ async def main():
                 await session.refresh(teacher_profile)
                 print("Created Teacher User and Profile.")
             else:
+                teacher_user.password = hash_password("karan166")
+                await session.commit()
                 t_profile_stmt = select(Teacher).where(
                     Teacher.userId == teacher_user.id
                 )
@@ -185,7 +196,7 @@ async def main():
                 student_user = User(
                     name="Alice Student",
                     email=student_email,
-                    password=hash_password("student123"),
+                    password=hash_password("karan166"),
                     phoneNo="4445556666",
                     role=Role.STUDENT,
                     dateOfBirth=datetime(2010, 1, 1, tzinfo=UTC),
@@ -209,6 +220,9 @@ async def main():
                 session.add(student)
                 await session.commit()
                 print("Created Student User and Profile.")
+            else:
+                student_user.password = hash_password("karan166")
+                await session.commit()
 
             print("Database seeding completed successfully.")
 

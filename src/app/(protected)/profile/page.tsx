@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/loading";
 import { FormMessage } from "@/components/ui/form-message";
+import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
 import {
   sanitizePincode,
   sanitizePhoneNo,
@@ -267,6 +268,8 @@ export default function ProfilePage() {
               )}
             </div>
           </form>
+
+          <ChangePasswordForm />
         </div>
       </div>
     </div>
