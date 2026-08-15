@@ -96,12 +96,12 @@ export default function ExamResultsLeaderboardPage() {
 
   const handleExportCSV = () => {
     if (results.length === 0) return;
-    const headers = ["Rank,Student Name,Roll Number,Marks Obtained,Max Marks,Percentage,Status\n"];
+    const header = "Rank,Student Name,Roll Number,Marks Obtained,Max Marks,Percentage,Status\n";
     const rows = results.map(
       (r) =>
         `${r.rank},"${r.studentName}","${r.rollNo}",${r.marksObtained},${r.maxMarks},${r.percentage}%,${r.status}`,
     );
-    const blob = new Blob([headers.concat(rows.join("\n"))], { type: "text/csv" });
+    const blob = new Blob([header + rows.join("\n")], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
