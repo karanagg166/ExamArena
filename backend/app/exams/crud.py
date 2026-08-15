@@ -66,10 +66,14 @@ async def create_exam(
         "maxMarks": exam_data.maxMarks,
         "instructions": exam_data.instructions,
         "isPublished": exam_data.isPublished,
+        "isPublic": exam_data.isPublic,
+        "isResultsReleased": exam_data.isResultsReleased,
+        "negativeMarking": exam_data.negativeMarking,
+        "negativeMarks": exam_data.negativeMarks,
         "type": exam_data.type,
         "teacherId": teacher_id,
         "questions": questions_list,
-        "examCode": generate_exam_code(),
+        "examCode": exam_data.examCode if exam_data.examCode else generate_exam_code(),
     }
 
     if exam_data.subject:
@@ -254,3 +258,25 @@ async def update_exam(
         return await _do_update(session)
     async with db.get_session() as s:
         return await _do_update(s)
+
+
+async def release_results(
+    exam_id: str, session: AsyncSession | None = None
+) -> ExamResponse | None:
+    async def _do_release(s: AsyncSession):
+        stmt = select(Exam).where(Exam.id == exam_id).options(*EXAM_OPTIONS)
+        exam = (await s.execute(stmt)).scalar_one_or_none()
+        if not exam:
+            return None
+
+        exam.isResultsReleased = True
+        await s.commit()
+
+        res_stmt = select(Exam).where(Exam.id == exam_id).options(*EXAM_OPTIONS)
+        updated = (await s.execute(res_stmt)).scalar_one_or_none()
+        return ExamResponse.model_validate(updated) if updated else None
+
+    if session:
+        return await _do_release(session)
+    async with db.get_session() as s:
+        return await _do_release(s)

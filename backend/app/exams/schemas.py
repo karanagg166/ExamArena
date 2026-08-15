@@ -37,6 +37,10 @@ class ExamBase(BaseModel):
     maxMarks: int
     instructions: str | None = None
     isPublished: bool = False
+    isPublic: bool = True
+    isResultsReleased: bool = False
+    negativeMarking: bool = False
+    negativeMarks: float = 0.0
     subject: Subject | None = None
     type: ExamType
     examCode: str | None = None
@@ -55,6 +59,10 @@ class ExamUpdateRequest(BaseModel):
     maxMarks: int | None = None
     instructions: str | None = None
     isPublished: bool | None = None
+    isPublic: bool | None = None
+    isResultsReleased: bool | None = None
+    negativeMarking: bool | None = None
+    negativeMarks: float | None = None
     subject: Subject | None = None
     type: ExamType | None = None
     questions: list[QuestionUpdateRequest] | None = None

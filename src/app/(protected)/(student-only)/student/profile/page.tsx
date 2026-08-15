@@ -19,6 +19,7 @@ import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
+import { IndiaStateCitySelect } from "@/components/ui/IndiaStateCitySelect";
 import { Input } from "@/components/ui/input";
 import { useJoinRequestStore } from "@/stores";
 import {
@@ -118,7 +119,11 @@ export default function StudentDashboard() {
           country: userObj.country || "",
           pincode: userObj.pincode || "",
           rollNo: data?.rollNo || "",
-          dob: data?.dob ? data.dob.split("T")[0] : (data?.dateOfAdmission ? data.dateOfAdmission.split("T")[0] : ""),
+          dob: userObj.dateOfBirth
+            ? userObj.dateOfBirth.split("T")[0]
+            : data?.dob
+              ? data.dob.split("T")[0]
+              : "",
           class: displayClass,
           parentName: data?.parentName || "",
           parentEmail: data?.parentEmail || "",
@@ -207,8 +212,8 @@ export default function StudentDashboard() {
             state: formData.state,
             country: formData.country,
             pincode: formData.pincode,
+            dateOfBirth: formData.dob ? new Date(formData.dob).toISOString() : undefined,
           },
-          dob: formData.dob,
           parentName: computedParentName,
           parentEmail: computedParentEmail,
           fatherName: formData.fatherName || undefined,
@@ -389,28 +394,15 @@ export default function StudentDashboard() {
                   <p className="text-xs text-red-400 mt-1">{fieldErrors.phoneNo}</p>
                 )}
               </div>
-              <div>
-                <label className="text-sm text-zinc-400">City</label>
-                <input
-                  type="text"
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
+              <div className="md:col-span-2">
+                <IndiaStateCitySelect
+                  selectedState={formData.state}
+                  selectedCity={formData.city}
+                  onStateChange={(state) => setFormData((prev) => ({ ...prev, state }))}
+                  onCityChange={(city) => setFormData((prev) => ({ ...prev, city }))}
                   disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-zinc-400">State</label>
-                <input
-                  type="text"
-                  value={formData.state}
-                  onChange={(e) =>
-                    setFormData({ ...formData, state: e.target.value })
-                  }
-                  disabled={!isEditing}
-                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                  stateClassName="bg-zinc-900 border-zinc-800 text-white"
+                  cityClassName="bg-zinc-900 border-zinc-800 text-white"
                 />
               </div>
               <div>

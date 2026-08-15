@@ -7,14 +7,24 @@ from sqlalchemy.orm import selectinload
 import app.core.database as db
 from app.attempts.schemas import (
     AttemptStatus,
+    Correctness,
+    GradingStatus,
     StudentExamCreate,
     StudentExamResponse,
     StudentExamSubmit,
 )
-from app.core.models import Exam, SelectedOption, StudentExam, StudentExamAnswer
+from app.core.models import (
+    Exam,
+    Question,
+    QuestionType,
+    SelectedOption,
+    StudentExam,
+    StudentExamAnswer,
+)
 from app.students.crud import get_student_by_user_id
 
 STUDENT_EXAM_OPTIONS = [
+    selectinload(StudentExam.exam),
     selectinload(StudentExam.answers).selectinload(StudentExamAnswer.selectedOptions),
 ]
 
@@ -30,11 +40,47 @@ async def start_exam_attempt(
         exam_stmt = (
             select(Exam)
             .where(Exam.id == attempt_data.examId)
-            .options(selectinload(Exam.questions))
+            .options(
+                selectinload(Exam.questions),
+                selectinload(Exam.teacher),
+            )
         )
         exam = (await s.execute(exam_stmt)).scalar_one_or_none()
         if not exam:
             raise ValueError("Exam not found")
+
+        # 1. Check School authorization: Student must belong to same school as exam teacher
+        if exam.teacher and student.schoolId and exam.teacher.schoolId:
+            if student.schoolId != exam.teacher.schoolId:
+                raise ValueError(
+                    "You are not enrolled in the school offering this exam"
+                )
+
+        # 2. Check scheduled date & time: After scheduled time, students can take exams anytime
+        now = datetime.now(UTC)
+        if exam.scheduledAt:
+            scheduled_time = (
+                exam.scheduledAt
+                if exam.scheduledAt.tzinfo
+                else exam.scheduledAt.replace(tzinfo=UTC)
+            )
+            # Allow start if current time is equal to or past scheduled time (with small grace)
+            if now < scheduled_time:
+                raise ValueError(
+                    f"This exam is scheduled for {scheduled_time.strftime('%Y-%m-%d %H:%M UTC')}. "
+                    "You can take it any time after the scheduled start time."
+                )
+
+        # 3. Check access code if exam is not public
+        if not exam.isPublic:
+            if (
+                not attempt_data.examCode
+                or attempt_data.examCode.strip().upper()
+                != exam.examCode.strip().upper()
+            ):
+                raise ValueError(
+                    "This exam requires a valid exam code. Please enter the correct code to proceed."
+                )
 
         # Check for existing attempt
         existing_stmt = (
@@ -44,14 +90,18 @@ async def start_exam_attempt(
         )
         existing = (await s.execute(existing_stmt)).scalar_one_or_none()
         if existing:
-            return StudentExamResponse.model_validate(existing)
+            resp = StudentExamResponse.model_validate(existing)
+            resp.isResultsReleased = (
+                existing.exam.isResultsReleased if existing.exam else False
+            )
+            return resp
 
         # Create attempt & answers
         answers_payload = [
             StudentExamAnswer(
                 questionId=q.id,
                 questionType=q.questionType,
-                gradingStatus="PENDING",
+                gradingStatus=GradingStatus.PENDING,
             )
             for q in (exam.questions or [])
         ]
@@ -72,7 +122,11 @@ async def start_exam_attempt(
             .options(*STUDENT_EXAM_OPTIONS)
         )
         attempt_obj = (await s.execute(res_stmt)).scalar_one()
-        return StudentExamResponse.model_validate(attempt_obj)
+        resp = StudentExamResponse.model_validate(attempt_obj)
+        resp.isResultsReleased = (
+            attempt_obj.exam.isResultsReleased if attempt_obj.exam else False
+        )
+        return resp
 
     if session:
         return await _do_start(session)
@@ -91,9 +145,13 @@ async def get_attempt_by_id(
             .options(*STUDENT_EXAM_OPTIONS)
         )
         attempt_model = (await s.execute(stmt)).scalar_one_or_none()
-        return (
-            StudentExamResponse.model_validate(attempt_model) if attempt_model else None
+        if not attempt_model:
+            return None
+        resp = StudentExamResponse.model_validate(attempt_model)
+        resp.isResultsReleased = (
+            attempt_model.exam.isResultsReleased if attempt_model.exam else False
         )
+        return resp
 
     if session:
         return await _do_get(session)
@@ -113,10 +171,35 @@ async def submit_exam_attempt(
         raise ValueError("Not authorized to submit this attempt")
 
     async def _do_submit(s: AsyncSession):
-        for ans in submit_data.answers:
-            ans_stmt = select(StudentExamAnswer).where(StudentExamAnswer.id == ans.id)
-            db_ans = (await s.execute(ans_stmt)).scalar_one_or_none()
-            if db_ans:
+        # Fetch attempt with exam and all questions + options
+        attempt_stmt = (
+            select(StudentExam)
+            .where(StudentExam.id == submit_data.id)
+            .options(
+                selectinload(StudentExam.exam)
+                .selectinload(Exam.questions)
+                .selectinload(Question.options),
+                selectinload(StudentExam.answers).selectinload(
+                    StudentExamAnswer.selectedOptions
+                ),
+            )
+        )
+        db_attempt = (await s.execute(attempt_stmt)).scalar_one_or_none()
+        if not db_attempt:
+            raise ValueError("Attempt not found")
+
+        exam = db_attempt.exam
+        questions_by_id = {q.id: q for q in (exam.questions or [])}
+
+        total_marks_obtained = 0.0
+        has_pending_subjective = False
+
+        # Build answers map from submission
+        submitted_answers_map = {ans.id: ans for ans in submit_data.answers}
+
+        for db_ans in db_attempt.answers or []:
+            ans = submitted_answers_map.get(db_ans.id)
+            if ans:
                 if ans.textAnswer is not None:
                     db_ans.textAnswer = ans.textAnswer
                 if ans.selectedOptions is not None:
@@ -130,11 +213,98 @@ async def submit_exam_attempt(
                         SelectedOption(optionId=o.optionId) for o in ans.selectedOptions
                     ]
 
-        attempt_stmt = select(StudentExam).where(StudentExam.id == submit_data.id)
-        db_attempt = (await s.execute(attempt_stmt)).scalar_one_or_none()
-        if db_attempt:
-            db_attempt.status = AttemptStatus.SUBMITTED
-            db_attempt.submittedAt = datetime.now(UTC)
+            # Auto-grade based on question type
+            q = questions_by_id.get(db_ans.questionId)
+            if not q:
+                continue
+
+            q_marks = float(q.marks)
+            neg_marks = float(
+                q.negativeMarks
+                if q.negativeMarks is not None
+                else (exam.negativeMarks if exam.negativeMarking else 0.0)
+            )
+
+            selected_opt_ids = {so.optionId for so in (db_ans.selectedOptions or [])}
+            correct_opt_ids = {opt.id for opt in (q.options or []) if opt.isCorrect}
+
+            if db_ans.questionType in (
+                QuestionType.MULTIPLE_CHOICE,
+                QuestionType.TRUE_FALSE,
+            ):
+                if not selected_opt_ids:
+                    db_ans.marksAwarded = 0.0
+                    db_ans.isCorrect = Correctness.INCORRECT
+                    db_ans.gradingStatus = GradingStatus.AUTO_GRADED
+                elif selected_opt_ids == correct_opt_ids:
+                    db_ans.marksAwarded = q_marks
+                    db_ans.isCorrect = Correctness.FULLY_CORRECT
+                    db_ans.gradingStatus = GradingStatus.AUTO_GRADED
+                    total_marks_obtained += q_marks
+                else:
+                    penalty = (
+                        abs(neg_marks)
+                        if (exam.negativeMarking and neg_marks > 0)
+                        else 0.0
+                    )
+                    db_ans.marksAwarded = -penalty
+                    db_ans.isCorrect = Correctness.INCORRECT
+                    db_ans.gradingStatus = GradingStatus.AUTO_GRADED
+                    total_marks_obtained -= penalty
+
+            elif db_ans.questionType == QuestionType.MULTIPLE_SELECT:
+                if not selected_opt_ids:
+                    db_ans.marksAwarded = 0.0
+                    db_ans.isCorrect = Correctness.INCORRECT
+                    db_ans.gradingStatus = GradingStatus.AUTO_GRADED
+                else:
+                    wrong_selected = selected_opt_ids - correct_opt_ids
+                    right_selected = selected_opt_ids & correct_opt_ids
+                    c_count = len(correct_opt_ids)
+
+                    if wrong_selected:
+                        # At least 1 wrong option selected
+                        penalty = (
+                            abs(neg_marks)
+                            if (exam.negativeMarking and neg_marks > 0)
+                            else 0.0
+                        )
+                        db_ans.marksAwarded = -penalty
+                        db_ans.isCorrect = Correctness.INCORRECT
+                        db_ans.gradingStatus = GradingStatus.AUTO_GRADED
+                        total_marks_obtained -= penalty
+                    elif selected_opt_ids == correct_opt_ids:
+                        # All correct and none wrong
+                        db_ans.marksAwarded = q_marks
+                        db_ans.isCorrect = Correctness.FULLY_CORRECT
+                        db_ans.gradingStatus = GradingStatus.AUTO_GRADED
+                        total_marks_obtained += q_marks
+                    elif right_selected and c_count > 0:
+                        # Partial subset of correct options with 0 wrong options
+                        partial_marks = round(
+                            (len(right_selected) / c_count) * q_marks, 2
+                        )
+                        db_ans.marksAwarded = partial_marks
+                        db_ans.isCorrect = Correctness.PARTIALLY_CORRECT
+                        db_ans.gradingStatus = GradingStatus.AUTO_GRADED
+                        total_marks_obtained += partial_marks
+                    else:
+                        db_ans.marksAwarded = 0.0
+                        db_ans.isCorrect = Correctness.INCORRECT
+                        db_ans.gradingStatus = GradingStatus.AUTO_GRADED
+
+            elif db_ans.questionType in (
+                QuestionType.SHORT_ANSWER,
+                QuestionType.ESSAY,
+            ):
+                has_pending_subjective = True
+                db_ans.gradingStatus = GradingStatus.PENDING
+
+        db_attempt.marksObtained = max(0.0, round(total_marks_obtained, 2))
+        db_attempt.submittedAt = datetime.now(UTC)
+        db_attempt.status = (
+            AttemptStatus.SUBMITTED if has_pending_subjective else AttemptStatus.GRADED
+        )
 
         await s.commit()
 
@@ -144,7 +314,11 @@ async def submit_exam_attempt(
             .options(*STUDENT_EXAM_OPTIONS)
         )
         updated = (await s.execute(res_stmt)).scalar_one()
-        return StudentExamResponse.model_validate(updated)
+        resp = StudentExamResponse.model_validate(updated)
+        resp.isResultsReleased = (
+            updated.exam.isResultsReleased if updated.exam else False
+        )
+        return resp
 
     if session:
         return await _do_submit(session)

@@ -28,6 +28,7 @@ export type Question = {
   text: string;
   section: string;
   marks: number;
+  negativeMarks?: number;
   imageUrl?: string;
   wordLimit?: number;
   explanation?: string;

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { StreamChat } from "stream-chat";
+import { StreamChat, type Channel as StreamChannel } from "stream-chat";
 import {
   Chat,
   Channel,
@@ -38,11 +38,14 @@ export default function ChatPage() {
   const { user } = useAuthStore();
   const { theme } = useTheme();
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
+  const [activeChannel, setActiveChannel] = useState<StreamChannel | null>(null);
   const [loading, setLoading] = useState(true);
   const [dmModalOpen, setDmModalOpen] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<ChatDirectoryUser[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [fetchingUsers, setFetchingUsers] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   // 1. Fetch token and initialize GetStream client
   useEffect(() => {
@@ -139,8 +142,11 @@ export default function ChatPage() {
         }
 
         setChatClient(client);
-      } catch (err) {
+        setChatError(null);
+      } catch (err: unknown) {
         console.error("Stream Chat initialization error:", err);
+        const msg = err instanceof Error ? err.message : "WebSocket or stream connection failed";
+        setChatError(msg);
       } finally {
         setLoading(false);
       }
@@ -150,10 +156,14 @@ export default function ChatPage() {
 
     return () => {
       if (activeClient) {
-        activeClient.disconnectUser();
+        try {
+          activeClient.disconnectUser();
+        } catch {
+          // ignore disconnect errors on unmount
+        }
       }
     };
-  }, [user]);
+  }, [user, retryCount]);
 
   // Load available users for starting Direct Messages
   const loadAvailableUsers = useCallback(async () => {
@@ -244,13 +254,33 @@ export default function ChatPage() {
     u.email?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  if (loading || !chatClient) {
+  if (loading) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center space-y-4">
         <Spinner className="h-10 w-10 border-4 border-indigo-600 border-t-transparent" />
         <p className="text-sm font-medium text-[var(--text-secondary)]">
           Connecting to Arena Chat Room...
         </p>
+      </div>
+    );
+  }
+
+  if (chatError || !chatClient) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center space-y-4 px-4 text-center">
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-6 max-w-md">
+          <MessageSquare className="h-10 w-10 text-red-400 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-white mb-1">Chat Connection Offline</h3>
+          <p className="text-xs text-zinc-400 mb-4">
+            {chatError || "Unable to establish WebSocket connection to Stream Chat services. Check your internet connection or try again."}
+          </p>
+          <button
+            onClick={() => setRetryCount((c) => c + 1)}
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 transition-smooth"
+          >
+            Retry Connection
+          </button>
+        </div>
       </div>
     );
   }

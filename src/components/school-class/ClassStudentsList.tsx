@@ -67,7 +67,7 @@ export function ClassStudentsList({ classId }: { classId: string }) {
             </h3>
             <p className="text-zinc-500 max-w-sm">
               There are currently no students assigned to this class. Students
-              will appear here once they are registered to this class ID.
+              will appear here once they join or enroll in this class.
             </p>
           </div>
         </CardContent>

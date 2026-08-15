@@ -160,3 +160,26 @@ async def patch_exam(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return await crud.update_exam(exam_id, update_data)
+
+
+@router.post("/{exam_id}/release-results", response_model=ExamResponse)
+async def release_exam_results(
+    exam_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    teacher = await get_teacher_from_user(current_user)
+    exam = await crud.get_exam_by_id(exam_id)
+
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    if not exam.teacher or exam.teacher.id != teacher.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Not authorized to release results for this exam",
+        )
+
+    released = await crud.release_results(exam_id)
+    if not released:
+        raise HTTPException(status_code=404, detail="Exam not found")
+    return released

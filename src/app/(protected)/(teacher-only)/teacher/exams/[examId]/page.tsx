@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/axios";
+import { toast } from "sonner";
 import type { Exam } from "@/types";
 import { format } from "date-fns";
 
@@ -276,25 +277,75 @@ export default function ExamViewPage() {
 
           {/* Sidebar / Quick Stats */}
           <div className="space-y-6">
-            <GlassCard padding="lg" className="bg-indigo-500/5 border-indigo-500/20">
-              <h4 className="text-sm font-semibold text-white mb-4">Exam Summary</h4>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-[var(--text-muted)]">Total Questions</span>
-                  <span className="text-white font-medium">{(exam.questions ?? []).length}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-[var(--text-muted)]">Max Marks</span>
-                  <span className="text-white font-medium">{exam.maxMarks}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-[var(--text-muted)]">Avg Marks/Q</span>
-                  <span className="text-white font-medium">
-                    {((exam.questions ?? []).length > 0 ? (exam.maxMarks / (exam.questions ?? []).length).toFixed(1) : 0)}
-                  </span>
+            <GlassCard padding="lg" className="bg-indigo-500/5 border-indigo-500/20 space-y-6">
+              <div>
+                <h4 className="text-sm font-semibold text-white mb-4">Exam Summary</h4>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-[var(--text-muted)]">Total Questions</span>
+                    <span className="text-white font-medium">{(exam.questions ?? []).length}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-[var(--text-muted)]">Max Marks</span>
+                    <span className="text-white font-medium">{exam.maxMarks}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-[var(--text-muted)]">Access Mode</span>
+                    <Badge variant={exam.isPublic !== false ? "success" : "warning"} className="text-[10px]">
+                      {exam.isPublic !== false ? "Public" : "Code Required"}
+                    </Badge>
+                  </div>
+                  {exam.isPublic === false && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-[var(--text-muted)]">Exam Code</span>
+                      <span className="font-mono text-xs bg-zinc-800 px-2 py-0.5 rounded text-amber-300 font-bold">
+                        {exam.examCode || "N/A"}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-[var(--text-muted)]">Negative Marking</span>
+                    <span className="text-white font-medium text-xs">
+                      {exam.negativeMarking ? `-${exam.negativeMarks} Marks` : "Disabled"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-[var(--text-muted)]">Results Status</span>
+                    <Badge variant={exam.isResultsReleased ? "success" : "neutral"} className="text-[10px]">
+                      {exam.isResultsReleased ? "Released" : "Pending Release"}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <hr className="my-4 border-[var(--border-subtle)]" />
+
+              <hr className="border-[var(--border-subtle)]" />
+
+              {/* Release Results Action */}
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  variant={exam.isResultsReleased ? "outline" : "primary"}
+                  className="w-full shadow-glow"
+                  disabled={exam.isResultsReleased}
+                  onClick={async () => {
+                    try {
+                      const res = await api.post(`/api/v1/exams/${examId}/release-results`);
+                      setExam(res.data);
+                      toast.success("Exam results and answer keys released to students!");
+                    } catch {
+                      toast.error("Failed to release exam results.");
+                    }
+                  }}
+                >
+                  {exam.isResultsReleased ? "Results Released" : "Evaluate & Release Results"}
+                </Button>
+                <p className="text-[11px] text-[var(--text-muted)] text-center">
+                  {exam.isResultsReleased
+                    ? "Students can now view their scores and the full answer key."
+                    : "Clicking this allows all students to view their scores and answer key at the same time."}
+                </p>
+              </div>
+
               <Link href={`/teacher/exams/${examId}/edit`}>
                 <Button className="w-full" variant="outline">
                   Manage Questions

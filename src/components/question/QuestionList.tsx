@@ -20,6 +20,7 @@ interface SectionConfig {
   name: string; // "Section A", "Section B", etc.
   questionType: QuestionType;
   marksPerQuestion: number;
+  durationMinutes?: number;
   description?: string;
 }
 
@@ -366,7 +367,7 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
 
                 {/* Section Parameters Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mt-4 pt-4 border-t border-white/5">
-                  <div className="sm:col-span-6 space-y-1">
+                  <div className="sm:col-span-5 space-y-1">
                     <Label className="text-xs text-[var(--text-muted)] font-medium">
                       Fixed Question Type
                     </Label>
@@ -394,23 +395,51 @@ export function QuestionList({ questions, onChange }: QuestionListProps) {
                     <Input
                       type="number"
                       min="1"
-                      value={sec.marksPerQuestion || ""}
-                      onChange={(e) =>
+                      value={sec.marksPerQuestion === 0 ? "" : sec.marksPerQuestion}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const parsed = parseInt(val);
                         updateSectionConfig(sec.name, {
-                          marksPerQuestion: Math.max(1, parseInt(e.target.value) || 1),
-                        })
-                      }
+                          marksPerQuestion: isNaN(parsed) ? 0 : parsed,
+                        });
+                      }}
+                      className={`bg-[var(--surface-2)] text-sm h-9 ${sec.marksPerQuestion <= 0 ? "border-amber-500 ring-1 ring-amber-500/50" : ""}`}
+                    />
+                    {sec.marksPerQuestion <= 0 && (
+                      <p className="text-[10px] text-amber-400 font-medium">
+                        ⚠️ Please enter marks ≥ 1
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-1">
+                    <Label className="text-xs text-[var(--text-muted)] font-medium">
+                      Duration (mins)
+                    </Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Optional"
+                      value={sec.durationMinutes ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const parsed = parseInt(val);
+                        updateSectionConfig(sec.name, {
+                          durationMinutes: isNaN(parsed) || parsed <= 0 ? undefined : parsed,
+                        });
+                      }}
                       className="bg-[var(--surface-2)] text-sm h-9"
                     />
                   </div>
 
-                  <div className="sm:col-span-3 flex items-end">
+                  <div className="sm:col-span-2 flex items-end">
                     <Button
                       type="button"
                       variant="primary"
                       size="sm"
                       onClick={() => addQuestionToSection(sec)}
                       className="w-full h-9 shadow-glow text-xs"
+                      disabled={sec.marksPerQuestion <= 0}
                     >
                       <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
                       Add to {sec.name}

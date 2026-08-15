@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { IndiaStateCitySelect } from "@/components/ui/IndiaStateCitySelect";
 import {
   sanitizePincode,
   sanitizePhoneNo,
@@ -46,7 +47,7 @@ const INITIAL_FORM: FormState = {
   address: "",
   city: "",
   state: "",
-  country: "",
+  country: "India",
   pincode: "",
   schoolCode: "",
   type: "PUBLIC",
@@ -166,28 +167,13 @@ export default function PrincipalCreateSchoolPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label className="mb-1.5 block">City</Label>
-                <Input
-                  value={form.city}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, city: event.target.value }))
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label className="mb-1.5 block">State</Label>
-                <Input
-                  value={form.state}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, state: event.target.value }))
-                  }
-                  required
-                />
-              </div>
-            </div>
+            <IndiaStateCitySelect
+              selectedState={form.state}
+              selectedCity={form.city}
+              onStateChange={(state) => setForm((prev) => ({ ...prev, state }))}
+              onCityChange={(city) => setForm((prev) => ({ ...prev, city }))}
+              required
+            />
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>

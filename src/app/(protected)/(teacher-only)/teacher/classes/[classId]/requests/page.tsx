@@ -8,16 +8,22 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/loading";
-import { useJoinRequestStore } from "@/stores";
+import { useJoinRequestStore, useSchoolClassStore } from "@/stores";
 
 export default function ClassRequestsPage() {
   const { classId } = useParams<{ classId: string }>();
   const router = useRouter();
   const { classRequests, loading, error, fetchClassRequests, decideRequest } = useJoinRequestStore();
+  const { classes, fetchClass } = useSchoolClassStore();
+
+  const currentClass = classes.find((c) => c.id === classId);
 
   useEffect(() => {
-    if (classId) void fetchClassRequests(classId);
-  }, [classId, fetchClassRequests]);
+    if (classId) {
+      void fetchClassRequests(classId);
+      if (!currentClass) void fetchClass(classId);
+    }
+  }, [classId, fetchClassRequests, currentClass, fetchClass]);
 
   const decide = async (requestId: string, status: "APPROVED" | "REJECTED") => {
     const result = await decideRequest(requestId, status);
@@ -32,14 +38,16 @@ export default function ClassRequestsPage() {
     <div className="page-shell text-white">
       <div className="mx-auto max-w-4xl space-y-6">
         <Button variant="ghost" className="text-zinc-400 hover:text-white" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to class
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to {currentClass?.name || "Class"}
         </Button>
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-amber-400/10 p-2 text-amber-300"><Clock3 className="h-5 w-5" /></div>
               <div>
-                <CardTitle>Pending enrollment requests</CardTitle>
+                <CardTitle>
+                  Pending enrollment requests{currentClass?.name ? ` — ${currentClass.name}` : ""}
+                </CardTitle>
                 <p className="mt-1 text-sm text-zinc-400">Approving assigns the next permanent roll number in this class.</p>
               </div>
             </div>

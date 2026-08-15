@@ -59,6 +59,11 @@ export const AttemptQuestion = ({ question }: { question: Question }) => {
             <span className="text-xs text-[var(--text-muted)] bg-[var(--surface-3)] px-2 py-0.5 rounded-md">
               {question.questionType.replace(/_/g, " ")}
             </span>
+            {question.questionType === 'MULTIPLE_SELECT' && (
+              <span className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md font-medium">
+                Multiple options may be correct
+              </span>
+            )}
           </div>
         </div>
         <div className="bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-lg">

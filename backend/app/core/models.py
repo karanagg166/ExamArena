@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -454,6 +455,14 @@ class Exam(Base):
     maxMarks: Mapped[int] = mapped_column(Integer, nullable=False)
     instructions: Mapped[str | None] = mapped_column(String, nullable=True)
     isPublished: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    isPublic: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    isResultsReleased: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    negativeMarking: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    negativeMarks: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     subject: Mapped[Subject | None] = mapped_column(
         SQLEnum(Subject, native_enum=False), nullable=True
     )
@@ -501,6 +510,7 @@ class ExamSection(Base):
         SQLEnum(QuestionType, native_enum=False), nullable=False
     )
     marksPerQuestion: Mapped[int] = mapped_column(Integer, nullable=False)
+    durationMinutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sortOrder: Mapped[int] = mapped_column(Integer, nullable=False)  # A=1, B=2, etc.
     examId: Mapped[str] = mapped_column(
         String, ForeignKey("Exam.id", ondelete="CASCADE"), nullable=False
@@ -536,6 +546,7 @@ class Question(Base):
     text: Mapped[str] = mapped_column(String, nullable=False)
     section: Mapped[str] = mapped_column(String, default="General", nullable=False)
     marks: Mapped[int] = mapped_column(Integer, nullable=False)
+    negativeMarks: Mapped[float | None] = mapped_column(Float, nullable=True)
     imageUrl: Mapped[str | None] = mapped_column(String, nullable=True)
     wordLimit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     explanation: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -612,7 +623,7 @@ class StudentExam(Base):
     examId: Mapped[str] = mapped_column(
         String, ForeignKey("Exam.id", ondelete="CASCADE"), nullable=False
     )
-    marksObtained: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    marksObtained: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     startedAt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )
@@ -661,7 +672,9 @@ class StudentExamAnswer(Base):
         SQLEnum(QuestionType, native_enum=False), nullable=False
     )
     textAnswer: Mapped[str | None] = mapped_column(String, nullable=True)
-    marksAwarded: Mapped[int | None] = mapped_column(Integer, default=0, nullable=True)
+    marksAwarded: Mapped[float | None] = mapped_column(
+        Float, default=0.0, nullable=True
+    )
     feedback: Mapped[str | None] = mapped_column(String, nullable=True)
     isCorrect: Mapped[Correctness | None] = mapped_column(
         SQLEnum(Correctness, native_enum=False), nullable=True

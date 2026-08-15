@@ -25,6 +25,10 @@ export type Exam = {
   maxMarks: number;
   instructions?: string;
   isPublished: boolean;
+  isPublic: boolean;
+  isResultsReleased: boolean;
+  negativeMarking: boolean;
+  negativeMarks: number;
   subject?: Subject;
   type: ExamType;
   teacherId: string;
@@ -44,7 +48,22 @@ export type Exam = {
 };
 
 // Teacher creating an exam — no id/timestamps/teacherId
-export type ExamCreate = Omit<Exam, "id" | "createdAt" | "updatedAt" | "questions" | "teacherId"> & {
+export type ExamCreate = Omit<
+  Exam,
+  | "id"
+  | "createdAt"
+  | "updatedAt"
+  | "questions"
+  | "teacherId"
+  | "isPublic"
+  | "isResultsReleased"
+  | "negativeMarking"
+  | "negativeMarks"
+> & {
+  isPublic?: boolean;
+  isResultsReleased?: boolean;
+  negativeMarking?: boolean;
+  negativeMarks?: number;
   questions?: QuestionCreate[];
   sections?: SectionCreate[];
 };

@@ -69,9 +69,17 @@ export function sanitizePincode(value: string): string {
 }
 
 export function sanitizePhoneNo(value: string): string {
-  const hasPlus = value.startsWith("+");
-  const cleaned = value.replace(/[^\d\s()-]/g, "");
-  return hasPlus ? `+${cleaned.replace(/^\+/, "")}` : cleaned;
+  // Extract all digits
+  const rawDigits = value.replace(/\D/g, "");
+  // If user pasted or typed with leading 91, handle properly
+  if (value.startsWith("+91")) {
+    const afterPrefix = rawDigits.startsWith("91") ? rawDigits.slice(2) : rawDigits;
+    return `+91${afterPrefix.slice(0, 10)}`;
+  }
+  if (value.startsWith("+")) {
+    return `+91${rawDigits.slice(0, 10)}`;
+  }
+  return rawDigits.length > 0 ? `+91${rawDigits.slice(0, 10)}` : "";
 }
 
 export function sanitizeAlpha(value: string): string {
@@ -92,8 +100,7 @@ export function isValidEmail(email: string): boolean {
 
 export function isValidPhoneNo(phone: string): boolean {
   if (!phone || !phone.trim()) return true;
-  const digitsOnly = phone.replace(/\D/g, "");
-  return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+  return /^\+91\d{10}$/.test(phone.trim());
 }
 
 export function isValidPincode(pincode: string): boolean {
@@ -116,7 +123,7 @@ export function validatePhoneField(phone: string, required = false): string | un
     return "Phone number is required";
   }
   if (phone.trim() && !isValidPhoneNo(phone)) {
-    return "Phone number must contain between 10 and 15 digits";
+    return "Phone number must start with +91 followed by 10 digits (e.g. +919876543210)";
   }
   return undefined;
 }

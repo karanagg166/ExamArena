@@ -7,6 +7,7 @@ import { User, Award, Edit2, Save, X } from "lucide-react";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/loading";
+import { IndiaStateCitySelect } from "@/components/ui/IndiaStateCitySelect";
 
 import {
   blockNonAlpha,
@@ -27,6 +28,7 @@ export default function PrincipalDashboard() {
     name: "",
     email: "",
     phoneNo: "",
+    dateOfBirth: "",
     city: "",
     state: "",
     country: "",
@@ -61,6 +63,9 @@ export default function PrincipalDashboard() {
           name: teacherUser.name || "",
           email: teacherUser.email || "",
           phoneNo: teacherUser.phoneNo || "",
+          dateOfBirth: teacherUser.dateOfBirth
+            ? teacherUser.dateOfBirth.split("T")[0]
+            : "",
           city: teacherUser.city || "",
           state: teacherUser.state || "",
           country: teacherUser.country || "",
@@ -105,6 +110,9 @@ export default function PrincipalDashboard() {
             name: formData.name,
             email: formData.email,
             phoneNo: formData.phoneNo,
+            dateOfBirth: formData.dateOfBirth
+              ? new Date(formData.dateOfBirth).toISOString()
+              : undefined,
             city: formData.city,
             state: formData.state,
             country: formData.country,
@@ -217,32 +225,27 @@ export default function PrincipalDashboard() {
                   <p className="text-xs text-red-400 mt-1">{fieldErrors.phoneNo}</p>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm text-zinc-400">City</label>
-                  <input
-                    type="text"
-                    value={formData.city}
-                    onChange={(e) =>
-                      setFormData({ ...formData, city: e.target.value })
-                    }
-                    disabled={!isEditing}
-                    className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-zinc-400">State</label>
-                  <input
-                    type="text"
-                    value={formData.state}
-                    onChange={(e) =>
-                      setFormData({ ...formData, state: e.target.value })
-                    }
-                    disabled={!isEditing}
-                    className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
-                  />
-                </div>
+              <div>
+                <label className="text-sm text-zinc-400">Date of Birth</label>
+                <input
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) =>
+                    setFormData({ ...formData, dateOfBirth: e.target.value })
+                  }
+                  disabled={!isEditing}
+                  className="w-full mt-1 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 disabled:opacity-50"
+                />
               </div>
+              <IndiaStateCitySelect
+                selectedState={formData.state}
+                selectedCity={formData.city}
+                onStateChange={(state) => setFormData((prev) => ({ ...prev, state }))}
+                onCityChange={(city) => setFormData((prev) => ({ ...prev, city }))}
+                disabled={!isEditing}
+                stateClassName="bg-zinc-900 border-zinc-800 text-white"
+                cityClassName="bg-zinc-900 border-zinc-800 text-white"
+              />
             </div>
           </div>
 

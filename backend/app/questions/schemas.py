@@ -15,6 +15,7 @@ class QuestionType(StrEnum):
 class QuestionBase(BaseModel):
     text: str
     marks: int
+    negativeMarks: float | None = None
     questionNumber: int
     questionType: QuestionType
     imageUrl: str | None = None
@@ -61,6 +62,7 @@ class QuestionUpdateRequest(BaseModel):
     id: str | None = None
     text: str | None = None
     marks: int | None = None
+    negativeMarks: float | None = None
     questionNumber: int | None = None
     questionType: QuestionType | None = None
     imageUrl: str | None = None

@@ -1,7 +1,24 @@
+import re
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+
+
+def normalize_indian_phone(v: str | None) -> str | None:
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        return v
+    # If 10 digits provided without prefix, normalize to +91
+    if re.match(r"^\d{10}$", v):
+        return f"+91{v}"
+    if not re.match(r"^\+91\d{10}$", v):
+        raise ValueError(
+            "Phone number must start with +91 followed by exactly 10 digits"
+        )
+    return v
 
 
 class LoginRequest(BaseModel):
@@ -32,6 +49,11 @@ class UserRequest(BaseModel):
     dateOfBirth: datetime
     role: Roles
 
+    @field_validator("phoneNo", mode="before")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        return normalize_indian_phone(v) or v
+
 
 class UserResponse(BaseModel):
     """User data in response"""
@@ -61,6 +83,11 @@ class UserUpdate(BaseModel):
     dateOfBirth: datetime | None = None
     role: Roles | None = None
     password: str | None = None
+
+    @field_validator("phoneNo", mode="before")
+    @classmethod
+    def validate_phone(cls, v: str | None) -> str | None:
+        return normalize_indian_phone(v)
 
 
 class ChangePasswordRequest(BaseModel):

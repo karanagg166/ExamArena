@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { FormMessage } from "@/components/ui/form-message";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Spinner } from "@/components/ui/loading";
+import { IndiaStateCitySelect } from "@/components/ui/IndiaStateCitySelect";
 import {
   sanitizePincode,
   sanitizePhoneNo,
@@ -47,7 +48,7 @@ const SignUpPage = () => {
     pincode: "",
     city: "",
     state: "",
-    country: "",
+    country: "India",
   });
 
   const [touched, setTouched] = useState(false);
@@ -115,7 +116,14 @@ const SignUpPage = () => {
       const { confirmPassword, ...payload } = form;
       void confirmPassword;
 
-      const data = await api.post("/api/v1/auth/signup", payload);
+      const formattedPayload = {
+        ...payload,
+        dateOfBirth: form.dateOfBirth
+          ? new Date(form.dateOfBirth).toISOString()
+          : new Date("2000-01-01T00:00:00Z").toISOString(),
+      };
+
+      const data = await api.post("/api/v1/auth/signup", formattedPayload);
       console.log("Signup response:", data);
 
       setSuccess(true);
@@ -354,37 +362,23 @@ const SignUpPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-city">City</Label>
-                  <Input
-                    id="signup-city"
-                    name="city"
-                    placeholder="New York"
-                    value={form.city}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-state">State</Label>
-                  <Input
-                    id="signup-state"
-                    name="state"
-                    placeholder="NY"
-                    value={form.state}
-                    onChange={handleChange}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-country">Country</Label>
-                  <Input
-                    id="signup-country"
-                    name="country"
-                    placeholder="USA"
-                    value={form.country}
-                    onChange={handleChange}
-                  />
-                </div>
+              <IndiaStateCitySelect
+                selectedState={form.state}
+                selectedCity={form.city}
+                onStateChange={(state) => setForm((prev) => ({ ...prev, state }))}
+                onCityChange={(city) => setForm((prev) => ({ ...prev, city }))}
+                required
+              />
+
+              <div className="space-y-1.5">
+                <Label htmlFor="signup-country">Country</Label>
+                <Input
+                  id="signup-country"
+                  name="country"
+                  placeholder="India"
+                  value={form.country}
+                  onChange={handleChange}
+                />
               </div>
 
               <Button

@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Spinner } from "@/components/ui/loading";
 import { FormMessage } from "@/components/ui/form-message";
 import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
+import { IndiaStateCitySelect } from "@/components/ui/IndiaStateCitySelect";
 import {
   sanitizePincode,
   sanitizePhoneNo,
@@ -70,10 +71,10 @@ export default function ProfilePage() {
           name: d.name ?? "",
           email: d.email ?? "",
           phoneNo: d.phoneNo ?? "",
-          dateOfBirth: d.dateOfBirth ?? "",
+          dateOfBirth: d.dateOfBirth ? d.dateOfBirth.split("T")[0] : "",
           city: d.city ?? "",
           state: d.state ?? "",
-          country: d.country ?? "",
+          country: d.country ?? "India",
           pincode: d.pincode ?? "",
         });
       })
@@ -110,7 +111,12 @@ export default function ProfilePage() {
     setSaving(true);
     setMessage(null);
     try {
-      await api.put("/api/v1/auth/me", form);
+      await api.put("/api/v1/auth/me", {
+        ...form,
+        dateOfBirth: form.dateOfBirth
+          ? new Date(form.dateOfBirth).toISOString()
+          : undefined,
+      });
       setMessage({ text: "Profile updated successfully!", ok: true });
     } catch (err: unknown) {
       if (isAxiosError(err)) {
@@ -207,16 +213,14 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            <IndiaStateCitySelect
+              selectedState={form.state}
+              selectedCity={form.city}
+              onStateChange={(state) => setForm((prev) => ({ ...prev, state }))}
+              onCityChange={(city) => setForm((prev) => ({ ...prev, city }))}
+            />
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <Label htmlFor="profile-city">City</Label>
-                <Input
-                  id="profile-city"
-                  name="city"
-                  value={form.city}
-                  onChange={handleChange}
-                />
-              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="profile-pincode">Pincode</Label>
                 <Input
@@ -228,18 +232,6 @@ export default function ProfilePage() {
                   onChange={handleChange}
                   onKeyDown={blockNonDigits}
                   error={touched || form.pincode ? fieldErrors.pincode : undefined}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <Label htmlFor="profile-state">State</Label>
-                <Input
-                  id="profile-state"
-                  name="state"
-                  value={form.state}
-                  onChange={handleChange}
                 />
               </div>
               <div className="space-y-1.5">

@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 from pydantic import (
     AliasChoices,
@@ -9,7 +10,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.users.schemas import UserResponse
+from app.users.schemas import UserResponse, normalize_indian_phone
 
 
 class TeacherCreateRequest(BaseModel):
@@ -62,6 +63,12 @@ class UserUpdateNested(BaseModel):
     state: str | None = None
     country: str | None = None
     pincode: str | None = None
+    dateOfBirth: datetime | None = None
+
+    @field_validator("phoneNo", mode="before")
+    @classmethod
+    def validate_phone(cls, v: str | None) -> str | None:
+        return normalize_indian_phone(v)
 
 
 class TeacherUpdate(BaseModel):

@@ -21,6 +21,7 @@ class SectionBase(BaseModel):
     description: str | None = None
     questionType: QuestionType
     marksPerQuestion: int
+    durationMinutes: int | None = None
 
     @field_validator("name")
     @classmethod
@@ -48,6 +49,7 @@ class SectionUpdateRequest(BaseModel):
     description: str | None = None
     questionType: QuestionType | None = None
     marksPerQuestion: int | None = None
+    durationMinutes: int | None = None
 
     @field_validator("marksPerQuestion")
     @classmethod

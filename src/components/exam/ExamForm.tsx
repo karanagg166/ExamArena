@@ -17,6 +17,10 @@ interface ExamFormProps {
     type: ExamType;
     maxMarks: number;
     isPublished: boolean;
+    isPublic?: boolean;
+    examCode?: string;
+    negativeMarking?: boolean;
+    negativeMarks?: number;
     subject?: Subject;
     instructions?: string;
   };
@@ -57,6 +61,15 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
     onChange({ scheduledAt: date.toISOString() });
   };
 
+  const generateRandomCode = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "EXM-";
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    onChange({ examCode: code });
+  };
+
   return (
     <GlassCard padding="lg" className="space-y-6">
       <div>
@@ -64,7 +77,7 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
           Exam Details
         </h2>
         <p className="text-[var(--text-muted)] text-sm mb-6 mt-1">
-          Configure the core settings for this assessment.
+          Configure the core settings, scheduling, access code, and marking policies for this assessment.
         </p>
       </div>
 
@@ -109,13 +122,16 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="scheduledAt">Scheduled Date & Time <span className="text-red-400">*</span></Label>
+            <Label htmlFor="scheduledAt">Scheduled Start Date & Time <span className="text-red-400">*</span></Label>
             <Input
               id="scheduledAt"
               type="datetime-local"
               value={scheduledDateString}
               onChange={handleDateChange}
             />
+            <p className="text-[11px] text-[var(--text-muted)]">
+              ℹ️ Students can take this exam at any time on or after this scheduled start time.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -147,6 +163,105 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
               />
             </div>
           </div>
+        </div>
+
+        {/* Access Control & Exam Code */}
+        <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]/40 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <Label className="text-sm font-semibold text-[var(--text-primary)]">Exam Access Type</Label>
+              <p className="text-xs text-[var(--text-muted)]">
+                Choose whether any enrolled student can take this exam or if an access code is required.
+              </p>
+            </div>
+            <div className="inline-flex rounded-xl border border-[var(--border-default)] p-1 bg-[var(--surface-1)] shrink-0">
+              <Button
+                type="button"
+                size="sm"
+                variant={exam.isPublic !== false ? "secondary" : "ghost"}
+                onClick={() => onChange({ isPublic: true })}
+              >
+                Public to School
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={exam.isPublic === false ? "secondary" : "ghost"}
+                onClick={() => onChange({ isPublic: false })}
+              >
+                Code Required
+              </Button>
+            </div>
+          </div>
+
+          {exam.isPublic === false && (
+            <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+              <Label htmlFor="examCode">Secret Exam Code</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="examCode"
+                  placeholder="e.g., EXM-AB12CD"
+                  value={exam.examCode || ""}
+                  onChange={(e) => onChange({ examCode: e.target.value.toUpperCase() })}
+                  className="font-mono uppercase tracking-wider"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={generateRandomCode}>
+                  Auto-generate
+                </Button>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Students must enter this code to begin the exam.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Negative Marking Policy */}
+        <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]/40 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <Label className="text-sm font-semibold text-[var(--text-primary)]">Negative Marking</Label>
+              <p className="text-xs text-[var(--text-muted)]">
+                Penalize incorrect answers for objective questions (MCQ / MSQ / True-False).
+              </p>
+            </div>
+            <div className="inline-flex rounded-xl border border-[var(--border-default)] p-1 bg-[var(--surface-1)] shrink-0">
+              <Button
+                type="button"
+                size="sm"
+                variant={exam.negativeMarking ? "secondary" : "ghost"}
+                onClick={() => onChange({ negativeMarking: true, negativeMarks: exam.negativeMarks || 1.0 })}
+              >
+                Enabled
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={!exam.negativeMarking ? "secondary" : "ghost"}
+                onClick={() => onChange({ negativeMarking: false, negativeMarks: 0 })}
+              >
+                Disabled
+              </Button>
+            </div>
+          </div>
+
+          {exam.negativeMarking && (
+            <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
+              <Label htmlFor="negativeMarks">Deduction per Wrong Answer (Marks)</Label>
+              <Input
+                id="negativeMarks"
+                type="number"
+                step="0.25"
+                min="0.25"
+                placeholder="e.g. 1 or 0.25"
+                value={exam.negativeMarks ?? 1.0}
+                onChange={(e) => onChange({ negativeMarks: parseFloat(e.target.value) || 0 })}
+              />
+              <p className="text-xs text-[var(--text-muted)]">
+                For Multiple Select (MSQ): full marks if all correct; partial marks for correct subsets without wrong choices; 0 or negative penalty if any wrong option is selected.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-1.5">

@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 
-from app.users.schemas import UserResponse
+from app.users.schemas import UserResponse, normalize_indian_phone
 
 
 class StudentFilterParams(BaseModel):
@@ -83,6 +83,12 @@ class UserUpdateNested(BaseModel):
     state: str | None = None
     country: str | None = None
     pincode: str | None = None
+    dateOfBirth: datetime | None = None
+
+    @field_validator("phoneNo", mode="before")
+    @classmethod
+    def validate_phone(cls, v: str | None) -> str | None:
+        return normalize_indian_phone(v)
 
 
 class StudentUpdate(BaseModel):

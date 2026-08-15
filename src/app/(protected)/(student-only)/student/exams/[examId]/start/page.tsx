@@ -19,16 +19,17 @@ export default function ExamStartPage() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [examCodeInput, setExamCodeInput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const { initializeAttempt, examId: currentExamId, attemptId } = useAttemptEngine();
+  const { initializeAttempt } = useAttemptEngine();
 
   useEffect(() => {
     const fetchExam = async () => {
       try {
         const res = await api.get(`/api/v1/exams/${examId}`);
         setExam(res.data);
-      } catch (err: unknown) {
+      } catch {
         setError("Failed to load exam details. It may not exist or not be published.");
       } finally {
         setLoading(false);
@@ -37,17 +38,21 @@ export default function ExamStartPage() {
     if (examId) fetchExam();
   }, [examId]);
 
-  // If already started this exam and hasn't submitted, maybe allow resuming?
-  // We'll trust the user to click "Begin" to either resume or start.
-
   const handleStart = async () => {
     if (!accepted) return;
+    if (exam && exam.isPublic === false && !examCodeInput.trim()) {
+      setError("Please enter the secret exam code provided by your teacher.");
+      return;
+    }
     
     setStarting(true);
     setError(null);
     try {
-      // Create attempt backend side
-      const res = await api.post('/api/v1/attempts/start', { examId });
+      // Create attempt backend side with optional examCode
+      const res = await api.post('/api/v1/attempts/start', {
+        examId,
+        examCode: examCodeInput.trim().toUpperCase() || undefined,
+      });
       const attemptData = res.data; // StudentExamResponse
 
       // Initialize local state
@@ -124,6 +129,49 @@ export default function ExamStartPage() {
                </div>
            </div>
 
+           {/* Negative Marking & Access Info */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+               <p className="text-xs text-[var(--text-dimmed)] uppercase font-semibold">Marking Policy</p>
+               <p className="text-sm font-medium text-white mt-0.5">
+                 {exam.negativeMarking ? (
+                   <span className="text-amber-400">⚠️ Negative Marking Enabled (-{exam.negativeMarks} per wrong answer)</span>
+                 ) : (
+                   <span className="text-emerald-400">✅ No Negative Marking (0 for wrong answers)</span>
+                 )}
+               </p>
+             </div>
+             <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+               <p className="text-xs text-[var(--text-dimmed)] uppercase font-semibold">Access Policy</p>
+               <p className="text-sm font-medium text-white mt-0.5">
+                 {exam.isPublic !== false ? (
+                   <span className="text-emerald-400">🌐 Public Exam (Open to school students)</span>
+                 ) : (
+                   <span className="text-amber-400">🔒 Code-Protected Exam</span>
+                 )}
+               </p>
+             </div>
+           </div>
+
+           {exam.isPublic === false && (
+             <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-2">
+               <label htmlFor="exam-code-input" className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+                 Enter Exam Code to Begin
+               </label>
+               <input
+                 id="exam-code-input"
+                 type="text"
+                 placeholder="e.g., EXM-XXXXXX"
+                 value={examCodeInput}
+                 onChange={(e) => setExamCodeInput(e.target.value.toUpperCase())}
+                 className="w-full h-11 bg-zinc-900 border border-amber-500/40 rounded-xl px-4 text-base font-mono uppercase tracking-widest text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+               />
+               <p className="text-xs text-zinc-400">
+                 This exam requires a secret code provided by your teacher.
+               </p>
+             </div>
+           )}
+
            <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                   <FileText className="w-5 h-5 text-indigo-500" /> Instructions
@@ -142,6 +190,12 @@ export default function ExamStartPage() {
                    <li className="flex gap-2 items-start"><CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0"/> Ensure you have a stable internet connection before starting. Local backups are kept, but submission requires network.</li>
                </ul>
            </div>
+
+           {error && (
+             <div className="p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-sm">
+               {error}
+             </div>
+           )}
 
            <div className="pt-6 mt-4">
                <label className="flex items-start gap-3 p-4 rounded-xl border-2 border-indigo-500/30 bg-indigo-500/5 cursor-pointer hover:bg-indigo-500/10 transition-colors">

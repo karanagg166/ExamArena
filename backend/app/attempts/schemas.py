@@ -38,8 +38,8 @@ class SelectedOptionCreate(BaseModel):
 
 
 class SelectedOptionResponse(BaseModel):
-    id: str
-    studentExamAnswerId: str
+    id: str | None = None
+    studentExamAnswerId: str | None = None
     optionId: str
 
     class Config:
@@ -72,7 +72,7 @@ class StudentAnswerResponse(BaseModel):
     questionId: str
     questionType: QuestionType
     textAnswer: str | None = None
-    marksAwarded: int | None = None
+    marksAwarded: float | None = None
     feedback: str | None = None
     isCorrect: Correctness | None = None
     gradingStatus: GradingStatus = GradingStatus.PENDING
@@ -88,10 +88,10 @@ class StudentAnswerResponse(BaseModel):
 
 
 class StudentExamCreate(BaseModel):
-    """When starting exam: frontend sends just examId
-    Server injects studentId (from JWT), startedAt (now), status (IN_PROGRESS)"""
+    """When starting exam: frontend sends examId and optional examCode"""
 
     examId: str
+    examCode: str | None = None
 
 
 class StudentExamSubmit(BaseModel):
@@ -105,7 +105,7 @@ class StudentExamUpdate(BaseModel):
     """For teacher/admin grading or status updates"""
 
     id: str
-    marksObtained: int | None = None
+    marksObtained: float | None = None
     status: AttemptStatus | None = None
     submittedAt: datetime | None = None
 
@@ -116,10 +116,11 @@ class StudentExamResponse(BaseModel):
     id: str
     studentId: str
     examId: str
-    marksObtained: int = 0
+    marksObtained: float = 0.0
     startedAt: datetime
     submittedAt: datetime | None = None
     status: AttemptStatus = AttemptStatus.IN_PROGRESS
+    isResultsReleased: bool = False
     answers: list[StudentAnswerResponse] | None = None
 
     class Config:

@@ -68,13 +68,14 @@ export type StudentExam = {
   startedAt: string;
   submittedAt?: string;
   status: AttemptStatus;
+  isResultsReleased?: boolean;
   answers?: StudentAnswer[];
 };
 
-// When starting exam: frontend sends just examId
-// Server injects studentId (from JWT), startedAt (now), status (IN_PROGRESS)
+// When starting exam: frontend sends examId and optional examCode
 export type StudentExamCreate = {
   examId: string;
+  examCode?: string;
 };
 
 // When submitting exam: send all answers at once
