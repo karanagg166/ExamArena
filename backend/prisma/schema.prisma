@@ -76,6 +76,7 @@ model Teacher {
   school        School?        @relation(fields: [schoolId], references: [id])
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   teaches       TeacherClass[]
+  teacherJoinRequests TeacherClassJoinRequest[]
 
   @@index([userId])
 }
@@ -108,6 +109,7 @@ model SchoolClass {
   students  Student[]
   teachers  TeacherClass[]
   joinRequests ClassJoinRequest[]
+  teacherJoinRequests TeacherClassJoinRequest[]
 
   @@unique([schoolId, year, section])
   @@index([schoolId])
@@ -129,6 +131,24 @@ model ClassJoinRequest {
   @@unique([studentUserId, classId])
   @@index([classId])
   @@index([studentUserId])
+}
+
+model TeacherClassJoinRequest {
+  id          String            @id @default(cuid())
+  teacherId   String
+  classId     String
+  subject     Subject?
+  status      JoinRequestStatus @default(PENDING)
+  requestedAt DateTime          @default(now())
+  decidedAt   DateTime?
+  decidedBy   String?
+
+  teacher     Teacher     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  schoolClass SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classId])
+  @@index([classId])
+  @@index([teacherId])
 }
 
 model Principal {
