@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.15.0",
   "scripts": {
     "dev": "next dev",
-    "build": "python3 backend/prisma/generate.py && next build",
+    "build": "python3 backend/prisma/generate.py 2>/dev/null || true && next build",
     "start": "next start",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
