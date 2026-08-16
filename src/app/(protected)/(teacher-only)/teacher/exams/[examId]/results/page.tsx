@@ -44,6 +44,8 @@ export default function ExamResultsLeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "PASSED" | "FAILED" | "DISTINCTION">("ALL");
+  const [sortBy, setSortBy] = useState<"RANK_ASC" | "SCORE_DESC" | "SCORE_ASC" | "NAME_ASC" | "ROLL_ASC">("RANK_ASC");
 
   useEffect(() => {
     const fetchExamAndResults = async () => {
@@ -70,14 +72,39 @@ export default function ExamResultsLeaderboardPage() {
   }, [examId]);
 
   const filteredResults = useMemo(() => {
-    if (!search.trim()) return results;
-    const q = search.toLowerCase();
-    return results.filter(
-      (r) =>
-        r.studentName.toLowerCase().includes(q) ||
-        r.rollNo.toLowerCase().includes(q),
-    );
-  }, [results, search]);
+    let list = [...results];
+
+    // Search query filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (r) =>
+          r.studentName.toLowerCase().includes(q) ||
+          r.rollNo.toLowerCase().includes(q),
+      );
+    }
+
+    // Performance Bracket Filter
+    if (statusFilter === "PASSED") {
+      list = list.filter((r) => r.percentage >= 40);
+    } else if (statusFilter === "FAILED") {
+      list = list.filter((r) => r.percentage < 40);
+    } else if (statusFilter === "DISTINCTION") {
+      list = list.filter((r) => r.percentage >= 80);
+    }
+
+    // Sorting
+    list.sort((a, b) => {
+      if (sortBy === "RANK_ASC") return a.rank - b.rank;
+      if (sortBy === "SCORE_DESC") return b.marksObtained - a.marksObtained;
+      if (sortBy === "SCORE_ASC") return a.marksObtained - b.marksObtained;
+      if (sortBy === "NAME_ASC") return a.studentName.localeCompare(b.studentName);
+      if (sortBy === "ROLL_ASC") return (a.rollNo || "").localeCompare(b.rollNo || "");
+      return 0;
+    });
+
+    return list;
+  }, [results, search, statusFilter, sortBy]);
 
   const stats = useMemo(() => {
     if (results.length === 0) {
@@ -199,20 +226,85 @@ export default function ExamResultsLeaderboardPage() {
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="relative max-w-sm w-full">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search student or roll number..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+            <div className="relative max-w-sm w-full">
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search student or roll number..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Performance Bracket Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("ALL")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  statusFilter === "ALL"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                All ({results.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("DISTINCTION")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  statusFilter === "DISTINCTION"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                ≥ 80%
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("PASSED")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  statusFilter === "PASSED"
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Passed (≥40%)
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("FAILED")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  statusFilter === "FAILED"
+                    ? "bg-red-600 text-white"
+                    : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                Failed (&lt;40%)
+              </button>
+            </div>
           </div>
-          <span className="text-xs font-medium text-slate-400">
-            Showing {filteredResults.length} of {results.length} students
-          </span>
+
+          <div className="flex items-center gap-3 justify-between sm:justify-end">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-300"
+            >
+              <option value="RANK_ASC">Sort: Rank (High to Low)</option>
+              <option value="SCORE_DESC">Sort: Marks (Highest First)</option>
+              <option value="SCORE_ASC">Sort: Marks (Lowest First)</option>
+              <option value="NAME_ASC">Sort: Student Name (A-Z)</option>
+              <option value="ROLL_ASC">Sort: Roll Number (A-Z)</option>
+            </select>
+
+            <span className="text-xs font-medium text-slate-400 shrink-0">
+              Showing {filteredResults.length} of {results.length} students
+            </span>
+          </div>
         </div>
 
         {/* Results Leaderboard Table */}

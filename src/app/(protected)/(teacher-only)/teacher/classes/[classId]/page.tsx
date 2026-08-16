@@ -216,9 +216,16 @@ export default function ClassPage() {
                       Share this code with students; requests require your approval.
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={copyJoinCode}>
                       <Copy className="mr-2 h-4 w-4" /> Copy
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/teacher/classes/${classId}/students`)}
+                    >
+                      <Users className="mr-2 h-4 w-4" /> Students
                     </Button>
                     <Button
                       size="sm"

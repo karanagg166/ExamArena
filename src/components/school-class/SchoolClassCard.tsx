@@ -1,6 +1,6 @@
 import type { SchoolClass } from "@/types/index";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Copy, Trash2 } from "lucide-react";
 import { useSchoolClassStore } from "@/stores";
 import { toast } from "sonner";
 
@@ -21,6 +21,14 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
       } else {
         toast.error("Failed to delete class");
       }
+    }
+  };
+
+  const handleCopyCode = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (schoolClass.joinCode) {
+      navigator.clipboard.writeText(schoolClass.joinCode);
+      toast.success(`Copied join code: ${schoolClass.joinCode}`);
     }
   };
 
@@ -45,6 +53,17 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {schoolClass.joinCode && (
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              title="Copy class join code"
+              className="flex items-center gap-1.5 font-mono text-xs font-semibold px-2.5 py-1 rounded-full bg-zinc-800 border border-zinc-700 text-indigo-400 hover:bg-zinc-700 hover:text-indigo-300 transition-colors"
+            >
+              <Copy className="w-3 h-3" />
+              <span>{schoolClass.joinCode}</span>
+            </button>
+          )}
           <span className="shrink-0 text-xs bg-indigo-50 text-indigo-700 font-medium px-2.5 py-1 rounded-full border border-indigo-100">
             {schoolClass.teachers?.length ?? 0} teacher
             {schoolClass.teachers?.length !== 1 ? "s" : ""}

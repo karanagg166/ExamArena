@@ -35,5 +35,13 @@ def mock_class_db(mocker):
             "app.school_class.router.get_principal_by_teacher_id",
             new_callable=AsyncMock,
         ),
+        "get_school_by_user_id": mocker.patch(
+            "app.school.crud.get_school_by_user_id",
+            new_callable=AsyncMock,
+        ),
+        "get_class_exam_results": mocker.patch(
+            "app.school_class.router.get_class_exam_results",
+            new_callable=AsyncMock,
+        ),
     }
     return patches

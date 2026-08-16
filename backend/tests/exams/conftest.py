@@ -44,6 +44,14 @@ def mock_exams_db(mocker):
             "app.students.crud.get_student_by_user_id",
             new_callable=AsyncMock,
         ),
+        "get_school_by_user_id": mocker.patch(
+            "app.school.crud.get_school_by_user_id",
+            new_callable=AsyncMock,
+        ),
+        "get_exam_results": mocker.patch(
+            "app.exams.router.crud.get_exam_results",
+            new_callable=AsyncMock,
+        ),
         "get_session": mocker.patch(
             "app.core.database.get_session",
             return_value=mock_session_ctx,

@@ -4,7 +4,7 @@ from typing import Annotated  # noqa: I001
 from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
 
 from app.api.deps import get_current_user
-from app.core.models import Role
+from app.core.models import Role, SchoolClass
 from app.principals.crud import get_principal_by_teacher_id
 from app.students.crud import get_student_by_user_id, get_students_by_class_id
 from app.students.schemas import StudentResponse
@@ -71,20 +71,63 @@ async def get_classes_for_school(
             if school_class.id == student.classId
         ]
 
-    if current_user.role in (Role.TEACHER, Role.PRINCIPAL):
+    if current_user.role == Role.PRINCIPAL:
+        from app.school.crud import get_school_by_user_id
+
+        school = await get_school_by_user_id(current_user.id)
+        if not (school and school.id == school_id):
+            teacher = await get_teacher_by_user_id(current_user.id)
+            if not teacher or teacher.schoolId != school_id:
+                raise HTTPException(
+                    status_code=403, detail="Access denied for this school."
+                )
+
+    elif current_user.role == Role.TEACHER:
         teacher = await get_teacher_by_user_id(current_user.id)
         if not teacher or teacher.schoolId != school_id:
             raise HTTPException(
                 status_code=403, detail="Access denied for this school."
             )
-        if current_user.role == Role.PRINCIPAL:
-            principal = await get_principal_by_teacher_id(teacher.id)
-            if not principal or principal.schoolId != school_id:
-                raise HTTPException(
-                    status_code=403, detail="Access denied for this school."
-                )
 
     return await get_school_classes_by_school_id(school_id)
+
+
+async def _check_class_access(current_user: UserResponse, school_class: SchoolClass):
+    if current_user.role == Role.ADMIN:
+        return
+    if current_user.role == Role.STUDENT:
+        student = await get_student_by_user_id(current_user.id)
+        if not student or student.classId != school_class.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You can only view your own class.",
+            )
+        return
+    if current_user.role == Role.TEACHER:
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher or teacher.schoolId != school_class.schoolId:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. You must be a teacher at this school.",
+            )
+        return
+    if current_user.role == Role.PRINCIPAL:
+        from app.school.crud import get_school_by_user_id
+
+        school = await get_school_by_user_id(current_user.id)
+        if school and school.id == school_class.schoolId:
+            return
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if teacher:
+            if teacher.schoolId == school_class.schoolId:
+                return
+            principal = await get_principal_by_teacher_id(teacher.id)
+            if principal and principal.schoolId == school_class.schoolId:
+                return
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. You must be the principal of this school.",
+        )
 
 
 @router.get("/{class_id}", response_model=SchoolClassResponse)
@@ -99,34 +142,7 @@ async def get_class_by_id(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
-    # Authorization checks
-    if current_user.role == Role.STUDENT:
-        student = await get_student_by_user_id(current_user.id)
-        if not student or student.classId != school_class.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You can only view your own class.",
-            )
-    elif current_user.role == Role.TEACHER:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher or teacher.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You must be a teacher at this school.",
-            )
-    elif current_user.role == Role.PRINCIPAL:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied."
-            )
-        principal = await get_principal_by_teacher_id(teacher.id)
-        if not principal or principal.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You must be the principal of this school.",
-            )
-
+    await _check_class_access(current_user, school_class)
     return school_class
 
 
@@ -142,34 +158,7 @@ async def get_students_for_class(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
-    # Authorization checks
-    if current_user.role == Role.STUDENT:
-        student = await get_student_by_user_id(current_user.id)
-        if not student or student.classId != school_class.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You can only view your own class.",
-            )
-    elif current_user.role == Role.TEACHER:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher or teacher.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You must be a teacher at this school.",
-            )
-    elif current_user.role == Role.PRINCIPAL:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied."
-            )
-        principal = await get_principal_by_teacher_id(teacher.id)
-        if not principal or principal.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You must be the principal of this school.",
-            )
-
+    await _check_class_access(current_user, school_class)
     return await get_students_by_class_id(class_id)
 
 
@@ -277,32 +266,5 @@ async def get_class_results_endpoint(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
-    # Authorization checks
-    if current_user.role == Role.STUDENT:
-        student = await get_student_by_user_id(current_user.id)
-        if not student or student.classId != school_class.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You can only view your own class results.",
-            )
-    elif current_user.role == Role.TEACHER:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher or teacher.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You must be a teacher at this school.",
-            )
-    elif current_user.role == Role.PRINCIPAL:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied."
-            )
-        principal = await get_principal_by_teacher_id(teacher.id)
-        if not principal or principal.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied for this school.",
-            )
-
+    await _check_class_access(current_user, school_class)
     return await get_class_exam_results(class_id)

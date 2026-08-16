@@ -12,7 +12,7 @@ interface SchoolClassState {
   fetchClass: (classId: string) => Promise<void>;
   createClass: (
     data: CreateClassRequest,
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; data?: SchoolClass; error?: string }>;
   deleteClass: (classId: string) => Promise<boolean>;
   clearClasses: () => void;
   reset: () => void;
@@ -60,7 +60,7 @@ export const useSchoolClassStore = create<SchoolClassState>((set) => ({
         section: data.section,
       });
       set((state) => ({ classes: [...state.classes, res.data], error: "" }));
-      return { success: true };
+      return { success: true, data: res.data };
     } catch (err: unknown) {
       let errorMsg = `Class '${data.name}' already exists.`;
       if (axios.isAxiosError(err)) {

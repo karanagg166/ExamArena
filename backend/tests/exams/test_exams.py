@@ -296,3 +296,67 @@ class TestExamsApi:
             f"/api/v1/exams/{fake_exam.id}", json={"name": "Updated Name"}
         )
         assert response.status_code == 403
+
+    # ── GET /api/v1/exams/{exam_id}/results ────────────────────
+    async def test_get_exam_results_teacher_owner(
+        self, client, override_auth, mock_exams_db
+    ):
+        override_auth(role="TEACHER")
+        teacher = make_fake_teacher({"id": "teacher_owner_1"})
+        mock_exams_db["get_teacher_by_user_id"].return_value = teacher
+
+        fake_exam = make_fake_exam()
+        fake_exam.teacher.id = "teacher_owner_1"
+        mock_exams_db["get_exam_by_id"].return_value = fake_exam
+
+        mock_scoreboard = [
+            {
+                "rank": 1,
+                "studentId": "std_1",
+                "studentName": "Alice Wonder",
+                "rollNo": "01",
+                "marksObtained": 95,
+                "maxMarks": 100,
+                "percentage": 95.0,
+                "status": "GRADED",
+            }
+        ]
+        mock_exams_db["get_exam_results"].return_value = mock_scoreboard
+
+        response = await client.get(f"/api/v1/exams/{fake_exam.id}/results")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["studentName"] == "Alice Wonder"
+        assert data[0]["marksObtained"] == 95
+
+    async def test_get_exam_results_principal_access(
+        self, client, override_auth, mock_exams_db
+    ):
+        override_auth(role="PRINCIPAL")
+        fake_school = MagicMock(id="school_123")
+        mock_exams_db["get_school_by_user_id"].return_value = fake_school
+
+        fake_exam = make_fake_exam()
+        fake_exam.teacher.schoolId = "school_123"
+        fake_exam.teacher.school = MagicMock(id="school_123")
+        mock_exams_db["get_exam_by_id"].return_value = fake_exam
+
+        mock_exams_db["get_exam_results"].return_value = []
+        response = await client.get(f"/api/v1/exams/{fake_exam.id}/results")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    async def test_get_exam_results_unauthorized_teacher(
+        self, client, override_auth, mock_exams_db
+    ):
+        override_auth(role="TEACHER")
+        teacher = make_fake_teacher({"id": "teacher_other"})
+        mock_exams_db["get_teacher_by_user_id"].return_value = teacher
+
+        fake_exam = make_fake_exam()
+        fake_exam.teacher.id = "teacher_owner"
+        mock_exams_db["get_exam_by_id"].return_value = fake_exam
+
+        response = await client.get(f"/api/v1/exams/{fake_exam.id}/results")
+        assert response.status_code == 403

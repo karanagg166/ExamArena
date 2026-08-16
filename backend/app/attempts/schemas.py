@@ -159,7 +159,7 @@ class ExamScoreboardItem(BaseModel):
     maxMarks: int
     percentage: float
     status: str
-    startedAt: datetime
+    startedAt: datetime | None = None
     submittedAt: datetime | None = None
 
     class Config:
