@@ -42,13 +42,10 @@ export default function TeacherNavbar() {
             Dashboard
           </Link>
           <Link
-            href="/teacher"
-            className={linkClass(
-              pathname === "/teacher" ||
-                pathname.startsWith("/teacher/profile"),
-            )}
+            href="/teacher/classes"
+            className={linkClass(pathname.startsWith("/teacher/classes"))}
           >
-            Profile
+            Classes & Requests
           </Link>
           <Link
             href="/teacher/exams/create"
@@ -60,16 +57,32 @@ export default function TeacherNavbar() {
             href="/teacher/exams"
             className={linkClass(
               pathname === "/teacher/exams" ||
-                pathname.startsWith("/teacher/exams/history"),
+                pathname.startsWith("/teacher/exams/history") ||
+                pathname.includes("/results"),
             )}
           >
-            Previous Exams
+            Exams & Results
           </Link>
           <Link
-            href="/school"
-            className="rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-sm font-semibold text-emerald-200 transition-colors hover:bg-emerald-500/25"
+            href="/students"
+            className={linkClass(pathname.startsWith("/students"))}
           >
-            Start a School
+            Students
+          </Link>
+          <Link
+            href="/teacher/school"
+            className={linkClass(pathname === "/teacher/school" || pathname.startsWith("/teacher/school/join"))}
+          >
+            School
+          </Link>
+          <Link
+            href="/teacher/profile"
+            className={linkClass(
+              pathname === "/teacher" ||
+                pathname.startsWith("/teacher/profile"),
+            )}
+          >
+            Profile
           </Link>
           <Link
             href="/signup/principal"

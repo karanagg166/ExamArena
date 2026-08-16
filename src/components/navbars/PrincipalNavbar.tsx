@@ -28,9 +28,11 @@ export default function PrincipalNavbar() {
   return (
     <nav className="sticky top-0 z-20 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <span className="rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-violet-300">
-          Principal
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-violet-300">
+            Principal
+          </span>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -40,29 +42,55 @@ export default function PrincipalNavbar() {
             Dashboard
           </Link>
           <Link
-            href="/principal"
+            href="/principal/teacher-requests"
+            className={linkClass(pathname.startsWith("/principal/teacher-requests"))}
+          >
+            Requests
+          </Link>
+          <Link
+            href="/principal/school/classes"
+            className={linkClass(pathname.startsWith("/principal/school/classes"))}
+          >
+            Classes & Roster
+          </Link>
+          <Link
+            href="/teacher/exams/create"
+            className={linkClass(pathname.startsWith("/teacher/exams/create"))}
+          >
+            Create Exam
+          </Link>
+          <Link
+            href="/teacher/exams"
+            className={linkClass(pathname === "/teacher/exams" || pathname.startsWith("/teacher/exams/"))}
+          >
+            Exams & Results
+          </Link>
+          <Link
+            href="/students"
+            className={linkClass(pathname.startsWith("/students"))}
+          >
+            Students
+          </Link>
+          <Link
+            href="/teachers"
+            className={linkClass(pathname.startsWith("/teachers"))}
+          >
+            Teachers
+          </Link>
+          <Link
+            href="/principal/school"
+            className={linkClass(pathname === "/principal/school")}
+          >
+            School
+          </Link>
+          <Link
+            href="/principal/profile"
             className={linkClass(
               pathname === "/principal" ||
                 pathname.startsWith("/principal/profile"),
             )}
           >
             Profile
-          </Link>
-          <Link
-            href="/principal/school/school-class"
-            className={linkClass(
-              pathname.startsWith("/principal/school/school-class"),
-            )}
-          >
-            Add Class
-          </Link>
-          <Link
-            href="/school"
-            className={linkClass(
-              pathname === "/school" || pathname.startsWith("/school/profile"),
-            )}
-          >
-            School
           </Link>
           <button
             onClick={handleLogout}

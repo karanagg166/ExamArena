@@ -28,9 +28,11 @@ export default function StudentNavbar() {
   return (
     <nav className="sticky top-0 z-20 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-sky-300">
-          Student
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-sky-500/25 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-sky-300">
+            Student
+          </span>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <Link
@@ -40,13 +42,28 @@ export default function StudentNavbar() {
             Dashboard
           </Link>
           <Link
-            href="/student"
-            className={linkClass(
-              pathname === "/student" ||
-                pathname.startsWith("/student/profile"),
-            )}
+            href="/exams"
+            className={linkClass(pathname === "/exams" || pathname.startsWith("/student/exams/take"))}
           >
-            Profile
+            Take Exam
+          </Link>
+          <Link
+            href="/student/exams"
+            className={linkClass(pathname === "/student/exams" || pathname.startsWith("/student/exams/history"))}
+          >
+            Results & Marks
+          </Link>
+          <Link
+            href="/student/class"
+            className={linkClass(pathname.startsWith("/student/class"))}
+          >
+            My Class
+          </Link>
+          <Link
+            href="/students"
+            className={linkClass(pathname.startsWith("/students"))}
+          >
+            Classmates
           </Link>
           <Link
             href="/student/school"
@@ -55,22 +72,13 @@ export default function StudentNavbar() {
             School
           </Link>
           <Link
-            href="/student/class"
-            className={linkClass(pathname.startsWith("/student/class"))}
+            href="/student/profile"
+            className={linkClass(
+              pathname === "/student" ||
+                pathname.startsWith("/student/profile"),
+            )}
           >
-            Class
-          </Link>
-          <Link
-            href="/student/exams/take"
-            className={linkClass(pathname.startsWith("/student/exams/take"))}
-          >
-            Take Exam
-          </Link>
-          <Link
-            href="/student/exams/history"
-            className={linkClass(pathname.startsWith("/student/exams/history"))}
-          >
-            Previous Exams
+            Profile
           </Link>
           <button
             onClick={handleLogout}
