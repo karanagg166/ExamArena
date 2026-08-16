@@ -25,12 +25,12 @@ async def get_teacher_by_user_id(user_id: str, session: AsyncSession | None = No
             .where(Teacher.userId == user_id)
             .options(
                 selectinload(Teacher.user),
-                selectinload(Teacher.classes).selectinload(TeacherClass.schoolClass),
+                selectinload(Teacher.teaches).selectinload(TeacherClass.schoolClass),
             )
         )
         teacher = (await s.execute(stmt)).scalar_one_or_none()
-        if teacher and not teacher.schoolId and teacher.classes:
-            for tc in teacher.classes:
+        if teacher and not teacher.schoolId and teacher.teaches:
+            for tc in teacher.teaches:
                 if tc.schoolClass and tc.schoolClass.schoolId:
                     teacher.schoolId = tc.schoolClass.schoolId
                     await s.commit()
@@ -54,12 +54,12 @@ async def get_teacher_by_id(teacher_id: str, session: AsyncSession | None = None
             .where(Teacher.id == teacher_id)
             .options(
                 selectinload(Teacher.user),
-                selectinload(Teacher.classes).selectinload(TeacherClass.schoolClass),
+                selectinload(Teacher.teaches).selectinload(TeacherClass.schoolClass),
             )
         )
         teacher = (await s.execute(stmt)).scalar_one_or_none()
-        if teacher and not teacher.schoolId and teacher.classes:
-            for tc in teacher.classes:
+        if teacher and not teacher.schoolId and teacher.teaches:
+            for tc in teacher.teaches:
                 if tc.schoolClass and tc.schoolClass.schoolId:
                     teacher.schoolId = tc.schoolClass.schoolId
                     await s.commit()

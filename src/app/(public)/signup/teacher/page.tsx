@@ -87,7 +87,7 @@ export default function SignupTeacherPage() {
     }
     console.log("Submitting teacher profile with data:", form);
     try {
-      const data = await api.post("/api/v1/teachers/", {
+      const data = await api.post("/api/v1/teachers", {
         qualifications: form.qualifications,
         experience: parseInt(form.experience) || 0,
         department: form.department,
