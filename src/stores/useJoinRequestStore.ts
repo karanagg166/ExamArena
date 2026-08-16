@@ -32,8 +32,6 @@ const initial = {
   error: "",
 };
 
-import { getErrorMessage } from "@/lib/error";
-
 const detailFromError = (error: unknown, fallback: string) => {
   const msg = getErrorMessage(error);
   return msg && msg !== "An unexpected error occurred." ? msg : fallback;
