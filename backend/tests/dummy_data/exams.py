@@ -34,9 +34,11 @@ def make_fake_exam(overrides: dict = None) -> MagicMock:
     # Setup nested objects
     exam.teacher = MagicMock()
     exam.teacher.id = "clxfake_teacher_001"
+    exam.teacher.schoolId = "clxfake_school_001"
     exam.teacher.user = MagicMock()
     exam.teacher.user.name = "Teacher User"
     exam.teacher.school = MagicMock()
+    exam.teacher.school.id = "clxfake_school_001"
     exam.teacher.school.name = "Test School"
 
     for k, v in overrides.items():

@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { useAttemptEngine } from '@/hooks/useAttemptEngine';
 import { Question } from '@/types/question';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -77,7 +78,14 @@ export const AttemptQuestion = ({ question }: { question: Question }) => {
         </div>
 
         {question.imageUrl && (
-          <img src={question.imageUrl} alt="Question figure" className="max-w-md w-full rounded-lg border border-[var(--border-subtle)]" />
+          <Image
+            src={question.imageUrl}
+            alt="Question figure"
+            width={768}
+            height={432}
+            unoptimized
+            className="max-w-md w-full h-auto rounded-lg border border-[var(--border-subtle)]"
+          />
         )}
 
         <div className="space-y-3 mt-8">

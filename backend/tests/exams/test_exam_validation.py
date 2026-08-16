@@ -1,7 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from app.questions.schemas import QuestionBase, QuestionOptionBase, QuestionType
+from app.questions.schemas import (
+    QuestionBase,
+    QuestionCreateRequest,
+    QuestionOptionBase,
+    QuestionType,
+)
 
 
 class TestQuestionValidation:
@@ -28,6 +33,21 @@ class TestQuestionValidation:
             section="Section A",
         )
         assert q.text == "What is the speed of light?"
+
+    def test_rejects_non_positive_marks(self):
+        with pytest.raises(ValidationError):
+            QuestionBase(text="Invalid marks", marks=0)
+
+    def test_rejects_multiple_correct_answers_for_single_choice(self):
+        with pytest.raises(ValidationError, match="exactly one correct option"):
+            QuestionCreateRequest(
+                text="Choose one",
+                questionType=QuestionType.MULTIPLE_CHOICE,
+                options=[
+                    {"text": "A", "optionNumber": 1, "isCorrect": True},
+                    {"text": "B", "optionNumber": 2, "isCorrect": True},
+                ],
+            )
 
 
 class TestOptionValidation:

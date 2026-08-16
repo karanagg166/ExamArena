@@ -9,6 +9,8 @@ from app.attempts.schemas import (
     StudentExamResponse,
     StudentExamSubmit,
 )
+from app.core.models import Role
+from app.students.crud import get_student_by_user_id
 from app.users.schemas import UserResponse
 
 router = APIRouter(prefix="/api/v1/attempts", tags=["attempts"])
@@ -21,6 +23,8 @@ async def start_exam(
     attempt_data: StudentExamCreate,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
+    if current_user.role != Role.STUDENT:
+        raise HTTPException(status_code=403, detail="Only students can start exams")
     try:
         return await crud.start_exam_attempt(attempt_data, current_user.id)
     except ValueError as e:
@@ -31,10 +35,14 @@ async def start_exam(
 async def get_attempt(
     attempt_id: str, current_user: Annotated[UserResponse, Depends(get_current_user)]
 ):
+    if current_user.role != Role.STUDENT:
+        raise HTTPException(status_code=403, detail="Only students can view attempts")
     attempt = await crud.get_attempt_by_id(attempt_id)
     if not attempt:
         raise HTTPException(status_code=404, detail="Attempt not found")
-    # A complete implementation might verify the user owns the attempt.
+    student = await get_student_by_user_id(current_user.id)
+    if not student or attempt.studentId != student.id:
+        raise HTTPException(status_code=404, detail="Attempt not found")
     return attempt
 
 
@@ -43,6 +51,8 @@ async def submit_exam(
     submit_data: StudentExamSubmit,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
+    if current_user.role != Role.STUDENT:
+        raise HTTPException(status_code=403, detail="Only students can submit exams")
     try:
         return await crud.submit_exam_attempt(submit_data, current_user.id)
     except ValueError as e:

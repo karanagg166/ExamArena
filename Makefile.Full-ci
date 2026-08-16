@@ -63,10 +63,10 @@ lint-backend:
 # ── Frontend lint ─────────────────────────────────────────────
 lint-frontend:
 	@echo "🔍 [Frontend] ESLint check..."
-	$(COMPOSE) exec $(FRONTEND_CONTAINER) npx next lint
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm lint
 
 	@echo "🎨 [Frontend] Prettier format check (read-only)..."
-	$(COMPOSE) exec $(FRONTEND_CONTAINER) npx prettier --check $(FRONTEND_APP_DIR)
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm exec prettier --check $(FRONTEND_APP_DIR)
 
 # ── Combined lint ─────────────────────────────────────────────
 lint: lint-backend lint-frontend
@@ -80,7 +80,7 @@ type-backend:
 # ── Frontend type check ───────────────────────────────────────
 type-frontend:
 	@echo "🔬 [Frontend] TypeScript compiler check..."
-	$(COMPOSE) exec $(FRONTEND_CONTAINER) npx tsc --noEmit
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm type-check
 
 # ── Combined type check ───────────────────────────────────────
 type-check: type-backend type-frontend
@@ -96,7 +96,7 @@ format-backend:
 
 format-frontend:
 	@echo "🎨 [Frontend] Auto-formatting with Prettier..."
-	$(COMPOSE) exec $(FRONTEND_CONTAINER) npx prettier --write $(FRONTEND_APP_DIR)
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm exec prettier --write $(FRONTEND_APP_DIR)
 
 format: format-backend format-frontend
 	@echo "✅ Auto-format complete!"

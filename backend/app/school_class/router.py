@@ -4,7 +4,7 @@ from typing import Annotated  # noqa: I001
 from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
 
 from app.api.deps import get_current_user
-from app.core.models import Role, SchoolClass
+from app.core.models import Role
 from app.principals.crud import get_principal_by_teacher_id
 from app.students.crud import get_student_by_user_id, get_students_by_class_id
 from app.students.schemas import StudentResponse
@@ -97,7 +97,9 @@ async def get_classes_for_school(
     return await get_school_classes_by_school_id(school_id)
 
 
-async def _check_class_access(current_user: UserResponse, school_class: SchoolClass):
+async def _check_class_access(
+    current_user: UserResponse, school_class: SchoolClassResponse
+):
     if current_user.role == Role.ADMIN:
         return
     if current_user.role == Role.STUDENT:

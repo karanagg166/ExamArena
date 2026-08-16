@@ -79,6 +79,25 @@ class TestSchoolsApi:
         assert response.status_code == 400
         assert "already manages a school" in response.json()["detail"]
 
+    async def test_student_cannot_create_school(
+        self, client, override_auth, mock_school_db
+    ):
+        override_auth(role="STUDENT")
+        payload = {
+            "name": "Test School",
+            "address": "123 Test St",
+            "city": "Mumbai",
+            "state": "Maharashtra",
+            "country": "India",
+            "pincode": "400001",
+            "schoolCode": "TST001",
+        }
+
+        response = await client.post("/api/v1/schools", json=payload)
+
+        assert response.status_code == 403
+        mock_school_db["create_school"].assert_not_awaited()
+
     async def test_create_school_missing_fields(
         self, client, override_auth, mock_school_db
     ):

@@ -6,21 +6,23 @@ from sqlalchemy.orm import selectinload
 
 import app.core.database as db
 from app.attempts.schemas import (
-    AttemptStatus,
-    Correctness,
-    GradingStatus,
     StudentExamCreate,
     StudentExamResponse,
     StudentExamSubmit,
 )
 from app.core.models import (
+    Correctness,
     Exam,
+    GradingStatus,
     Question,
     QuestionType,
     SelectedOption,
     StudentExam,
     StudentExamAnswer,
+    StudentExamStatus,
 )
+
+AttemptStatus = StudentExamStatus
 from app.students.crud import get_student_by_user_id
 
 STUDENT_EXAM_OPTIONS = [
@@ -52,13 +54,12 @@ async def start_exam_attempt(
         exam = (await s.execute(exam_stmt)).scalar_one_or_none()
         if not exam:
             raise ValueError("Exam not found")
+        if not exam.isPublished:
+            raise ValueError("This exam is not currently published")
 
         # 1. Check School authorization: Student must belong to same school as exam teacher
-        if exam.teacher and student.schoolId and exam.teacher.schoolId:
-            if student.schoolId != exam.teacher.schoolId:
-                raise ValueError(
-                    "You are not enrolled in the school offering this exam"
-                )
+        if not exam.teacher or student.schoolId != exam.teacher.schoolId:
+            raise ValueError("You are not enrolled in the school offering this exam")
 
         # 2. Check scheduled date & time: After scheduled time, students can take exams anytime
         now = datetime.now(UTC)
@@ -77,15 +78,10 @@ async def start_exam_attempt(
 
         # 3. Check access code if exam is not public
         if not exam.isPublic:
-            code_input = (attempt_data.examCode or "").strip().upper()
-            exam_code_match = code_input == (exam.examCode or "").strip().upper()
-            pwd_match = bool(
-                exam.accessPassword
-                and code_input == exam.accessPassword.strip().upper()
-            )
-            if not (exam_code_match or pwd_match):
+            password_input = (attempt_data.examCode or "").strip()
+            if not exam.accessPassword or password_input != exam.accessPassword.strip():
                 raise ValueError(
-                    "This exam requires a valid access password or exam code. Please enter the correct code to proceed."
+                    "This exam requires a valid access password. Please enter the correct password to proceed."
                 )
 
         # Check for existing attempt
@@ -169,11 +165,13 @@ async def submit_exam_attempt(
     submit_data: StudentExamSubmit, user_id: str, session: AsyncSession | None = None
 ) -> StudentExamResponse:
     student = await get_student_by_user_id(user_id, session=session)
+    if not student:
+        raise ValueError("Only students can submit an exam")
     attempt = await get_attempt_by_id(submit_data.id, session=session)
     if not attempt:
         raise ValueError("Attempt not found")
 
-    if student and attempt.studentId != student.id:
+    if attempt.studentId != student.id:
         raise ValueError("Not authorized to submit this attempt")
 
     async def _do_submit(s: AsyncSession):
@@ -200,6 +198,37 @@ async def submit_exam_attempt(
 
         if db_attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.GRADED):
             raise ValueError("This exam has already been submitted and attempted.")
+
+        db_answers_by_id = {answer.id: answer for answer in db_attempt.answers or []}
+        submitted_answer_ids = {answer.id for answer in submit_data.answers}
+        unknown_answer_ids = submitted_answer_ids - db_answers_by_id.keys()
+        if unknown_answer_ids:
+            raise ValueError(
+                "Submission contains answers that do not belong to this attempt"
+            )
+
+        for submitted_answer in submit_data.answers:
+            db_answer = db_answers_by_id[submitted_answer.id]
+            question = next(
+                (
+                    item
+                    for item in (db_attempt.exam.questions or [])
+                    if item.id == db_answer.questionId
+                ),
+                None,
+            )
+            valid_option_ids = (
+                {option.id for option in (question.options or [])}
+                if question
+                else set()
+            )
+            selected_option_ids = {
+                option.optionId for option in (submitted_answer.selectedOptions or [])
+            }
+            if not selected_option_ids.issubset(valid_option_ids):
+                raise ValueError(
+                    "Submission contains options that do not belong to the answer's question"
+                )
 
         exam = db_attempt.exam
         now = datetime.now(UTC)
@@ -409,7 +438,9 @@ async def get_student_exam_history(
                     "examCode": exam.examCode if exam else "",
                     "subject": (
                         exam.subject.value
-                        if exam and hasattr(exam.subject, "value")
+                        if exam
+                        and exam.subject is not None
+                        and hasattr(exam.subject, "value")
                         else (exam.subject if exam else None)
                     ),
                     "examType": (

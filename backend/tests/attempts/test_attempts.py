@@ -54,6 +54,27 @@ class TestAttemptsApi:
         assert response.status_code == 404
         assert "Attempt not found" in response.json()["detail"]
 
+    async def test_get_attempt_rejects_different_student(
+        self, client, override_auth, mock_attempts_db
+    ):
+        override_auth(role="STUDENT")
+        mock_attempts_db["get_attempt_by_id"].return_value = make_fake_student_exam(
+            {"studentId": "another_student"}
+        )
+
+        response = await client.get("/api/v1/attempts/clxfake_se_001")
+
+        assert response.status_code == 404
+
+    async def test_get_attempt_rejects_staff(
+        self, client, override_auth, mock_attempts_db
+    ):
+        override_auth(role="TEACHER")
+
+        response = await client.get("/api/v1/attempts/clxfake_se_001")
+
+        assert response.status_code == 403
+
     async def test_submit_success(self, client, override_auth, mock_attempts_db):
         override_auth(role="STUDENT")
         fake_attempt = make_fake_student_exam({"status": "SUBMITTED"})
@@ -97,3 +118,20 @@ class TestAttemptsApi:
         response = await client.post("/api/v1/attempts/submit", json=payload)
         assert response.status_code == 400
         assert "already been submitted and attempted" in response.json()["detail"]
+
+    async def test_submit_rejects_duplicate_answer_ids(
+        self, client, override_auth, mock_attempts_db
+    ):
+        override_auth(role="STUDENT")
+        payload = {
+            "id": "clxfake_se_001",
+            "answers": [
+                {"id": "ans_001", "selectedOptions": []},
+                {"id": "ans_001", "selectedOptions": []},
+            ],
+        }
+
+        response = await client.post("/api/v1/attempts/submit", json=payload)
+
+        assert response.status_code == 422
+        mock_attempts_db["submit_exam_attempt"].assert_not_awaited()

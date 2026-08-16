@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { StreamChat, type Channel as StreamChannel } from "stream-chat";
+import { StreamChat } from "stream-chat";
 import {
   Chat,
   Channel,
@@ -38,7 +38,6 @@ export default function ChatPage() {
   const { user } = useAuthStore();
   const { theme } = useTheme();
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
-  const [activeChannel, setActiveChannel] = useState<StreamChannel | null>(null);
   const [loading, setLoading] = useState(true);
   const [dmModalOpen, setDmModalOpen] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<ChatDirectoryUser[]>([]);

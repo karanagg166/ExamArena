@@ -1,5 +1,3 @@
-import { vi } from 'vitest';
-
 const storageMock = () => {
   let store: Record<string, string> = {};
   return {

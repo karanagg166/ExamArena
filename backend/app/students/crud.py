@@ -28,13 +28,10 @@ async def get_student_by_user_id(user_id: str, session: AsyncSession | None = No
         student = (await s.execute(stmt)).scalar_one_or_none()
         if student:
             if getattr(student, "schoolClass", None):
-                student.className = student.schoolClass.name
                 if not student.schoolId and student.schoolClass.schoolId:
                     student.schoolId = student.schoolClass.schoolId
                     await s.commit()
                     await s.refresh(student)
-            if getattr(student, "school", None):
-                student.schoolName = student.school.name
         return student
 
     if session:
@@ -59,13 +56,10 @@ async def get_student_by_id(student_id: str, session: AsyncSession | None = None
         student = (await s.execute(stmt)).scalar_one_or_none()
         if student:
             if getattr(student, "schoolClass", None):
-                student.className = student.schoolClass.name
                 if not student.schoolId and student.schoolClass.schoolId:
                     student.schoolId = student.schoolClass.schoolId
                     await s.commit()
                     await s.refresh(student)
-            if getattr(student, "school", None):
-                student.schoolName = student.school.name
         return student
 
     if session:
@@ -155,9 +149,6 @@ async def get_students_by_class_id(class_id: str, session: AsyncSession | None =
             .options(selectinload(Student.user), selectinload(Student.schoolClass))
         )
         students = (await s.execute(stmt)).scalars().all()
-        for st in students:
-            if getattr(st, "schoolClass", None):
-                st.className = st.schoolClass.name
         return students
 
     if session:
@@ -214,8 +205,6 @@ async def create_student(
             .options(selectinload(Student.user), selectinload(Student.schoolClass))
         )
         res = (await s.execute(stmt)).scalar_one_or_none()
-        if res and getattr(res, "schoolClass", None):
-            res.className = res.schoolClass.name
         return res
 
     if session:
@@ -259,8 +248,6 @@ async def update_student(
             .options(selectinload(Student.user), selectinload(Student.schoolClass))
         )
         res = (await s.execute(stmt)).scalar_one_or_none()
-        if res and getattr(res, "schoolClass", None):
-            res.className = res.schoolClass.name
         return res
 
     if session:

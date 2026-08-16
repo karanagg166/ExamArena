@@ -1,32 +1,59 @@
 name: exam-arena
 
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-exam_arena}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build:
       context: .
       dockerfile: backend/backend.Dockerfile
       target: dev
-      network: host
     container_name: exam_arena_backend
     restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@db:5432/exam_arena}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     env_file:
       - path: .env
         required: false        # ← this is the only change
     volumes:
       - ./backend:/app
-    
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   frontend:
     build:
       context: .
       dockerfile: frontend.Dockerfile
       target: dev                      # ← swap to "runner" for prod
-      network: host
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:8000
     container_name: exam_arena_frontend
@@ -40,7 +67,8 @@ services:
       - /app/node_modules              # ← preserves container's node_modules
       - /app/.next                     # ← preserves Next.js build cache
     depends_on:
-      - backend
+      backend:
+        condition: service_started
 
 volumes:
   postgres_data:

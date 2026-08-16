@@ -145,21 +145,21 @@ run_check "ESLint" \
   docker compose exec -T \
     -e NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:8000}" \
     -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}" \
-    frontend npm run lint
+    frontend pnpm lint
 
 run_check "TypeScript (tsc --noEmit)" \
   docker compose exec -T \
     -e NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:8000}" \
     -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}" \
-    frontend npx tsc --noEmit
+    frontend pnpm type-check
 
 run_check "Prettier format check" \
   docker compose exec -T frontend \
-    npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}"
+    pnpm exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}"
 
 echo ""
 echo -e "  ${YELLOW}💡 Auto-fix Prettier:${NC}"
-echo -e "     docker compose exec frontend npx prettier --write 'src/**/*.{ts,tsx,js,jsx,json,css,md}'"
+echo -e "     docker compose exec frontend pnpm exec prettier --write 'src/**/*.{ts,tsx,js,jsx,json,css,md}'"
 echo ""
 
 # ─────────────────────────────────────────────────────────────

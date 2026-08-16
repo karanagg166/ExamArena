@@ -46,7 +46,10 @@ class TestQuestionsApi:
             "questionType": "MULTIPLE_CHOICE",
             "examId": "clxfake_exam_001",
             "section": "General",
-            "options": [],
+            "options": [
+                {"text": "3", "optionNumber": 1, "isCorrect": False},
+                {"text": "4", "optionNumber": 2, "isCorrect": True},
+            ],
         }
         response = await client.post("/api/v1/questions", json=payload)
         assert response.status_code == 201
@@ -66,7 +69,10 @@ class TestQuestionsApi:
             "questionType": "MULTIPLE_CHOICE",
             "examId": "clxfake_exam_001",
             "section": "General",
-            "options": [],
+            "options": [
+                {"text": "3", "optionNumber": 1, "isCorrect": False},
+                {"text": "4", "optionNumber": 2, "isCorrect": True},
+            ],
         }
         response = await client.post("/api/v1/questions", json=payload)
         assert response.status_code == 403
@@ -87,7 +93,10 @@ class TestQuestionsApi:
             "questionType": "MULTIPLE_CHOICE",
             "examId": None,
             "section": "General",
-            "options": [],
+            "options": [
+                {"text": "3", "optionNumber": 1, "isCorrect": False},
+                {"text": "4", "optionNumber": 2, "isCorrect": True},
+            ],
         }
         response = await client.post("/api/v1/questions", json=payload)
         assert response.status_code == 400
@@ -134,6 +143,25 @@ class TestQuestionsApi:
             json={"text": "Updated text"},
         )
         assert response.status_code == 403
+
+    async def test_patch_rejects_teacher_who_does_not_own_exam(
+        self, client, override_auth, mock_questions_db
+    ):
+        override_auth(role="TEACHER")
+        mock_questions_db["get_teacher_by_user_id"].return_value = MagicMock(
+            id="teacher_001", schoolId="school_001"
+        )
+        mock_questions_db["get_question_by_id"].return_value = make_fake_question()
+        mock_questions_db["get_exam_by_id"].return_value.teacher = MagicMock(
+            id="teacher_002", schoolId="school_002"
+        )
+
+        response = await client.patch(
+            "/api/v1/questions/clxfake_q_001", json={"text": "Tampered"}
+        )
+
+        assert response.status_code == 403
+        mock_questions_db["update_question"].assert_not_awaited()
 
     async def test_delete_success(self, client, override_auth, mock_questions_db):
         override_auth(role="TEACHER")

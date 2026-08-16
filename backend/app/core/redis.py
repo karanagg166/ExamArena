@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import httpx
 import redis.asyncio as aioredis
@@ -18,7 +19,7 @@ class UpstashRedisRESTClient:
         self.client = httpx.AsyncClient(timeout=5.0)
         print("⚡ Initialized UpstashRedisRESTClient")
 
-    async def _execute(self, payload: list) -> any:
+    async def _execute(self, payload: list[Any]) -> Any:
         try:
             response = await self.client.post(
                 self.url, json=payload, headers=self.headers

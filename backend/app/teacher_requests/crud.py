@@ -73,7 +73,7 @@ def _to_response(req: TeacherClassJoinRequest) -> TeacherClassJoinRequestRespons
         schoolId=school_id,
         subject=(
             req.subject.value
-            if hasattr(req.subject, "value")
+            if req.subject is not None and hasattr(req.subject, "value")
             else (str(req.subject) if req.subject else None)
         ),
         status=(req.status.value if hasattr(req.status, "value") else str(req.status)),
@@ -112,6 +112,45 @@ def _to_school_request_response(
         decidedAt=req.decidedAt,
         decidedBy=req.decidedBy,
     )
+
+
+async def get_teacher_class_request_school_id(
+    request_id: str, session: AsyncSession | None = None
+) -> str | None:
+    """Resolve the school that owns a teacher-to-class request."""
+
+    async def _do_get(s: AsyncSession):
+        stmt = (
+            select(SchoolClass.schoolId)
+            .join(
+                TeacherClassJoinRequest,
+                TeacherClassJoinRequest.classId == SchoolClass.id,
+            )
+            .where(TeacherClassJoinRequest.id == request_id)
+        )
+        return (await s.execute(stmt)).scalar_one_or_none()
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)
+
+
+async def get_teacher_school_request_school_id(
+    request_id: str, session: AsyncSession | None = None
+) -> str | None:
+    """Resolve the school that owns a teacher-to-school request."""
+
+    async def _do_get(s: AsyncSession):
+        stmt = select(TeacherSchoolJoinRequest.schoolId).where(
+            TeacherSchoolJoinRequest.id == request_id
+        )
+        return (await s.execute(stmt)).scalar_one_or_none()
+
+    if session:
+        return await _do_get(session)
+    async with db.get_session() as s:
+        return await _do_get(s)
 
 
 async def create_teacher_class_request(

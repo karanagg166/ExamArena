@@ -36,6 +36,7 @@ export type Exam = {
   createdAt: string;
   updatedAt: string;
   questions?: Question[];
+  questionCount?: number;
   sections?: Section[];
   teacher?: {
     id: string;

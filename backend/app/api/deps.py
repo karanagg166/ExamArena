@@ -28,7 +28,7 @@ async def get_current_user(access_token: str = Cookie(None)):
 
 
 async def get_current_staff_teacher(
-    current_user: UserResponse = None,
+    current_user: UserResponse | None = None,
 ):
     """Dependency to get the Teacher profile for TEACHER, PRINCIPAL, or ADMIN roles."""
     if not current_user:

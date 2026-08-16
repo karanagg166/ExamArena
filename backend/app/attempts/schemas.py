@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from app.questions.schemas import QuestionType
 
@@ -99,6 +99,17 @@ class StudentExamSubmit(BaseModel):
 
     id: str
     answers: list[StudentAnswerUpdate]
+
+    @model_validator(mode="after")
+    def validate_unique_answer_references(self):
+        answer_ids = [answer.id for answer in self.answers]
+        if len(answer_ids) != len(set(answer_ids)):
+            raise ValueError("Each answer may only be submitted once")
+        for answer in self.answers:
+            option_ids = [item.optionId for item in answer.selectedOptions or []]
+            if len(option_ids) != len(set(option_ids)):
+                raise ValueError("Each option may only be selected once per answer")
+        return self
 
 
 class StudentExamUpdate(BaseModel):

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/axios";
 import { ExamPublicCard } from "@/components/exam/ExamPublicCard";
 import { ExamSearchFilters } from "@/components/exam/ExamSearchFilters";
@@ -26,7 +26,7 @@ export default function ExamsDiscoveryPage() {
     subject: "",
   });
 
-  const fetchExams = async () => {
+  const fetchExams = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -54,12 +54,12 @@ export default function ExamsDiscoveryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     const timer = setTimeout(fetchExams, 400);
     return () => clearTimeout(timer);
-  }, [filters]);
+  }, [fetchExams]);
 
   const hasActiveFilters = Object.values(filters).some(Boolean);
 

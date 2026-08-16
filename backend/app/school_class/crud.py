@@ -1,13 +1,14 @@
 import json
 import secrets
 import string
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import app.core.database as db
-from app.core.models import SchoolClass, TeacherClass
+from app.core.models import SchoolClass, Subject, TeacherClass
 from app.school.crud import get_school_by_user_id
 from app.school_class.schemas import (
     ClassTeacherResponse,
@@ -257,9 +258,10 @@ async def assign_student_to_class(
         student = (await s.execute(student_stmt)).scalar_one_or_none()
         if not student:
             return False
+        if student.schoolId != school_class.schoolId:
+            return False
 
         student.classId = class_id
-        student.schoolId = school_class.schoolId
         await s.commit()
         return True
 
@@ -297,7 +299,13 @@ async def assign_teacher_to_class(
         )
         existing = (await s.execute(existing_stmt)).scalar_one_or_none()
         if not existing:
-            s.add(TeacherClass(classId=class_id, teacherId=teacher_id))
+            s.add(
+                TeacherClass(
+                    classId=class_id,
+                    teacherId=teacher_id,
+                    subject=Subject.MATHS,
+                )
+            )
             await s.commit()
         return True
 
@@ -329,7 +337,7 @@ async def get_class_exam_results(
         students = (await s.execute(students_stmt)).scalars().all()
 
         student_results = []
-        exam_map = {}
+        exam_map: dict[str, dict[str, Any]] = {}
         all_percentages = []
 
         for st in students:

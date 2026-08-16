@@ -68,7 +68,7 @@ export default function ExamStartPage() {
       // Create attempt backend side with optional examCode
       const res = await api.post('/api/v1/attempts/start', {
         examId,
-        examCode: examCodeInput.trim().toUpperCase() || undefined,
+        examCode: examCodeInput.trim() || undefined,
       });
       const attemptData = res.data; // StudentExamResponse
 
@@ -166,7 +166,7 @@ export default function ExamStartPage() {
                </div>
                <div>
                    <p className="text-xs text-[var(--text-dimmed)] uppercase mb-1">Questions</p>
-                   <p className="text-white font-medium">{exam.questions?.length ?? 0}</p>
+                   <p className="text-white font-medium">{exam.questionCount ?? exam.questions?.length ?? 0}</p>
                </div>
                 <div>
                    <p className="text-xs text-[var(--text-dimmed)] uppercase mb-1">Type</p>

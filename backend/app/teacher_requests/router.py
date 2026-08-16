@@ -158,11 +158,10 @@ async def decide_teacher_class_request(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Principal approves or rejects a teacher class join request"""
-    if current_user.role not in (Role.PRINCIPAL, Role.ADMIN):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only school principals or admins can decide teacher join requests.",
-        )
+    school_id = await crud.get_teacher_class_request_school_id(request_id)
+    if not school_id:
+        raise HTTPException(status_code=404, detail="Join request not found")
+    await _verify_principal_access(current_user, school_id)
 
     try:
         return await crud.decide_teacher_class_request(
@@ -200,11 +199,10 @@ async def decide_teacher_school_request(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Principal approves or rejects a teacher school join request"""
-    if current_user.role not in (Role.PRINCIPAL, Role.ADMIN):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only school principals or admins can decide school join requests.",
-        )
+    school_id = await crud.get_teacher_school_request_school_id(request_id)
+    if not school_id:
+        raise HTTPException(status_code=404, detail="School join request not found")
+    await _verify_principal_access(current_user, school_id)
 
     try:
         return await crud.decide_teacher_school_request(

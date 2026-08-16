@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class QuestionType(StrEnum):
@@ -14,12 +14,12 @@ class QuestionType(StrEnum):
 
 class QuestionBase(BaseModel):
     text: str
-    marks: int = 1
-    negativeMarks: float | None = None
-    questionNumber: int = 1
+    marks: int = Field(default=1, gt=0)
+    negativeMarks: float | None = Field(default=None, ge=0)
+    questionNumber: int = Field(default=1, gt=0)
     questionType: QuestionType = QuestionType.MULTIPLE_CHOICE
     imageUrl: str | None = None
-    wordLimit: int | None = None
+    wordLimit: int | None = Field(default=None, gt=0)
     explanation: str | None = None
     examId: str | None = None
     sectionId: str | None = None
@@ -35,7 +35,7 @@ class QuestionBase(BaseModel):
 
 class QuestionOptionBase(BaseModel):
     text: str
-    optionNumber: int
+    optionNumber: int = Field(gt=0)
     imageUrl: str | None = None
 
     @field_validator("text")
@@ -71,16 +71,48 @@ class QuestionOptionUpdate(BaseModel):
 class QuestionCreateRequest(QuestionBase):
     options: list[QuestionOptionCreate] | None = None
 
+    @model_validator(mode="after")
+    def validate_objective_options(self):
+        objective_types = {
+            QuestionType.MULTIPLE_CHOICE,
+            QuestionType.MULTIPLE_SELECT,
+            QuestionType.TRUE_FALSE,
+        }
+        if self.questionType not in objective_types:
+            return self
+
+        options = self.options or []
+        if not options:
+            raise ValueError("Objective questions must include answer options")
+        if self.questionType == QuestionType.TRUE_FALSE and len(options) != 2:
+            raise ValueError("True/False questions must have exactly two options")
+
+        correct_count = sum(option.isCorrect for option in options)
+        if correct_count == 0:
+            raise ValueError("Objective questions must include a correct option")
+        if (
+            self.questionType
+            in (
+                QuestionType.MULTIPLE_CHOICE,
+                QuestionType.TRUE_FALSE,
+            )
+            and correct_count != 1
+        ):
+            raise ValueError(
+                "Single-choice questions must have exactly one correct option"
+            )
+        return self
+
 
 class QuestionUpdateRequest(BaseModel):
     id: str | None = None
     text: str | None = None
-    marks: int | None = None
-    negativeMarks: float | None = None
-    questionNumber: int | None = None
+    marks: int | None = Field(default=None, gt=0)
+    negativeMarks: float | None = Field(default=None, ge=0)
+    questionNumber: int | None = Field(default=None, gt=0)
     questionType: QuestionType | None = None
     imageUrl: str | None = None
-    wordLimit: int | None = None
+    wordLimit: int | None = Field(default=None, gt=0)
     explanation: str | None = None
     section: str | None = None
     options: list[QuestionOptionUpdate] | None = None

@@ -27,6 +27,7 @@ router = APIRouter(prefix="/api/v1/students", tags=["students"])
 
 @router.get("", response_model=list[StudentListItemResponse])
 async def fetch_students(
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
     name: str | None = None,
     email: str | None = None,
     rollNo: str | None = None,
@@ -34,7 +35,6 @@ async def fetch_students(
     section: str | None = None,
     schoolName: str | None = None,
     schoolCode: str | None = None,
-    current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
 ):
     """
     List students with optional filters.

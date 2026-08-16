@@ -207,6 +207,14 @@ class Student(Base):
         "StudentExam", back_populates="student", cascade="all, delete-orphan"
     )
 
+    @property
+    def className(self) -> str | None:
+        return self.schoolClass.name if self.schoolClass else None
+
+    @property
+    def schoolName(self) -> str | None:
+        return self.school.name if self.school else None
+
 
 class Teacher(Base):
     __tablename__ = "Teacher"

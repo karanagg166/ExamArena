@@ -11,8 +11,9 @@ from tests.dummy_data.teachers import make_fake_teacher
 def make_teacher_info_dict():
     return {
         "id": "clxfake_teacher_001",
+        "schoolId": "clxfake_school_001",
         "user": {"name": "Teacher User"},
-        "school": {"name": "Test School"},
+        "school": {"id": "clxfake_school_001", "name": "Test School"},
     }
 
 
@@ -34,6 +35,34 @@ def make_student_exam_dict():
         "studentStatus": "IN_PROGRESS",
         "attemptId": "clxfake_se_001",
     }
+
+
+def make_question_with_solution() -> MagicMock:
+    option = MagicMock()
+    option.id = "opt_1"
+    option.questionId = "q_1"
+    option.text = "4"
+    option.optionNumber = 1
+    option.imageUrl = None
+    option.isCorrect = True
+
+    question = MagicMock()
+    question.id = "q_1"
+    question.text = "What is 2 + 2?"
+    question.marks = 1
+    question.negativeMarks = None
+    question.questionNumber = 1
+    question.questionType = "MULTIPLE_CHOICE"
+    question.imageUrl = None
+    question.wordLimit = None
+    question.explanation = "2 + 2 is 4"
+    question.examId = "clxfake_exam_001"
+    question.sectionId = None
+    question.section = "Section A"
+    question.createdAt = datetime(2026, 1, 1)
+    question.updatedAt = datetime(2026, 1, 1)
+    question.options = [option]
+    return question
 
 
 @pytest.mark.asyncio
@@ -158,6 +187,26 @@ class TestExamsApi:
             code=None,
         )
 
+    async def test_public_exam_never_exposes_password_or_solutions(
+        self, client, override_auth, mock_exams_db
+    ):
+        override_auth(role="STUDENT")
+        fake_exam = make_fake_exam(
+            {
+                "isPublished": True,
+                "accessPassword": "Secret-Case-123",
+                "questions": [make_question_with_solution()],
+            }
+        )
+        mock_exams_db["get_published_exams"].return_value = [fake_exam]
+
+        response = await client.get("/api/v1/exams/public")
+
+        assert response.status_code == 200
+        assert response.json()[0]["accessPassword"] is None
+        assert response.json()[0]["questionCount"] == 1
+        assert response.json()[0]["questions"] == []
+
     async def test_public_with_filters(self, client, override_auth, mock_exams_db):
         override_auth(role="STUDENT")
         mock_exams_db["get_published_exams"].return_value = []
@@ -211,6 +260,7 @@ class TestExamsApi:
     # ── GET /api/v1/exams/{exam_id} ─────────────────────────────
     async def test_get_exam_teacher(self, client, override_auth, mock_exams_db):
         override_auth(role="TEACHER")
+        mock_exams_db["get_teacher_by_user_id"].return_value = make_fake_teacher()
         fake_exam = make_fake_exam()
         mock_exams_db["get_exam_by_id"].return_value = fake_exam
 
@@ -238,7 +288,20 @@ class TestExamsApi:
         q1 = MagicMock()
         q1.id = "q1"
         q1.text = "Question 1"
-        fake_exam = make_fake_exam({"questions": [q1]})
+        q1.marks = 1
+        q1.negativeMarks = None
+        q1.questionNumber = 1
+        q1.questionType = "MULTIPLE_CHOICE"
+        q1.imageUrl = None
+        q1.wordLimit = None
+        q1.explanation = "Answer explanation"
+        q1.examId = "clxfake_exam_001"
+        q1.sectionId = None
+        q1.section = "Section A"
+        q1.createdAt = datetime(2026, 1, 1)
+        q1.updatedAt = datetime(2026, 1, 1)
+        q1.options = []
+        fake_exam = make_fake_exam({"questions": [q1], "isPublished": True})
         mock_exams_db["get_exam_by_id"].return_value = fake_exam
 
         # Student hasn't started exam yet -> scalar_one_or_none returns None
@@ -252,6 +315,33 @@ class TestExamsApi:
         assert data["id"] == fake_exam.id
         assert data["questionCount"] == 1
         assert data["questions"] == []  # stripped!
+
+    async def test_active_exam_hides_solution_flags_from_student(
+        self, client, override_auth, mock_exams_db
+    ):
+        override_auth(role="STUDENT")
+        mock_exams_db[
+            "student_crud_get_student_by_user_id"
+        ].return_value = make_fake_student()
+        fake_exam = make_fake_exam(
+            {
+                "isPublished": True,
+                "accessPassword": "Secret-Case-123",
+                "questions": [make_question_with_solution()],
+            }
+        )
+        mock_exams_db["get_exam_by_id"].return_value = fake_exam
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = MagicMock(status="IN_PROGRESS")
+        mock_exams_db["mock_session"].execute.return_value = mock_result
+
+        response = await client.get(f"/api/v1/exams/{fake_exam.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["accessPassword"] is None
+        assert data["questions"][0]["explanation"] is None
+        assert data["questions"][0]["options"][0]["isCorrect"] is False
 
     # ── PATCH /api/v1/exams/{exam_id} ───────────────────────────
     async def test_patch_success(self, client, override_auth, mock_exams_db):
@@ -334,8 +424,8 @@ class TestExamsApi:
         self, client, override_auth, mock_exams_db
     ):
         override_auth(role="PRINCIPAL")
-        fake_school = MagicMock(id="school_123")
-        mock_exams_db["get_school_by_user_id"].return_value = fake_school
+        principal_teacher = make_fake_teacher({"schoolId": "school_123"})
+        mock_exams_db["get_teacher_by_user_id"].return_value = principal_teacher
 
         fake_exam = make_fake_exam()
         fake_exam.teacher.schoolId = "school_123"
