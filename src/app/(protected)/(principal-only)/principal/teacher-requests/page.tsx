@@ -31,7 +31,7 @@ import {
 import { api } from "@/lib/axios";
 import type { ClassJoinRequest } from "@/types";
 
-export default function PrincipalTeacherRequestsPage() {
+function PrincipalTeacherRequestsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -835,6 +835,20 @@ export default function PrincipalTeacherRequestsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PrincipalTeacherRequestsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Spinner className="h-8 w-8 border-4" />
+        </div>
+      }
+    >
+      <PrincipalTeacherRequestsContent />
+    </React.Suspense>
   );
 }
 
