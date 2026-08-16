@@ -97,7 +97,7 @@ export default function CreateExamPage() {
         )}
 
         <ExamForm
-          exam={exam}
+          exam={{ ...exam, maxMarks }}
           onChange={(updates) => setExam((prev) => ({ ...prev, ...updates }))}
         />
 

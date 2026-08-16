@@ -155,7 +155,7 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="duration">Duration (mins) <span className="text-red-400">*</span></Label>
               <Input
@@ -170,18 +170,14 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
                 error={exam.duration !== undefined && exam.duration < 5 ? "Minimum duration is 5 mins" : undefined}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="maxMarks">Max Marks <span className="text-red-400">*</span></Label>
-              <Input
-                id="maxMarks"
-                type="number"
-                min="1"
-                inputMode="numeric"
-                onKeyDown={blockNonDigits}
-                value={exam.maxMarks || ""}
-                onChange={(e) => onChange({ maxMarks: parseInt(e.target.value) || 0 })}
-                error={exam.maxMarks !== undefined && exam.maxMarks < 1 ? "Max marks must be at least 1" : undefined}
-              />
+            <div className="space-y-1.5 flex flex-col justify-end">
+              <Label className="text-[var(--text-muted)] text-xs">Total / Max Marks (Auto-Calculated)</Label>
+              <div className="h-10 px-3 py-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)]/60 flex items-center justify-between">
+                <span className="text-xs text-[var(--text-muted)]">Sum of all question marks</span>
+                <span className="font-semibold text-white bg-indigo-600/30 border border-indigo-500/40 px-2.5 py-0.5 rounded-md text-sm">
+                  {exam.maxMarks || 0} Marks
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -232,54 +228,6 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
               />
               <p className="text-xs text-[var(--text-muted)]">
                 Students must enter this password to begin the exam.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Negative Marking Policy */}
-        <div className="p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)]/40 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <Label className="text-sm font-semibold text-[var(--text-primary)]">Default Exam Negative Marking</Label>
-              <p className="text-xs text-[var(--text-muted)]">
-                Default penalty for wrong answers across the exam. Note: you can also configure negative marking individually per Section below!
-              </p>
-            </div>
-            <div className="inline-flex rounded-xl border border-[var(--border-default)] p-1 bg-[var(--surface-1)] shrink-0">
-              <Button
-                type="button"
-                size="sm"
-                variant={exam.negativeMarking ? "secondary" : "ghost"}
-                onClick={() => onChange({ negativeMarking: true, negativeMarks: exam.negativeMarks || 1.0 })}
-              >
-                Enabled
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={!exam.negativeMarking ? "secondary" : "ghost"}
-                onClick={() => onChange({ negativeMarking: false, negativeMarks: 0 })}
-              >
-                Disabled
-              </Button>
-            </div>
-          </div>
-
-          {exam.negativeMarking && (
-            <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
-              <Label htmlFor="negativeMarks">Default Deduction per Wrong Answer (Marks)</Label>
-              <Input
-                id="negativeMarks"
-                type="number"
-                step="0.25"
-                min="0.25"
-                placeholder="e.g. 1 or 0.25"
-                value={exam.negativeMarks ?? 1.0}
-                onChange={(e) => onChange({ negativeMarks: parseFloat(e.target.value) || 0 })}
-              />
-              <p className="text-xs text-[var(--text-muted)]">
-                Sections with their own negative marking settings will override this default.
               </p>
             </div>
           )}

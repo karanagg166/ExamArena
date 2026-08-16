@@ -14,16 +14,16 @@ class QuestionType(StrEnum):
 
 class QuestionBase(BaseModel):
     text: str
-    marks: int
+    marks: int = 1
     negativeMarks: float | None = None
-    questionNumber: int
-    questionType: QuestionType
+    questionNumber: int = 1
+    questionType: QuestionType = QuestionType.MULTIPLE_CHOICE
     imageUrl: str | None = None
     wordLimit: int | None = None
     explanation: str | None = None
     examId: str | None = None
     sectionId: str | None = None
-    section: str
+    section: str = "Section A"
 
     @field_validator("text")
     @classmethod

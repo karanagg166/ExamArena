@@ -34,14 +34,14 @@ class ExamBase(BaseModel):
     description: str
     scheduledAt: datetime
     duration: int
-    maxMarks: int
+    maxMarks: int = 0
     instructions: str | None = None
     isPublished: bool = False
     isPublic: bool = True
     isResultsReleased: bool = False
     negativeMarking: bool = False
     negativeMarks: float = 0.0
-    subject: Subject | None = None
+    subject: str | None = None
     type: ExamType
     examCode: str | None = None
     accessPassword: str | None = None
@@ -64,7 +64,7 @@ class ExamUpdateRequest(BaseModel):
     isResultsReleased: bool | None = None
     negativeMarking: bool | None = None
     negativeMarks: float | None = None
-    subject: Subject | None = None
+    subject: str | None = None
     type: ExamType | None = None
     examCode: str | None = None
     accessPassword: str | None = None
@@ -72,18 +72,18 @@ class ExamUpdateRequest(BaseModel):
 
 
 class SchoolInfo(BaseModel):
-    name: str
+    name: str = "School"
     model_config = ConfigDict(from_attributes=True)
 
 
 class UserInfo(BaseModel):
-    name: str
+    name: str = "Teacher"
     model_config = ConfigDict(from_attributes=True)
 
 
 class TeacherInfo(BaseModel):
     id: str
-    user: UserInfo
+    user: UserInfo | None = None
     school: SchoolInfo | None = None
     model_config = ConfigDict(from_attributes=True)
 

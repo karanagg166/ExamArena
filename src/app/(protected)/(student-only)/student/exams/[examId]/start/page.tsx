@@ -129,28 +129,16 @@ export default function ExamStartPage() {
                </div>
            </div>
 
-           {/* Negative Marking & Access Info */}
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
-               <p className="text-xs text-[var(--text-dimmed)] uppercase font-semibold">Marking Policy</p>
-               <p className="text-sm font-medium text-white mt-0.5">
-                 {exam.negativeMarking ? (
-                   <span className="text-amber-400">⚠️ Negative Marking Enabled (-{exam.negativeMarks} per wrong answer)</span>
-                 ) : (
-                   <span className="text-emerald-400">✅ No Negative Marking (0 for wrong answers)</span>
-                 )}
-               </p>
-             </div>
-             <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
-               <p className="text-xs text-[var(--text-dimmed)] uppercase font-semibold">Access Policy</p>
-               <p className="text-sm font-medium text-white mt-0.5">
-                 {exam.isPublic !== false ? (
-                   <span className="text-emerald-400">🌐 Public Exam (Open to school students)</span>
-                 ) : (
-                   <span className="text-amber-400">🔒 Code-Protected Exam</span>
-                 )}
-               </p>
-             </div>
+           {/* Access Info */}
+           <div className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+             <p className="text-xs text-[var(--text-dimmed)] uppercase font-semibold">Access Policy</p>
+             <p className="text-sm font-medium text-white mt-0.5">
+               {exam.isPublic !== false ? (
+                 <span className="text-emerald-400">🌐 Public Exam (Open to school students)</span>
+               ) : (
+                 <span className="text-amber-400">🔒 Code-Protected Exam</span>
+               )}
+             </p>
            </div>
 
            {exam.isPublic === false && (

@@ -33,6 +33,8 @@ async def create_new_exam(
     teacher = await get_teacher_from_user(current_user)
     try:
         return await crud.create_exam(exam_data, teacher.id)
+    except HTTPException:
+        raise
     except (ValueError, ValidationError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -41,7 +43,7 @@ async def create_new_exam(
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail="Failed to create exam. Please retry.",
+            detail=f"Failed to create exam: {exc}",
         ) from exc
 
 

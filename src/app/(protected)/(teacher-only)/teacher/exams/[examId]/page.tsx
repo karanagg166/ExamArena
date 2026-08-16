@@ -365,12 +365,6 @@ export default function ExamViewPage() {
                     </div>
                   )}
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-[var(--text-muted)]">Default Negative</span>
-                    <span className="text-white font-medium text-xs">
-                      {exam.negativeMarking ? `-${exam.negativeMarks} Marks` : "Disabled"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
                     <span className="text-[var(--text-muted)]">Results Status</span>
                     <Badge variant={exam.isResultsReleased ? "success" : "neutral"} className="text-[10px]">
                       {exam.isResultsReleased ? "Released" : "Pending Release"}

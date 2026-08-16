@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -8,7 +10,9 @@ from app.core.models import (
     ExamSection,
     Question,
     QuestionOption,
+    QuestionType,
     School,
+    Subject,
     Teacher,
     User,
     generate_exam_code,
@@ -27,39 +31,126 @@ EXAM_OPTIONS = [
 ]
 
 
+def normalize_subject(subject_val: str | Subject | None) -> Subject | None:
+    """Normalize user or enum subject string to valid Subject enum value."""
+    if not subject_val:
+        return None
+    val = (
+        subject_val.value if hasattr(subject_val, "value") else str(subject_val).strip()
+    )
+    val_upper = val.upper().replace(" ", "_")
+    mapping = {
+        "MATHS": Subject.MATHS,
+        "MATHEMATICS": Subject.MATHS,
+        "MATH": Subject.MATHS,
+        "SCIENCE": Subject.SCIENCE,
+        "PHYSICS": Subject.SCIENCE,
+        "CHEMISTRY": Subject.SCIENCE,
+        "BIOLOGY": Subject.SCIENCE,
+        "HISTORY": Subject.HISTORY,
+        "LITERATURE": Subject.LITERATURE,
+        "ENGLISH": Subject.LITERATURE,
+        "ART": Subject.ART,
+        "MUSIC": Subject.MUSIC,
+        "PHYSICAL_EDUCATION": Subject.PHYSICAL_EDUCATION,
+        "PE": Subject.PHYSICAL_EDUCATION,
+        "PHYSICAL EDUCATION": Subject.PHYSICAL_EDUCATION,
+    }
+    return mapping.get(val_upper)
+
+
 async def create_exam(
     exam_data: ExamCreateRequest, teacher_id: str, session: AsyncSession | None = None
 ) -> ExamResponse:
-    questions_list = []
-    if exam_data.questions:
-        for q in exam_data.questions:
-            options = []
-            if q.options:
-                options = [
-                    QuestionOption(
-                        text=o.text,
-                        optionNumber=o.optionNumber,
-                        isCorrect=o.isCorrect,
-                        imageUrl=o.imageUrl,
-                    )
-                    for o in q.options
-                ]
+    section_map: dict[str, ExamSection] = {}
+    questions_list: list[Question] = []
 
+    if exam_data.questions:
+        section_q_count: dict[str, int] = {}
+
+        for q in exam_data.questions:
+            sec_name = (q.section or "Section A").strip()
+            if not sec_name:
+                sec_name = "Section A"
+
+            if sec_name not in section_map:
+                match = re.match(r"^Section ([A-Z])$", sec_name)
+                sort_order = (
+                    (ord(match.group(1)) - ord("A") + 1)
+                    if match
+                    else len(section_map) + 1
+                )
+                q_type = (
+                    q.questionType
+                    if isinstance(q.questionType, QuestionType)
+                    else (
+                        QuestionType(str(q.questionType))
+                        if q.questionType
+                        else QuestionType.MULTIPLE_CHOICE
+                    )
+                )
+                neg_marked = bool(q.negativeMarks and q.negativeMarks > 0)
+                sec = ExamSection(
+                    name=sec_name,
+                    questionType=q_type,
+                    marksPerQuestion=q.marks or 1,
+                    negativeMarking=neg_marked,
+                    negativeMarks=float(q.negativeMarks or 0.0),
+                    sortOrder=sort_order,
+                )
+                section_map[sec_name] = sec
+
+            current_count = section_q_count.get(sec_name, 0) + 1
+            section_q_count[sec_name] = current_count
+
+            options: list[QuestionOption] = []
+            if q.options:
+                for idx, o in enumerate(q.options, start=1):
+                    options.append(
+                        QuestionOption(
+                            text=o.text,
+                            optionNumber=o.optionNumber if o.optionNumber else idx,
+                            isCorrect=bool(o.isCorrect),
+                            imageUrl=o.imageUrl,
+                        )
+                    )
+
+            q_type = (
+                q.questionType
+                if isinstance(q.questionType, QuestionType)
+                else (
+                    QuestionType(str(q.questionType))
+                    if q.questionType
+                    else QuestionType.MULTIPLE_CHOICE
+                )
+            )
+
+            q_num = q.questionNumber if q.questionNumber else current_count
             question = Question(
                 text=q.text,
-                marks=q.marks,
-                questionNumber=q.questionNumber,
-                questionType=q.questionType,
+                marks=q.marks if q.marks else 1,
+                questionNumber=q_num,
+                questionType=q_type,
                 imageUrl=q.imageUrl,
                 wordLimit=q.wordLimit,
                 explanation=q.explanation,
-                section=q.section,
+                section=sec_name,
+                negativeMarks=float(q.negativeMarks or 0.0),
+                examSection=section_map[sec_name],
                 options=options,
             )
             questions_list.append(question)
 
     computed_max_marks = (
-        sum(q.marks for q in questions_list) if questions_list else exam_data.maxMarks
+        sum(q.marks for q in questions_list)
+        if questions_list
+        else (exam_data.maxMarks or 1)
+    )
+
+    clean_code = (
+        exam_data.examCode.strip()
+        if exam_data.examCode and exam_data.examCode.strip()
+        else generate_exam_code()
     )
 
     data = {
@@ -74,19 +165,24 @@ async def create_exam(
         "accessPassword": exam_data.accessPassword,
         "isResultsReleased": exam_data.isResultsReleased,
         "negativeMarking": exam_data.negativeMarking,
-        "negativeMarks": exam_data.negativeMarks,
+        "negativeMarks": float(exam_data.negativeMarks or 0.0),
         "type": exam_data.type,
         "teacherId": teacher_id,
         "questions": questions_list,
-        "examCode": exam_data.examCode.strip()
-        if exam_data.examCode and exam_data.examCode.strip()
-        else generate_exam_code(),
+        "sections": list(section_map.values()),
+        "examCode": clean_code,
     }
 
-    if exam_data.subject:
-        data["subject"] = exam_data.subject
+    normalized_subj = normalize_subject(exam_data.subject)
+    if normalized_subj:
+        data["subject"] = normalized_subj
 
     async def _do_create(s: AsyncSession):
+        # Guard against code collision
+        code_stmt = select(Exam.id).where(Exam.examCode == clean_code)
+        if (await s.execute(code_stmt)).scalar_one_or_none():
+            data["examCode"] = generate_exam_code()
+
         exam = Exam(**data)
         s.add(exam)
         await s.commit()
@@ -288,6 +384,8 @@ async def update_exam(
     exam_id: str, update_data: ExamUpdateRequest, session: AsyncSession | None = None
 ) -> ExamResponse | None:
     update_dict = update_data.model_dump(exclude_unset=True, exclude={"questions"})
+    if "subject" in update_dict:
+        update_dict["subject"] = normalize_subject(update_dict["subject"])
 
     async def _do_update(s: AsyncSession):
         stmt = select(Exam).where(Exam.id == exam_id).options(*EXAM_OPTIONS)

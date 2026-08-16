@@ -156,7 +156,7 @@ export default function EditExamPage() {
 
         {/* ── Exam Form ─────────────────────────────────────────────────── */}
         <ExamForm
-          exam={exam as unknown as Exam} // Type assertion to satisfy ExamForm's expected type
+          exam={{ ...exam, maxMarks: computedMaxMarks } as unknown as Exam}
           onChange={(updates) => setExam((prev) => ({ ...prev, ...updates }))}
         />
 
