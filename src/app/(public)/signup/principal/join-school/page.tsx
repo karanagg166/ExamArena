@@ -94,13 +94,21 @@ export default function PrincipalJoinSchoolPage() {
         ) : null}
 
         {!loading && schools.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              No schools found
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center space-y-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              No Schools Registered Yet
             </p>
-            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Create a school instead to become principal.
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              There are no existing schools in the system right now. You can create your own school to start managing your institute.
             </p>
+            <div className="pt-2">
+              <Button
+                onClick={() => router.push("/signup/principal/create-school")}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                Create Your School Now →
+              </Button>
+            </div>
           </div>
         ) : null}
 

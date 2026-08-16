@@ -34,16 +34,25 @@ async def _get_authorized_teacher_id(current_user: UserResponse, school_id: str)
         )
 
     teacher = await get_teacher_by_user_id(current_user.id)
-    if not teacher or teacher.schoolId != school_id:
-        raise HTTPException(status_code=403, detail="Access denied for this school.")
+    if current_user.role == Role.ADMIN:
+        return teacher.id if teacher else current_user.id
+
+    if teacher and teacher.schoolId == school_id:
+        return teacher.id
 
     if current_user.role == Role.PRINCIPAL:
-        principal = await get_principal_by_teacher_id(teacher.id)
-        if not principal or principal.schoolId != school_id:
-            raise HTTPException(
-                status_code=403, detail="Access denied for this school."
-            )
-    return teacher.id
+        from app.school.crud import get_school_by_user_id
+
+        user_school = await get_school_by_user_id(current_user.id)
+        if user_school and user_school.id == school_id:
+            return teacher.id if teacher else current_user.id
+
+        if teacher:
+            principal = await get_principal_by_teacher_id(teacher.id)
+            if principal and principal.schoolId == school_id:
+                return teacher.id
+
+    raise HTTPException(status_code=403, detail="Access denied for this school.")
 
 
 @router.post(

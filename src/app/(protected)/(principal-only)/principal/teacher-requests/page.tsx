@@ -15,6 +15,8 @@ import {
   Search,
   Hash,
   GraduationCap,
+  RefreshCw,
+  Plus,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/ui/page-header";
@@ -68,26 +70,37 @@ export default function PrincipalTeacherRequestsPage() {
     decideRequest: decideStudentRequest,
   } = useJoinRequestStore();
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
-      const schoolRes = await api.get<{ id: string }>("/api/v1/schools/my-school");
-      const sid = schoolRes.data.id;
-      setSchoolId(sid);
+      const schoolRes = await api.get<{ id: string }>("/api/v1/schools/me");
+      const sid = schoolRes.data?.id;
+      setSchoolId(sid || null);
 
-      await Promise.all([
-        fetchSchoolTeacherSchoolRequests(sid),
-        fetchSchoolTeacherClassRequests(sid),
-        fetchStudentRequests(sid),
-      ]);
+      if (sid) {
+        await Promise.allSettled([
+          fetchSchoolTeacherSchoolRequests(sid),
+          fetchSchoolTeacherClassRequests(sid),
+          fetchStudentRequests(sid),
+        ]);
+      }
     } catch (err: unknown) {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail;
-      setError(detail ?? "Failed to load school requests.");
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) {
+        setSchoolId(null);
+      } else {
+        const detail =
+          (err as { response?: { data?: { detail?: string } } })?.response?.data
+            ?.detail;
+        if (!silent) {
+          setError(detail ?? "Failed to load school requests.");
+        }
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [
     fetchSchoolTeacherSchoolRequests,
@@ -96,7 +109,14 @@ export default function PrincipalTeacherRequestsPage() {
   ]);
 
   useEffect(() => {
-    loadData();
+    loadData(false);
+
+    // Auto-poll every 12 seconds for real-time join request updates
+    const interval = setInterval(() => {
+      loadData(true);
+    }, 12000);
+
+    return () => clearInterval(interval);
   }, [loadData]);
 
   // Handler for Teacher School Request Decision
@@ -225,16 +245,27 @@ export default function PrincipalTeacherRequestsPage() {
         <PageHeader
           overline="School Administration"
           title="School Requests & Admissions"
-          subtitle="Manage incoming faculty join requests, teaching class assignments, and student enrollment approvals."
+          subtitle="Manage incoming faculty join requests, teaching class assignments, and student enrollment approvals in real-time."
           actions={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push("/principal")}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft size={16} /> Back to Dashboard
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => loadData(false)}
+                disabled={loading}
+                className="flex items-center gap-2 text-xs"
+              >
+                <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push("/principal")}
+                className="flex items-center gap-2 text-xs"
+              >
+                <ArrowLeft size={14} /> Back to Dashboard
+              </Button>
+            </div>
           }
         />
 
@@ -400,10 +431,32 @@ export default function PrincipalTeacherRequestsPage() {
             <Spinner className="h-8 w-8 text-indigo-600 mx-auto" />
             <p className="mt-2 text-sm text-slate-500">Loading requests...</p>
           </div>
+        ) : !schoolId ? (
+          <GlassCard padding="lg" className="text-center py-16 space-y-4 max-w-lg mx-auto">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              <Building2 className="h-8 w-8" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                No School Associated Yet
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-zinc-400">
+                You must establish or join a school before receiving faculty and student enrollment requests.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <Button onClick={() => router.push("/signup/principal/create-school")} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Plus className="mr-2 h-4 w-4" /> Create School
+              </Button>
+              <Button variant="outline" onClick={() => loadData(false)}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+              </Button>
+            </div>
+          </GlassCard>
         ) : error ? (
           <GlassCard padding="lg" className="text-center py-12 space-y-3">
             <p className="text-red-500 font-bold">{error}</p>
-            <Button onClick={loadData} variant="outline" size="sm">
+            <Button onClick={() => loadData(false)} variant="outline" size="sm">
               Retry
             </Button>
           </GlassCard>

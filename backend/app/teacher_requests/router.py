@@ -56,6 +56,37 @@ async def list_my_teacher_class_requests(
     return await crud.get_teacher_requests_for_teacher(teacher.id)
 
 
+async def _verify_principal_access(current_user: UserResponse, school_id: str) -> None:
+    if current_user.role not in (Role.PRINCIPAL, Role.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only school principals or admins can view/manage teacher requests.",
+        )
+    if current_user.role == Role.ADMIN:
+        return
+
+    # 1. Check if user created or manages this school directly
+    from app.school.crud import get_school_by_user_id
+
+    user_school = await get_school_by_user_id(current_user.id)
+    if user_school and user_school.id == school_id:
+        return
+
+    # 2. Check via Teacher/Principal tables
+    teacher = await get_teacher_by_user_id(current_user.id)
+    if teacher:
+        principal = await get_principal_by_teacher_id(teacher.id)
+        if principal and principal.schoolId == school_id:
+            return
+        if teacher.schoolId == school_id:
+            return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Access denied for this school.",
+    )
+
+
 @router.get(
     "/school/{school_id}",
     response_model=list[TeacherClassJoinRequestResponse],
@@ -66,26 +97,7 @@ async def list_school_teacher_requests(
     status_filter: str | None = None,
 ):
     """Principal lists teacher class join requests for their school"""
-    if current_user.role not in (Role.PRINCIPAL, Role.ADMIN):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only school principals or admins can view teacher join requests.",
-        )
-
-    if current_user.role == Role.PRINCIPAL:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Principal staff profile not found.",
-            )
-        principal = await get_principal_by_teacher_id(teacher.id)
-        if not principal or principal.schoolId != school_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied for this school.",
-            )
-
+    await _verify_principal_access(current_user, school_id)
     return await crud.get_teacher_requests_by_school(school_id, status_filter)
 
 
@@ -174,26 +186,7 @@ async def list_school_teacher_join_requests(
     status_filter: str | None = None,
 ):
     """Principal lists teacher school join requests for their school"""
-    if current_user.role not in (Role.PRINCIPAL, Role.ADMIN):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only school principals or admins can view teacher join requests.",
-        )
-
-    if current_user.role == Role.PRINCIPAL:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Principal staff profile not found.",
-            )
-        principal = await get_principal_by_teacher_id(teacher.id)
-        if not principal or principal.schoolId != school_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied for this school.",
-            )
-
+    await _verify_principal_access(current_user, school_id)
     return await crud.get_teacher_school_requests_for_school(school_id, status_filter)
 
 

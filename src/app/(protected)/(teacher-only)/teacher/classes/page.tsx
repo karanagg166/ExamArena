@@ -16,7 +16,7 @@ import { api } from "@/lib/axios";
 
 export default function PrincipalSchoolClassPage() {
   const router = useRouter();
-  const { school, loading: schoolLoading, fetchSchool } = useSchoolStore();
+  const { school, loading: schoolLoading, hasFetched, fetchSchool } = useSchoolStore();
   const {
     classes,
     loading: classesLoading,
@@ -31,8 +31,8 @@ export default function PrincipalSchoolClassPage() {
   const [requestError, setRequestError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!school) fetchSchool();
-  }, [school, fetchSchool]);
+    if (!hasFetched) fetchSchool();
+  }, [hasFetched, fetchSchool]);
 
   useEffect(() => {
     if (school?.id) fetchClassesBySchool(school.id);

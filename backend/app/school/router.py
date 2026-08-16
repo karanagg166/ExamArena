@@ -26,6 +26,7 @@ router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
 logger = logging.getLogger(__name__)
 
 
+@router.get("/my-school", response_model=SchoolResponse)
 @router.get("/me", response_model=SchoolResponse)
 async def get_current_user_school(
     current_user: Annotated[UserResponse, Depends(get_current_user)],

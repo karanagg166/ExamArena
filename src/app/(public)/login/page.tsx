@@ -32,7 +32,7 @@ const features = [
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("karan166");
   const [showPassword, setShowPassword] = useState(false);
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);

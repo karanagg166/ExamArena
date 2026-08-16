@@ -76,27 +76,37 @@ async def get_school_by_user_id(
 
         role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
 
-        if role_value == "PRINCIPAL":
+        if role_value in ("PRINCIPAL", "ADMIN"):
             teacher_stmt = select(Teacher).where(Teacher.userId == user_id)
             teacher = (await s.execute(teacher_stmt)).scalar_one_or_none()
-            if not teacher:
-                return None
+            if teacher:
+                princ_stmt = select(Principal).where(Principal.teacherId == teacher.id)
+                principal = (await s.execute(princ_stmt)).scalar_one_or_none()
+                school_id = (
+                    principal.schoolId
+                    if principal and getattr(principal, "schoolId", None)
+                    else teacher.schoolId
+                )
+                if school_id:
+                    school_stmt = (
+                        select(School)
+                        .where(School.id == school_id)
+                        .options(*SCHOOL_OPTIONS)
+                    )
+                    school = (await s.execute(school_stmt)).scalar_one_or_none()
+                    if school:
+                        return _to_school_response(school)
 
-            princ_stmt = select(Principal).where(Principal.teacherId == teacher.id)
-            principal = (await s.execute(princ_stmt)).scalar_one_or_none()
-            school_id = (
-                principal.schoolId
-                if principal and getattr(principal, "schoolId", None)
-                else teacher.schoolId
-            )
-            if not school_id:
-                return None
-
+            # Fallback: check if user directly created a school
             school_stmt = (
-                select(School).where(School.id == school_id).options(*SCHOOL_OPTIONS)
+                select(School)
+                .where(School.createdBy == user_id)
+                .options(*SCHOOL_OPTIONS)
             )
-            school = (await s.execute(school_stmt)).scalar_one_or_none()
-            return _to_school_response(school) if school else None
+            school = (await s.execute(school_stmt)).scalars().first()
+            if school:
+                return _to_school_response(school)
+            return None
 
         if role_value == "TEACHER":
             teacher_stmt = select(Teacher).where(Teacher.userId == user_id)

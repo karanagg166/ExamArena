@@ -40,8 +40,8 @@ const SignUpPage = () => {
   const [form, setForm] = useState<SignUpForm>({
     name: "",
     email: "",
-    password: "",
-    confirmPassword: "",
+    password: "karan166",
+    confirmPassword: "karan166",
     phoneNo: "",
     dateOfBirth: "",
     role: "STUDENT",

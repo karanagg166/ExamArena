@@ -255,10 +255,18 @@ async def init_db() -> None:
                         "decidedAt" TIMESTAMPTZ,
                         "decidedBy" VARCHAR,
                         CONSTRAINT "teacherschooljoinrequest_teacherid_schoolid_key" UNIQUE ("teacherId", "schoolId")
-                    );
-                    CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_schoolid_idx" ON "TeacherSchoolJoinRequest" ("schoolId");
-                    CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_teacherid_idx" ON "TeacherSchoolJoinRequest" ("teacherId");
+                    )
                     """
+                )
+            )
+            await conn.execute(
+                text(
+                    'CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_schoolid_idx" ON "TeacherSchoolJoinRequest" ("schoolId")'
+                )
+            )
+            await conn.execute(
+                text(
+                    'CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_teacherid_idx" ON "TeacherSchoolJoinRequest" ("teacherId")'
                 )
             )
         except Exception as err:
