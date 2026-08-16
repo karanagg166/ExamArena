@@ -6,7 +6,7 @@ import { Spinner } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
-import { useSchoolClassStore } from "@/stores";
+import { useSchoolClassStore, useAuthStore } from "@/stores";
 import { api } from "@/lib/axios";
 import {
   ArrowLeft,
@@ -69,11 +69,13 @@ interface ClassExamResultData {
 export default function ClassPage() {
   const { classId } = useParams<{ classId: string }>();
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const { classes, loading, error, fetchClass } = useSchoolClassStore();
 
   const [activeTab, setActiveTab] = useState<"overview" | "results">("overview");
   const [resultsData, setResultsData] = useState<ClassExamResultData | null>(null);
   const [loadingResults, setLoadingResults] = useState(false);
+  const [currentTeacherId, setCurrentTeacherId] = useState<string>("");
   const [isAssigned, setIsAssigned] = useState(false);
 
   // Request to teach modal
@@ -94,12 +96,23 @@ export default function ClassPage() {
     api
       .get("/api/v1/teachers/me")
       .then((res) => {
+        if (res.data?.id) {
+          setCurrentTeacherId(res.data.id);
+        }
         const teaches = res.data?.teaches || [];
         const assigned = teaches.some((t: { classId: string }) => t.classId === classId);
         setIsAssigned(assigned);
       })
       .catch(() => {});
   }, [classId]);
+
+  const isTeacherTeaching = Boolean(
+    isAssigned ||
+      (currentTeacherId &&
+        (schoolClass?.teacherId === currentTeacherId ||
+          schoolClass?.teachers?.some((t) => t.id === currentTeacherId))) ||
+      (user?.id && schoolClass?.teachers?.some((t) => t.userId === user.id))
+  );
 
   useEffect(() => {
     if (!classId) return;
@@ -221,11 +234,11 @@ export default function ClassPage() {
             {/* Header */}
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="text-2xl">{schoolClass.name}</CardTitle>
-                  {isAssigned && (
+                  {isTeacherTeaching && (
                     <Badge variant="success" className="text-[10px] uppercase font-bold tracking-wider">
-                      You Teach This Class
+                      Already Teaching This Class
                     </Badge>
                   )}
                 </div>
@@ -233,7 +246,7 @@ export default function ClassPage() {
                   {schoolClass.schoolName || "School Class"} • Year: {schoolClass.year} • Section: {schoolClass.section}
                 </p>
               </div>
-              {!isAssigned && (
+              {!isTeacherTeaching && (
                 <Button
                   size="sm"
                   onClick={() => setRequestModalOpen(true)}

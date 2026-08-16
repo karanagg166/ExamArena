@@ -30,10 +30,17 @@ export type TeacherUpdate = Partial<TeacherCreate>;
 export type TeacherProfileResponse = {
   id: string;
   userId: string;
+  schoolId?: string | null;
   qualifications: string[];
   experience: number;
   department: string;
   subjects: string[];
+  teaches?: {
+    id: string;
+    teacherId: string;
+    classId: string;
+    subject?: string | null;
+  }[];
   user: {
     id: string;
     name: string;

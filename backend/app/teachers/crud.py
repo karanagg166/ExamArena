@@ -170,7 +170,7 @@ async def create_teacher(
         stmt = (
             select(Teacher)
             .where(Teacher.userId == teacher_data.userId)
-            .options(selectinload(Teacher.user))
+            .options(selectinload(Teacher.user), selectinload(Teacher.teaches))
         )
         return (await s.execute(stmt)).scalar_one_or_none()
 
@@ -215,7 +215,7 @@ async def update_teacher(
         stmt = (
             select(Teacher)
             .where(Teacher.userId == user_id)
-            .options(selectinload(Teacher.user))
+            .options(selectinload(Teacher.user), selectinload(Teacher.teaches))
         )
         return (await s.execute(stmt)).scalar_one_or_none()
 
@@ -270,7 +270,7 @@ async def join_school(
         stmt = (
             select(Teacher)
             .where(Teacher.userId == user_id)
-            .options(selectinload(Teacher.user))
+            .options(selectinload(Teacher.user), selectinload(Teacher.teaches))
         )
         return (await s.execute(stmt)).scalar_one_or_none()
 

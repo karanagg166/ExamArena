@@ -96,9 +96,20 @@ class TeacherUpdate(BaseModel):
         return data
 
 
+class TeacherTeachesResponse(BaseModel):
+    id: str
+    teacherId: str
+    classId: str
+    subject: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class TeacherResponse(BaseModel):
     id: str
     userId: str
+    schoolId: str | None = None
     qualifications: list[str] = Field(
         default_factory=list,
         validation_alias=AliasChoices("qualifications", "qualification"),
@@ -107,6 +118,7 @@ class TeacherResponse(BaseModel):
     department: str
     subjects: list[str] = []
     user: UserResponse
+    teaches: list[TeacherTeachesResponse] = []
 
     @field_validator("qualifications", "subjects", mode="before")
     @classmethod

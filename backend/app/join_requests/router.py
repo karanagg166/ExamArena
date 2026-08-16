@@ -37,8 +37,14 @@ async def _get_authorized_teacher_id(current_user: UserResponse, school_id: str)
     if current_user.role == Role.ADMIN:
         return teacher.id if teacher else current_user.id
 
-    if teacher and teacher.schoolId == school_id:
-        return teacher.id
+    if teacher:
+        if teacher.schoolId == school_id:
+            return teacher.id
+        if any(
+            tc.schoolClass and tc.schoolClass.schoolId == school_id
+            for tc in getattr(teacher, "teaches", [])
+        ):
+            return teacher.id
 
     if current_user.role == Role.PRINCIPAL:
         from app.school.crud import get_school_by_user_id

@@ -1,6 +1,7 @@
 "use client";
+
 import { useEffect, useState } from "react";
-import { useSchoolStore, useSchoolClassStore } from "@/stores";
+import { useSchoolStore, useSchoolClassStore, useAuthStore } from "@/stores";
 import SchoolClassCard from "@/components/school-class/SchoolClassCard";
 import { Spinner } from "@/components/ui/loading";
 import {
@@ -17,6 +18,7 @@ import { getErrorMessage } from "@/lib/error";
 
 export default function TeacherClassesPage() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const { school, loading: schoolLoading, hasFetched, fetchSchool } = useSchoolStore();
   const {
     classes,
@@ -24,6 +26,7 @@ export default function TeacherClassesPage() {
     fetchClassesBySchool,
   } = useSchoolClassStore();
 
+  const [currentTeacherId, setCurrentTeacherId] = useState<string>("");
   const [assignedClassIds, setAssignedClassIds] = useState<string[]>([]);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState("");
@@ -44,6 +47,9 @@ export default function TeacherClassesPage() {
     api
       .get("/api/v1/teachers/me")
       .then((res) => {
+        if (res.data?.id) {
+          setCurrentTeacherId(res.data.id);
+        }
         const teaches = res.data?.teaches || [];
         const ids = teaches.map((t: { classId: string }) => t.classId);
         setAssignedClassIds(ids);
@@ -242,19 +248,32 @@ export default function TeacherClassesPage() {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {classes.map((cls) => (
-            <SchoolClassCard
-              key={cls.id}
-              schoolClass={cls}
-              basePath="/teacher/classes"
-              showDelete={false}
-              isTeacherAssigned={assignedClassIds.includes(cls.id)}
-              onRequestJoin={(classId) => {
-                setSelectedClassId(classId);
-                setRequestModalOpen(true);
-              }}
-            />
-          ))}
+          {classes.map((cls) => {
+            const isAssigned =
+              assignedClassIds.includes(cls.id) ||
+              Boolean(
+                currentTeacherId &&
+                  (cls.teacherId === currentTeacherId ||
+                    cls.teachers?.some((t) => t.id === currentTeacherId))
+              ) ||
+              Boolean(
+                user?.id && cls.teachers?.some((t) => t.userId === user.id)
+              );
+
+            return (
+              <SchoolClassCard
+                key={cls.id}
+                schoolClass={cls}
+                basePath="/teacher/classes"
+                showDelete={false}
+                isTeacherAssigned={isAssigned}
+                onRequestJoin={(classId) => {
+                  setSelectedClassId(classId);
+                  setRequestModalOpen(true);
+                }}
+              />
+            );
+          })}
         </div>
       )}
     </div>
