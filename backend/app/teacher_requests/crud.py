@@ -24,6 +24,32 @@ from app.teacher_requests.schemas import (
 )
 
 
+def normalize_subject(subject_val: str | Subject | None) -> Subject | None:
+    if not subject_val:
+        return None
+    if isinstance(subject_val, Subject):
+        return subject_val
+    cleaned = str(subject_val).strip().upper().replace(" ", "_")
+    if cleaned in ("MATHS", "MATHEMATICS", "MATH"):
+        return Subject.MATHS
+    if cleaned in ("SCIENCE", "PHYSICS", "CHEMISTRY", "BIOLOGY"):
+        return Subject.SCIENCE
+    if cleaned in ("HISTORY", "SOCIAL_STUDIES", "GEOGRAPHY"):
+        return Subject.HISTORY
+    if cleaned in ("LITERATURE", "ENGLISH"):
+        return Subject.LITERATURE
+    if cleaned == "ART":
+        return Subject.ART
+    if cleaned == "MUSIC":
+        return Subject.MUSIC
+    if cleaned in ("PHYSICAL_EDUCATION", "PE", "SPORTS"):
+        return Subject.PHYSICAL_EDUCATION
+    try:
+        return Subject(cleaned)
+    except Exception:
+        return Subject.MATHS
+
+
 def _to_response(req: TeacherClassJoinRequest) -> TeacherClassJoinRequestResponse:
     teacher_name = "Unknown Teacher"
     teacher_email = ""
@@ -129,7 +155,7 @@ async def create_teacher_class_request(
             existing.requestedAt = datetime.now(UTC)
             existing.decidedAt = None
             existing.decidedBy = None
-            existing.subject = payload.subject
+            existing.subject = normalize_subject(payload.subject)
             await s.commit()
             await s.refresh(existing)
             # Re-fetch with relationships
@@ -150,7 +176,7 @@ async def create_teacher_class_request(
         req = TeacherClassJoinRequest(
             teacherId=teacher_id,
             classId=payload.classId,
-            subject=payload.subject,
+            subject=normalize_subject(payload.subject),
             status=JoinRequestStatus.PENDING,
         )
         s.add(req)
@@ -517,7 +543,7 @@ async def assign_multiple_classes_to_teacher(
     school_id: str,
     teacher_id: str,
     class_ids: list[str],
-    subject: Subject | None = None,
+    subject: str | Subject | None = None,
     session: AsyncSession | None = None,
 ) -> TeacherAssignClassesResponse:
     """Assign multiple school classes to a teacher in one action."""
@@ -544,6 +570,7 @@ async def assign_multiple_classes_to_teacher(
             )
 
         assigned_count = 0
+        normalized_subj = normalize_subject(subject) or Subject.MATHS
         for cid in class_ids:
             # Check if TeacherClass exists
             tc_stmt = select(TeacherClass).where(
@@ -558,7 +585,7 @@ async def assign_multiple_classes_to_teacher(
                     TeacherClass(
                         teacherId=teacher_id,
                         classId=cid,
-                        subject=subject or Subject.MATHS,
+                        subject=normalized_subj,
                     )
                 )
                 assigned_count += 1

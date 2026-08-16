@@ -8,7 +8,7 @@ from app.core.models import Subject
 
 class TeacherClassJoinRequestCreate(BaseModel):
     classId: str
-    subject: Subject | None = None
+    subject: str | None = None
 
 
 class TeacherClassJoinRequestDecision(BaseModel):
@@ -61,7 +61,7 @@ class TeacherSchoolJoinRequestResponse(BaseModel):
 class TeacherAssignClassesRequest(BaseModel):
     teacherId: str
     classIds: list[str]
-    subject: Subject | None = None
+    subject: str | None = None
 
 
 class TeacherAssignClassesResponse(BaseModel):

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, UserPlus, Check, X } from "lucide-react";
 import { api } from "@/lib/axios";
+import { getErrorMessage } from "@/lib/error";
 
 export default function PrincipalSchoolClassPage() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function PrincipalSchoolClassPage() {
 
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("MATHEMATICS");
+  const [selectedSubject, setSelectedSubject] = useState("MATHS");
   const [requesting, setRequesting] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -57,10 +58,7 @@ export default function PrincipalSchoolClassPage() {
         setRequestSuccess(null);
       }, 2500);
     } catch (err: unknown) {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail;
-      setRequestError(detail ?? "Failed to submit request.");
+      setRequestError(getErrorMessage(err));
     } finally {
       setRequesting(false);
     }
@@ -197,15 +195,13 @@ export default function PrincipalSchoolClassPage() {
                     onChange={(e) => setSelectedSubject(e.target.value)}
                     className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="MATHEMATICS">Mathematics</option>
-                    <option value="PHYSICS">Physics</option>
-                    <option value="CHEMISTRY">Chemistry</option>
-                    <option value="BIOLOGY">Biology</option>
-                    <option value="ENGLISH">English</option>
-                    <option value="HISTORY">History</option>
-                    <option value="GEOGRAPHY">Geography</option>
-                    <option value="COMPUTER_SCIENCE">Computer Science</option>
-                    <option value="OTHER">Other</option>
+                    <option value="MATHS">Mathematics</option>
+                    <option value="SCIENCE">Science (Physics / Chemistry / Biology)</option>
+                    <option value="LITERATURE">English / Literature</option>
+                    <option value="HISTORY">History & Social Studies</option>
+                    <option value="ART">Art & Design</option>
+                    <option value="MUSIC">Music</option>
+                    <option value="PHYSICAL_EDUCATION">Physical Education</option>
                   </select>
                 </div>
 

@@ -1,7 +1,7 @@
-import axios from "axios";
 import { create } from "zustand";
 
 import { api } from "@/lib/axios";
+import { getErrorMessage } from "@/lib/error";
 import type { ClassJoinRequest, JoinRequestStatus } from "@/types";
 
 type Result = { success: boolean; error?: string };
@@ -32,10 +32,12 @@ const initial = {
   error: "",
 };
 
-const detailFromError = (error: unknown, fallback: string) =>
-  axios.isAxiosError(error) && typeof error.response?.data?.detail === "string"
-    ? error.response.data.detail
-    : fallback;
+import { getErrorMessage } from "@/lib/error";
+
+const detailFromError = (error: unknown, fallback: string) => {
+  const msg = getErrorMessage(error);
+  return msg && msg !== "An unexpected error occurred." ? msg : fallback;
+};
 
 export const useJoinRequestStore = create<JoinRequestState>((set) => ({
   ...initial,
