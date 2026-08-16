@@ -626,7 +626,6 @@ class Question(Base):
     text: Mapped[str] = mapped_column(String, nullable=False)
     section: Mapped[str] = mapped_column(String, default="General", nullable=False)
     marks: Mapped[int] = mapped_column(Integer, nullable=False)
-    negativeMarks: Mapped[float | None] = mapped_column(Float, nullable=True)
     imageUrl: Mapped[str | None] = mapped_column(String, nullable=True)
     wordLimit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     explanation: Mapped[str | None] = mapped_column(String, nullable=True)

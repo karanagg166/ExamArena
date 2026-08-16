@@ -135,7 +135,6 @@ async def create_exam(
                 wordLimit=q.wordLimit,
                 explanation=q.explanation,
                 section=sec_name,
-                negativeMarks=float(q.negativeMarks or 0.0),
                 examSection=section_map[sec_name],
                 options=options,
             )

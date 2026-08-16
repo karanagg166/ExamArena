@@ -26,6 +26,8 @@ def make_fake_exam(overrides: dict = None) -> MagicMock:
     exam.teacherId = "clxfake_teacher_001"
     exam.createdAt = datetime(2026, 1, 1)
     exam.updatedAt = datetime(2026, 1, 1)
+    exam.accessPassword = None
+    exam.sections = []
     exam.questionCount = 0
     exam.questions = []
 

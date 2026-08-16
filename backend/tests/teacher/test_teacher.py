@@ -123,35 +123,11 @@ class TestTeachersApi:
 
     async def test_join_school_success(self, client, override_auth, mock_teacher_db):
         override_auth(role="TEACHER")
-        fake_teacher = make_fake_teacher({"schoolId": "clxfake_school_001"})
-        mock_teacher_db["join_school"].return_value = fake_teacher
-
         response = await client.post(
             "/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_001"}
         )
-        assert response.status_code == 200
-
-    async def test_join_school_no_teacher(self, client, override_auth, mock_teacher_db):
-        override_auth(role="TEACHER")
-        mock_teacher_db["join_school"].return_value = None
-
-        response = await client.post(
-            "/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_001"}
-        )
-        assert response.status_code == 404
-        assert "Teacher profile not found" in response.json()["detail"]
-
-    async def test_join_school_school_not_found(
-        self, client, override_auth, mock_teacher_db
-    ):
-        override_auth(role="TEACHER")
-        mock_teacher_db["join_school"].return_value = False
-
-        response = await client.post(
-            "/api/v1/teachers/me/join-school", json={"schoolId": "clxfake_school_999"}
-        )
-        assert response.status_code == 404
-        assert "School not found" in response.json()["detail"]
+        assert response.status_code == 403
+        assert "Direct school joining is disabled" in response.json()["detail"]
 
     async def test_get_qualifications(self, client, mock_teacher_db):
         mock_teacher_db["get_all_qualifications"].return_value = [

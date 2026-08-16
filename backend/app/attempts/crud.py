@@ -241,8 +241,9 @@ async def submit_exam_attempt(
                 sec_has_neg = exam.negativeMarking
                 sec_neg_marks = float(exam.negativeMarks)
 
-            if q.negativeMarks is not None:
-                neg_marks = float(q.negativeMarks)
+            q_neg = getattr(q, "negativeMarks", None)
+            if q_neg is not None:
+                neg_marks = float(q_neg)
                 has_neg = True
             elif sec_has_neg:
                 neg_marks = sec_neg_marks

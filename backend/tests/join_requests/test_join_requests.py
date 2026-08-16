@@ -167,7 +167,11 @@ class TestJoinRequestsApi:
         )
         assert response.status_code == 200
         mock_join_request_db["decide_join_request"].assert_awaited_once_with(
-            request.id, JoinRequestStatus.APPROVED, teacher.id
+            request_id=request.id,
+            decision=JoinRequestStatus.APPROVED,
+            decided_by_user_id=teacher.id,
+            roll_no=None,
+            auto_roll_no=True,
         )
 
     async def test_rejection_does_not_create_student_in_router(
@@ -194,7 +198,11 @@ class TestJoinRequestsApi:
         )
         assert response.status_code == 200
         mock_join_request_db["decide_join_request"].assert_awaited_once_with(
-            request.id, JoinRequestStatus.REJECTED, teacher.id
+            request_id=request.id,
+            decision=JoinRequestStatus.REJECTED,
+            decided_by_user_id=teacher.id,
+            roll_no=None,
+            auto_roll_no=True,
         )
 
 
