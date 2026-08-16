@@ -1,13 +1,16 @@
+import json
 import secrets
 import string
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 import app.core.database as db
-from app.core.models import SchoolClass
+from app.core.models import SchoolClass, TeacherClass
 from app.school.crud import get_school_by_user_id
 from app.school_class.schemas import (
+    ClassTeacherResponse,
     SchoolClassCreateRequest,
     SchoolClassResponse,
     SchoolClassUpdateRequest,
@@ -18,6 +21,77 @@ def generate_join_code() -> str:
     """Generate an easily shareable, case-insensitive class join code."""
     alphabet = string.ascii_uppercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(8))
+
+
+def _to_school_class_response(school_class: SchoolClass) -> SchoolClassResponse:
+    teachers_list: list[ClassTeacherResponse] = []
+    if school_class.teachers:
+        for tc in school_class.teachers:
+            t = getattr(tc, "teacher", None)
+            if not t:
+                continue
+            u = getattr(t, "user", None)
+
+            # parse subjects JSON if needed
+            subjects: list[str] = []
+            if t.subjects:
+                try:
+                    subjects = (
+                        json.loads(t.subjects)
+                        if isinstance(t.subjects, str)
+                        else list(t.subjects)
+                    )
+                except Exception:
+                    subjects = [str(t.subjects)]
+
+            qualifications: list[str] = []
+            if t.qualification:
+                try:
+                    qualifications = (
+                        json.loads(t.qualification)
+                        if isinstance(t.qualification, str)
+                        else list(t.qualification)
+                    )
+                except Exception:
+                    qualifications = [str(t.qualification)]
+
+            subj_taught = (
+                tc.subject.value
+                if hasattr(tc.subject, "value")
+                else (str(tc.subject) if tc.subject else None)
+            )
+            if subj_taught and subj_taught not in subjects:
+                subjects = [subj_taught] + [s for s in subjects if s != subj_taught]
+
+            teachers_list.append(
+                ClassTeacherResponse(
+                    id=t.id,
+                    userId=t.userId,
+                    name=u.name if u and u.name else "Teacher",
+                    email=u.email if u and u.email else "",
+                    phoneNo=u.phoneNo if u and u.phoneNo else "",
+                    experience=t.experience or 0,
+                    department=t.department or "",
+                    subjects=subjects,
+                    qualifications=qualifications,
+                    subjectTaught=subj_taught,
+                )
+            )
+
+    return SchoolClassResponse(
+        id=school_class.id,
+        name=school_class.name,
+        year=school_class.year,
+        section=school_class.section,
+        schoolId=school_class.schoolId,
+        teacherId=school_class.teacherId
+        or (teachers_list[0].id if teachers_list else None),
+        joinCode=school_class.joinCode,
+        nextRollNo=school_class.nextRollNo,
+        createdAt=school_class.createdAt,
+        updatedAt=school_class.updatedAt,
+        teachers=teachers_list,
+    )
 
 
 async def create_school_class(
@@ -51,7 +125,7 @@ async def create_school_class(
         s.add(school_class)
         await s.commit()
         await s.refresh(school_class)
-        return SchoolClassResponse.model_validate(school_class)
+        return _to_school_class_response(school_class)
 
     if session:
         return await _do_create(session)
@@ -62,12 +136,21 @@ async def create_school_class(
 async def get_school_classes_by_school_id(
     school_id: str, session: AsyncSession | None = None
 ) -> list[SchoolClassResponse]:
-    """Get all classes for a school."""
+    """Get all classes for a school with assigned teachers populated."""
 
     async def _do_get(s: AsyncSession):
-        stmt = select(SchoolClass).where(SchoolClass.schoolId == school_id)
+        stmt = (
+            select(SchoolClass)
+            .where(SchoolClass.schoolId == school_id)
+            .options(
+                selectinload(SchoolClass.teachers)
+                .selectinload(TeacherClass.teacher)
+                .selectinload(TeacherClass.teacher.property.mapper.class_.user)
+            )
+            .order_by(SchoolClass.name, SchoolClass.section)
+        )
         classes = (await s.execute(stmt)).scalars().all()
-        return [SchoolClassResponse.model_validate(c) for c in classes]
+        return [_to_school_class_response(c) for c in classes]
 
     if session:
         return await _do_get(session)
@@ -81,11 +164,19 @@ async def get_school_class_by_id(
     """Get a specific class by its ID."""
 
     async def _do_get(s: AsyncSession):
-        stmt = select(SchoolClass).where(SchoolClass.id == class_id)
+        stmt = (
+            select(SchoolClass)
+            .where(SchoolClass.id == class_id)
+            .options(
+                selectinload(SchoolClass.teachers)
+                .selectinload(TeacherClass.teacher)
+                .selectinload(TeacherClass.teacher.property.mapper.class_.user)
+            )
+        )
         school_class = (await s.execute(stmt)).scalar_one_or_none()
         if not school_class:
             return None
-        return SchoolClassResponse.model_validate(school_class)
+        return _to_school_class_response(school_class)
 
     if session:
         return await _do_get(session)

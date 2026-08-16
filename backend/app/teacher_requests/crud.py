@@ -314,6 +314,18 @@ async def decide_teacher_class_request(
                     )
                 )
 
+            # Update SchoolClass.teacherId if not set
+            cls_stmt = select(SchoolClass).where(SchoolClass.id == req.classId)
+            school_cls = (await s.execute(cls_stmt)).scalar_one_or_none()
+            if school_cls and not school_cls.teacherId:
+                school_cls.teacherId = req.teacherId
+
+            # Also ensure Teacher belongs to this school
+            t_stmt = select(Teacher).where(Teacher.id == req.teacherId)
+            teacher_obj = (await s.execute(t_stmt)).scalar_one_or_none()
+            if teacher_obj and school_cls and not teacher_obj.schoolId:
+                teacher_obj.schoolId = school_cls.schoolId
+
         await s.commit()
         await s.refresh(req)
         return _to_response(req)

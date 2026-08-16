@@ -74,10 +74,12 @@ export default function SchoolClassCard({ schoolClass }: SchoolClassCardProps) {
               </div>
               <div className="text-right">
                 <p className="text-xs text-zinc-400">
-                  {teacher.subjects.join(", ")}
+                  {Array.isArray(teacher.subjects) && teacher.subjects.length > 0
+                    ? teacher.subjects.join(", ")
+                    : teacher.department || "Faculty"}
                 </p>
                 <p className="text-xs text-zinc-400">
-                  {teacher.experience} yrs exp
+                  {teacher.experience ?? 0} yrs exp
                 </p>
               </div>
             </div>

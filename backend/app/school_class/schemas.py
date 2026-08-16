@@ -20,6 +20,22 @@ class SchoolClassUpdateRequest(BaseModel):
     teacherId: str | None = None
 
 
+class ClassTeacherResponse(BaseModel):
+    id: str
+    userId: str
+    name: str = ""
+    email: str = ""
+    phoneNo: str = ""
+    experience: int = 0
+    department: str = ""
+    subjects: list[str] = []
+    qualifications: list[str] = []
+    subjectTaught: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class SchoolClassResponse(SchoolClassBase):
     id: str
     schoolId: str
@@ -28,6 +44,7 @@ class SchoolClassResponse(SchoolClassBase):
     nextRollNo: int
     createdAt: datetime
     updatedAt: datetime
+    teachers: list[ClassTeacherResponse] = []
 
     class Config:
         from_attributes = True
