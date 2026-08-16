@@ -21,6 +21,7 @@ export default function ExamStartPage() {
   const [accepted, setAccepted] = useState(false);
   const [examCodeInput, setExamCodeInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [alreadyAttempted, setAlreadyAttempted] = useState(false);
 
   const { initializeAttempt } = useAttemptEngine();
 
@@ -29,6 +30,22 @@ export default function ExamStartPage() {
       try {
         const res = await api.get(`/api/v1/exams/${examId}`);
         setExam(res.data);
+
+        // Check if student already submitted this exam
+        try {
+          const historyRes = await api.get('/api/v1/exams/student/me/history');
+          const pastAttempt = historyRes.data?.find(
+            (h: { examId: string; status: string }) => h.examId === examId
+          );
+          if (
+            pastAttempt &&
+            (pastAttempt.status === "SUBMITTED" || pastAttempt.status === "GRADED")
+          ) {
+            setAlreadyAttempted(true);
+          }
+        } catch {
+          // ignore history check error
+        }
       } catch {
         setError("Failed to load exam details. It may not exist or not be published.");
       } finally {
@@ -54,6 +71,12 @@ export default function ExamStartPage() {
         examCode: examCodeInput.trim().toUpperCase() || undefined,
       });
       const attemptData = res.data; // StudentExamResponse
+
+      if (attemptData.status === "SUBMITTED" || attemptData.status === "GRADED") {
+        setAlreadyAttempted(true);
+        setStarting(false);
+        return;
+      }
 
       // Initialize local state
       initializeAttempt(
@@ -84,6 +107,28 @@ export default function ExamStartPage() {
     return (
       <div className="page-shell flex items-center justify-center min-h-[60vh]">
           <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (alreadyAttempted) {
+    return (
+      <div className="page-shell">
+        <GlassCard className="max-w-2xl mx-auto p-12 text-center space-y-6">
+          <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+          <h2 className="text-2xl font-bold text-white">Exam Already Attempted</h2>
+          <p className="text-[var(--text-muted)]">
+            You have already attempted and submitted this exam. Multiple submissions are not permitted.
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            <Button variant="outline" onClick={() => router.push(`/student/exams/${examId}/result`)}>
+              View Results
+            </Button>
+            <Button onClick={() => router.push('/dashboard')}>
+              Go to Dashboard
+            </Button>
+          </div>
+        </GlassCard>
       </div>
     );
   }

@@ -12,6 +12,7 @@ import { ChevronRight, ChevronLeft, Send, AlertCircle, Maximize, PanelRightOpen,
 import { GlassCard } from '@/components/ui/glass-card';
 import { useProctoring } from '@/hooks/useProctoring';
 import { ProctoringWarning } from '@/components/attempt/ProctoringWarning';
+import { toast } from 'sonner';
 import type { Exam, Question } from '@/types';
 import { getErrorMessage } from '@/lib/error';
 
@@ -25,7 +26,8 @@ export default function ExamAttemptPage() {
         activeQuestionId, 
         setActiveQuestion,
         answers,
-        submitAttemptLocal
+        submitAttemptLocal,
+        clearAttempt
     } = useAttemptEngine();
 
     const [exam, setExam] = useState<Exam | null>(null);
@@ -55,7 +57,7 @@ export default function ExamAttemptPage() {
             try {
                 const res = await api.get(`/api/v1/exams/${examId}`);
                 setExam(res.data);
-            } catch (err) {
+            } catch {
                 setError("Failed to load exam data. Check your connection.");
             } finally {
                 setLoading(false);
@@ -82,19 +84,21 @@ export default function ExamAttemptPage() {
             });
 
             submitAttemptLocal();
+            clearAttempt();
 
             if (document.fullscreenElement) {
                 document.exitFullscreen().catch(()=>{});
             }
 
-            router.replace(`/student/exams/${examId}/result`);
+            toast.success("Exam submitted successfully! Returning to dashboard.");
+            router.replace('/dashboard');
         } catch (err: unknown) {
             console.error("Submission failed", err);
             const msg = getErrorMessage(err) || "Failed to submit exam. Please check your connection and try again.";
-            alert(msg);
+            toast.error(msg);
             setSubmitting(false);
         }
-    }, [answers, attemptId, examId, submitAttemptLocal, router]);
+    }, [answers, attemptId, submitAttemptLocal, clearAttempt, router]);
 
     const proctoring = useProctoring({
         maxWarnings: 3,

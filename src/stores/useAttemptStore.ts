@@ -21,6 +21,7 @@ export interface AttemptStoreState {
   answers: Record<string, QuestionAttemptState>; // Indexed by questionId
   status: AttemptStatus;
   startedAt: string | null;
+  durationSeconds: number | null;
   activeQuestionId: string | null;
   timeRemainingSeconds: number | null;
   
@@ -38,6 +39,7 @@ export const useAttemptStore = create<AttemptStoreState>()(
       answers: {},
       status: "NOT_ATTEMPTED",
       startedAt: null,
+      durationSeconds: null,
       activeQuestionId: null,
       timeRemainingSeconds: null,
 
@@ -57,6 +59,7 @@ export const useAttemptStore = create<AttemptStoreState>()(
         answers: {},
         status: "NOT_ATTEMPTED",
         startedAt: null,
+        durationSeconds: null,
         activeQuestionId: null,
         timeRemainingSeconds: null,
       })),

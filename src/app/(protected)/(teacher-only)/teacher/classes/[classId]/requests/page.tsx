@@ -50,14 +50,15 @@ export default function ClassRequestsPage() {
 
   const handleConfirmApprove = async () => {
     if (!approvingReq) return;
-    if (rollNoMode === "CUSTOM" && !customRollNo.trim()) {
-      toast.error("Please enter a custom roll number or select Auto.");
+    const cleanedRollNo = customRollNo.trim().replace(/\D/g, "");
+    if (rollNoMode === "CUSTOM" && !cleanedRollNo) {
+      toast.error("Please enter a numeric roll number (numbers only) or select Auto.");
       return;
     }
 
     setIsSubmitting(true);
     const result = await decideRequest(approvingReq.id, "APPROVED", {
-      rollNo: rollNoMode === "CUSTOM" ? customRollNo.trim() : undefined,
+      rollNo: rollNoMode === "CUSTOM" ? cleanedRollNo : undefined,
       autoRollNo: rollNoMode === "AUTO",
     });
 
@@ -203,9 +204,11 @@ export default function ClassRequestsPage() {
                       <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={customRollNo}
-                        onChange={(e) => setCustomRollNo(e.target.value)}
-                        placeholder="e.g. 101, A-05"
+                        onChange={(e) => setCustomRollNo(e.target.value.replace(/\D/g, ""))}
+                        placeholder="e.g. 101, 102 (numbers only)"
                         className="w-full pl-8 pr-4 py-2 text-sm rounded-xl border border-zinc-700 bg-zinc-800 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       />
                     </div>

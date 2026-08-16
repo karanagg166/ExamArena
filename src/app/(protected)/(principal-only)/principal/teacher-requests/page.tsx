@@ -171,16 +171,17 @@ function PrincipalTeacherRequestsContent() {
     setProcessingId(approvingStudentReq.id);
     setStudentActionError(null);
 
-    const payload = {
-      rollNo: rollNoMode === "CUSTOM" ? customRollNo.trim() : undefined,
-      autoRollNo: rollNoMode === "AUTO",
-    };
-
-    if (rollNoMode === "CUSTOM" && !customRollNo.trim()) {
-      setStudentActionError("Please enter a custom roll number or choose Auto.");
+    const cleanedRollNo = rollNoMode === "CUSTOM" ? customRollNo.trim().replace(/\D/g, "") : undefined;
+    if (rollNoMode === "CUSTOM" && !cleanedRollNo) {
+      setStudentActionError("Please enter a numeric roll number (numbers only) or choose Auto.");
       setProcessingId(null);
       return;
     }
+
+    const payload = {
+      rollNo: rollNoMode === "CUSTOM" ? cleanedRollNo : undefined,
+      autoRollNo: rollNoMode === "AUTO",
+    };
 
     const res = await decideStudentRequest(
       approvingStudentReq.id,
@@ -801,9 +802,11 @@ function PrincipalTeacherRequestsContent() {
                       <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={customRollNo}
-                        onChange={(e) => setCustomRollNo(e.target.value)}
-                        placeholder="e.g. 101, A-05"
+                        onChange={(e) => setCustomRollNo(e.target.value.replace(/\D/g, ""))}
+                        placeholder="e.g. 101, 102 (numbers only)"
                         className="w-full pl-8 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       />
                     </div>

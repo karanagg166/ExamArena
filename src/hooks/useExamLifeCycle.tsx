@@ -38,6 +38,7 @@ export function useExamLifeCycle() {
       answers: newAnswers,
       status: "IN_PROGRESS",
       startedAt,
+      durationSeconds: defaultTimeLimitSeconds || null,
       activeQuestionId: firstQ,
       timeRemainingSeconds: defaultTimeLimitSeconds || null,
     });

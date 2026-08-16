@@ -74,13 +74,26 @@ class TestAttemptsApi:
         data = response.json()
         assert data["status"] == "SUBMITTED"
 
-    async def test_submit_invalid(self, client, override_auth, mock_attempts_db):
+    async def test_submit_late_rejected(self, client, override_auth, mock_attempts_db):
         override_auth(role="STUDENT")
         mock_attempts_db["submit_exam_attempt"].side_effect = ValueError(
-            "Attempt already submitted"
+            "Exam submission time exceeded. The deadline for this exam has passed."
         )
 
         payload = {"id": "clxfake_se_001", "answers": []}
         response = await client.post("/api/v1/attempts/submit", json=payload)
         assert response.status_code == 400
-        assert "Attempt already submitted" in response.json()["detail"]
+        assert "Exam submission time exceeded" in response.json()["detail"]
+
+    async def test_submit_already_submitted_rejected(
+        self, client, override_auth, mock_attempts_db
+    ):
+        override_auth(role="STUDENT")
+        mock_attempts_db["submit_exam_attempt"].side_effect = ValueError(
+            "This exam has already been submitted and attempted."
+        )
+
+        payload = {"id": "clxfake_se_001", "answers": []}
+        response = await client.post("/api/v1/attempts/submit", json=payload)
+        assert response.status_code == 400
+        assert "already been submitted and attempted" in response.json()["detail"]

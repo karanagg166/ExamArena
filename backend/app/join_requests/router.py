@@ -102,8 +102,31 @@ async def get_school_join_requests(
     request_status: Annotated[JoinRequestStatus | None, Query(alias="status")] = None,
 ):
     """Get all student class join requests across all classes of a school for Principal/Teacher review."""
-    await _get_authorized_teacher_id(current_user, school_id)
-    return await get_join_requests_for_school(school_id, request_status)
+    target_school_id = school_id
+    if school_id == "me":
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if teacher and teacher.schoolId:
+            target_school_id = teacher.schoolId
+        elif teacher and getattr(teacher, "teaches", None):
+            for tc in teacher.teaches:
+                if tc.schoolClass and tc.schoolClass.schoolId:
+                    target_school_id = tc.schoolClass.schoolId
+                    break
+        elif current_user.role == Role.PRINCIPAL:
+            from app.school.crud import get_school_by_user_id
+
+            user_school = await get_school_by_user_id(current_user.id)
+            if user_school:
+                target_school_id = user_school.id
+            elif teacher:
+                principal = await get_principal_by_teacher_id(teacher.id)
+                if principal and principal.schoolId:
+                    target_school_id = principal.schoolId
+        if target_school_id == "me":
+            return []
+
+    await _get_authorized_teacher_id(current_user, target_school_id)
+    return await get_join_requests_for_school(target_school_id, request_status)
 
 
 @router.get("/class/{class_id}", response_model=list[JoinRequestResponse])

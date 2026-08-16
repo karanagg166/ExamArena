@@ -95,14 +95,23 @@ function TeacherRequestsContent() {
       setError(null);
     }
     try {
-      const teacherRes = await api.get<{ schoolId?: string }>("/api/v1/teachers/me");
-      const sid = teacherRes.data?.schoolId;
+      const teacherRes = await api.get<{
+        schoolId?: string;
+        teaches?: { classId: string; schoolClass?: { schoolId: string } }[];
+      }>("/api/v1/teachers/me");
+      let sid = teacherRes.data?.schoolId;
+      if (!sid && teacherRes.data?.teaches?.length) {
+        sid = teacherRes.data.teaches[0].schoolClass?.schoolId;
+      }
+      if (!sid && school?.id) {
+        sid = school.id;
+      }
       setSchoolId(sid || null);
 
       await Promise.allSettled([
         fetchMySchoolRequests(),
         fetchMyClassRequests(),
-        sid ? fetchStudentRequests(sid) : Promise.resolve(),
+        fetchStudentRequests(sid || "me"),
       ]);
     } catch (err: unknown) {
       const detail =
@@ -112,7 +121,7 @@ function TeacherRequestsContent() {
     } finally {
       setLoading(false);
     }
-  }, [fetchMySchoolRequests, fetchMyClassRequests, fetchStudentRequests]);
+  }, [fetchMySchoolRequests, fetchMyClassRequests, fetchStudentRequests, school?.id]);
 
   useEffect(() => {
     loadData();
@@ -124,15 +133,22 @@ function TeacherRequestsContent() {
     setProcessingId(approvingStudentReq.id);
     setActionError(null);
     try {
+      const cleanedRollNo = rollNoMode === "CUSTOM" ? customRollNo.trim().replace(/\D/g, "") : undefined;
+      if (status === "APPROVED" && rollNoMode === "CUSTOM" && !cleanedRollNo) {
+        setActionError("Please enter a numeric roll number (numbers only).");
+        setProcessingId(null);
+        return;
+      }
+
       const result = await decideStudentRequest(approvingStudentReq.id, status, {
         autoRollNo: rollNoMode === "AUTO",
-        rollNo: rollNoMode === "CUSTOM" ? customRollNo.trim() : undefined,
+        rollNo: cleanedRollNo,
       });
       if (result.success) {
         toast.success(`Request ${status.toLowerCase()} successfully`);
         setApprovingStudentReq(null);
         setCustomRollNo("");
-        if (schoolId) await fetchStudentRequests(schoolId);
+        await fetchStudentRequests(schoolId || "me");
       } else {
         setActionError(result.error ?? "Failed to process request");
       }
@@ -614,9 +630,11 @@ function TeacherRequestsContent() {
                   <div className="pt-2">
                     <input
                       type="text"
-                      placeholder="e.g. 101, A-12, 2026-001"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="e.g. 101, 102, 103 (numbers only)"
                       value={customRollNo}
-                      onChange={(e) => setCustomRollNo(e.target.value)}
+                      onChange={(e) => setCustomRollNo(e.target.value.replace(/\D/g, ""))}
                       className="w-full px-3.5 py-2 rounded-xl border border-zinc-800 bg-zinc-900 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     />
                   </div>

@@ -254,6 +254,8 @@ async def decide_join_request(
                 assigned_roll_no: str
                 if roll_no and roll_no.strip():
                     assigned_roll_no = roll_no.strip()
+                    if not assigned_roll_no.isdigit():
+                        raise ValueError("Roll number must contain numbers only.")
                     dup_stmt = select(Student.id).where(
                         and_(
                             Student.classId == school_class.id,

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -198,7 +198,37 @@ async def submit_exam_attempt(
         if not db_attempt:
             raise ValueError("Attempt not found")
 
+        if db_attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.GRADED):
+            raise ValueError("This exam has already been submitted and attempted.")
+
         exam = db_attempt.exam
+        now = datetime.now(UTC)
+
+        # Enforce server-side timing: startedAt + duration + 1 min grace period
+        duration_val = getattr(exam, "duration", None)
+        if (
+            exam
+            and isinstance(duration_val, (int, float))
+            and duration_val > 0
+            and getattr(db_attempt, "startedAt", None)
+            and isinstance(db_attempt.startedAt, datetime)
+        ):
+            started_at = (
+                db_attempt.startedAt
+                if db_attempt.startedAt.tzinfo
+                else db_attempt.startedAt.replace(tzinfo=UTC)
+            )
+            # 1 minute network latency grace period
+            allowed_deadline = (
+                started_at
+                + timedelta(minutes=float(duration_val))
+                + timedelta(minutes=1)
+            )
+            if now > allowed_deadline:
+                raise ValueError(
+                    "Exam submission time exceeded. The deadline for this exam has passed."
+                )
+
         questions_by_id = {q.id: q for q in (exam.questions or [])}
         sections_by_id = {sec.id: sec for sec in (exam.sections or [])}
         sections_by_name = {sec.name: sec for sec in (exam.sections or [])}
@@ -209,18 +239,23 @@ async def submit_exam_attempt(
         # Build answers map from submission
         submitted_answers_map = {ans.id: ans for ans in submit_data.answers}
 
+        # Batch delete existing selectedOptions for all submitted answers in a single query
+        ans_ids_with_options = [
+            ans.id for ans in submit_data.answers if ans.selectedOptions is not None
+        ]
+        if ans_ids_with_options:
+            await s.execute(
+                delete(SelectedOption).where(
+                    SelectedOption.studentExamAnswerId.in_(ans_ids_with_options)
+                )
+            )
+
         for db_ans in db_attempt.answers or []:
             ans = submitted_answers_map.get(db_ans.id)
             if ans:
                 if ans.textAnswer is not None:
                     db_ans.textAnswer = ans.textAnswer
                 if ans.selectedOptions is not None:
-                    # Delete existing selectedOptions for this answer
-                    await s.execute(
-                        delete(SelectedOption).where(
-                            SelectedOption.studentExamAnswerId == ans.id
-                        )
-                    )
                     db_ans.selectedOptions = [
                         SelectedOption(optionId=o.optionId) for o in ans.selectedOptions
                     ]
