@@ -223,6 +223,11 @@ async def update_student(
     update_dict = student_data.model_dump(exclude_unset=True)
     user_data = update_dict.pop("user", None)
 
+    # Roll number, schoolId, and classId are strictly immutable once assigned by school administration
+    update_dict.pop("rollNo", None)
+    update_dict.pop("schoolId", None)
+    update_dict.pop("classId", None)
+
     async def _do_update(s: AsyncSession):
         if user_data:
             user_stmt = select(User).where(User.id == user_id)

@@ -70,19 +70,11 @@ async def join_my_school(
     payload: TeacherJoinSchoolRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    """Assign current teacher profile to the selected school."""
-    updated_teacher = await join_school(current_user.id, payload.school_id)
-    if updated_teacher is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Teacher profile not found. Please complete your profile setup.",
-        )
-    if updated_teacher is False:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="School not found",
-        )
-    return updated_teacher
+    """Direct school join is restricted. Teachers must request approval from Principal."""
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Direct school joining is disabled. Please submit a join request to the principal via /api/v1/teacher-requests/school.",
+    )
 
 
 @router.put("/me", response_model=TeacherResponse)

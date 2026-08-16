@@ -6,3 +6,5 @@ export * from "./useSchoolClassStore";
 // export * from "./useStudentStore"
 export * from "./useExamStore";
 export * from "./useJoinRequestStore";
+export * from "./useTeacherRequestStore";
+

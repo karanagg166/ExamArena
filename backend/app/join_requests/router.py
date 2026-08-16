@@ -10,6 +10,7 @@ from app.join_requests.crud import (
     get_class_by_join_code,
     get_join_request_by_id,
     get_join_requests_for_class,
+    get_join_requests_for_school,
     get_join_requests_for_user,
 )
 from app.join_requests.schemas import (
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/api/v1/join-requests", tags=["join-requests"])
 
 
 async def _get_authorized_teacher_id(current_user: UserResponse, school_id: str) -> str:
-    if current_user.role not in (Role.TEACHER, Role.PRINCIPAL):
+    if current_user.role not in (Role.TEACHER, Role.PRINCIPAL, Role.ADMIN):
         raise HTTPException(
             status_code=403, detail="Only staff can manage join requests."
         )
@@ -79,6 +80,17 @@ async def get_my_join_requests(
     return await get_join_requests_for_user(current_user.id)
 
 
+@router.get("/school/{school_id}", response_model=list[JoinRequestResponse])
+async def get_school_join_requests(
+    school_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    request_status: Annotated[JoinRequestStatus | None, Query(alias="status")] = None,
+):
+    """Get all student class join requests across all classes of a school for Principal/Teacher review."""
+    await _get_authorized_teacher_id(current_user, school_id)
+    return await get_join_requests_for_school(school_id, request_status)
+
+
 @router.get("/class/{class_id}", response_model=list[JoinRequestResponse])
 async def get_class_join_requests(
     class_id: str,
@@ -109,9 +121,11 @@ async def decide_request(
     )
     try:
         updated = await decide_join_request(
-            request_id,
-            JoinRequestStatus(decision.status),
-            teacher_id,
+            request_id=request_id,
+            decision=JoinRequestStatus(decision.status),
+            decided_by_user_id=teacher_id,
+            roll_no=decision.rollNo,
+            auto_roll_no=decision.autoRollNo,
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

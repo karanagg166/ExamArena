@@ -243,6 +243,24 @@ async def init_db() -> None:
                     'ON "Student" ("classId", "rollNo");'
                 )
             )
+            await conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS "TeacherSchoolJoinRequest" (
+                        "id" VARCHAR PRIMARY KEY,
+                        "teacherId" VARCHAR NOT NULL REFERENCES "Teacher"("id") ON DELETE CASCADE,
+                        "schoolId" VARCHAR NOT NULL REFERENCES "School"("id") ON DELETE CASCADE,
+                        "status" VARCHAR NOT NULL DEFAULT 'PENDING',
+                        "requestedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        "decidedAt" TIMESTAMPTZ,
+                        "decidedBy" VARCHAR,
+                        CONSTRAINT "teacherschooljoinrequest_teacherid_schoolid_key" UNIQUE ("teacherId", "schoolId")
+                    );
+                    CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_schoolid_idx" ON "TeacherSchoolJoinRequest" ("schoolId");
+                    CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_teacherid_idx" ON "TeacherSchoolJoinRequest" ("teacherId");
+                    """
+                )
+            )
         except Exception as err:
             print("DB Migration notice (class enrollment):", err)
 

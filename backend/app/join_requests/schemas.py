@@ -16,6 +16,8 @@ class JoinByCodeRequest(BaseModel):
 
 class JoinRequestDecision(BaseModel):
     status: Literal["APPROVED", "REJECTED"]
+    rollNo: str | None = None
+    autoRollNo: bool = True
 
 
 class JoinRequestResponse(BaseModel):
@@ -23,6 +25,7 @@ class JoinRequestResponse(BaseModel):
     studentUserId: str
     classId: str
     className: str
+    schoolId: str | None = None
     status: str
     requestedAt: datetime
     decidedAt: datetime | None = None

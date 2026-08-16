@@ -392,6 +392,42 @@ class TeacherClassJoinRequest(Base):
     schoolClass: Mapped["SchoolClass"] = relationship("SchoolClass")
 
 
+class TeacherSchoolJoinRequest(Base):
+    __tablename__ = "TeacherSchoolJoinRequest"
+    __table_args__ = (
+        UniqueConstraint(
+            "teacherId",
+            "schoolId",
+            name="teacherschooljoinrequest_teacherid_schoolid_key",
+        ),
+        Index("teacherschooljoinrequest_schoolid_idx", "schoolId"),
+        Index("teacherschooljoinrequest_teacherid_idx", "teacherId"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
+    teacherId: Mapped[str] = mapped_column(
+        String, ForeignKey("Teacher.id", ondelete="CASCADE"), nullable=False
+    )
+    schoolId: Mapped[str] = mapped_column(
+        String, ForeignKey("School.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[JoinRequestStatus] = mapped_column(
+        SQLEnum(JoinRequestStatus, native_enum=False),
+        default=JoinRequestStatus.PENDING,
+        nullable=False,
+    )
+    requestedAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    decidedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    decidedBy: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    teacher: Mapped["Teacher"] = relationship("Teacher")
+    school: Mapped["School"] = relationship("School")
+
+
 class Principal(Base):
     __tablename__ = "Principal"
     __table_args__ = (

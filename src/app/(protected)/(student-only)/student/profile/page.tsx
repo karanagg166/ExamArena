@@ -428,14 +428,22 @@ export default function StudentDashboard() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="text-sm text-zinc-400">Roll Number (Read-only)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-zinc-400">Roll Number</label>
+                  <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+                    Locked by School
+                  </span>
+                </div>
                 <input
                   type="text"
                   value={formData.rollNo}
                   disabled
                   readOnly
-                  className="w-full mt-1 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-400 cursor-not-allowed opacity-75"
+                  className="w-full mt-1 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-300 font-mono cursor-not-allowed opacity-90"
                 />
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  Assigned by school administration upon enrollment approval. Cannot be changed.
+                </p>
               </div>
               <div>
                 <label className="text-sm text-zinc-400">Date of Birth</label>

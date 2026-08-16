@@ -31,3 +31,41 @@ class TeacherClassJoinRequestResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TeacherSchoolJoinRequestCreate(BaseModel):
+    schoolId: str
+
+
+class TeacherSchoolJoinRequestDecision(BaseModel):
+    status: Literal["APPROVED", "REJECTED"]
+
+
+class TeacherSchoolJoinRequestResponse(BaseModel):
+    id: str
+    teacherId: str
+    teacherName: str
+    teacherEmail: str
+    teacherDepartment: str | None = None
+    schoolId: str
+    schoolName: str
+    status: str
+    requestedAt: datetime
+    decidedAt: datetime | None = None
+    decidedBy: str | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class TeacherAssignClassesRequest(BaseModel):
+    teacherId: str
+    classIds: list[str]
+    subject: Subject | None = None
+
+
+class TeacherAssignClassesResponse(BaseModel):
+    teacherId: str
+    classIds: list[str]
+    assignedCount: int
+    message: str
