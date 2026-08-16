@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSchoolStore, useSchoolClassStore, useTeacherRequestStore } from "@/stores";
+import { useAuthStore, useSchoolStore, useSchoolClassStore, useTeacherRequestStore } from "@/stores";
 import SchoolClassCard from "@/components/school-class/SchoolClassCard";
 import { Spinner } from "@/components/ui/loading";
 import {
@@ -25,7 +25,14 @@ type TeacherItem = {
 
 export default function PrincipalSchoolClassPage() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const { school, loading: schoolLoading, hasFetched, fetchSchool } = useSchoolStore();
+
+  useEffect(() => {
+    if (user && user.role !== "PRINCIPAL" && user.role !== "ADMIN") {
+      router.replace("/teacher/classes");
+    }
+  }, [user, router]);
   const {
     classes,
     loading: classesLoading,
@@ -189,7 +196,12 @@ export default function PrincipalSchoolClassPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {classes.map((cls) => (
-            <SchoolClassCard key={cls.id} schoolClass={cls} />
+            <SchoolClassCard
+              key={cls.id}
+              schoolClass={cls}
+              basePath="/principal/school/classes"
+              showDelete={true}
+            />
           ))}
         </div>
       )}

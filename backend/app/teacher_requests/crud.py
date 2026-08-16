@@ -367,13 +367,17 @@ async def create_teacher_school_request(
         if not school:
             raise ValueError("School not found")
 
-        # 2. Check if already part of this school
+        # 2. Check if already part of a school
         t_stmt = select(Teacher).where(Teacher.id == teacher_id)
         teacher = (await s.execute(t_stmt)).scalar_one_or_none()
         if not teacher:
             raise ValueError("Teacher profile not found")
-        if teacher.schoolId == school_id:
-            raise ValueError("You are already enrolled in this school")
+        if teacher.schoolId:
+            if teacher.schoolId == school_id:
+                raise ValueError("You are already enrolled in this school")
+            raise ValueError(
+                "You are already enrolled in a school. You cannot join another school until you leave your current school."
+            )
 
         # 3. Check existing request
         existing_stmt = select(TeacherSchoolJoinRequest).where(

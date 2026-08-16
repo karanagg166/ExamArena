@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useSchoolStore } from "@/stores";
+import { Building2 } from "lucide-react";
 
 const BASE_LINK_CLS =
   "rounded-xl border px-3 py-2 text-sm font-medium transition-colors duration-200";
@@ -19,6 +21,11 @@ export default function TeacherNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
+  const { school, hasFetched, fetchSchool } = useSchoolStore();
+
+  useEffect(() => {
+    if (!hasFetched) fetchSchool();
+  }, [hasFetched, fetchSchool]);
 
   const handleLogout = async () => {
     await logout();
@@ -32,6 +39,12 @@ export default function TeacherNavbar() {
           <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-emerald-300">
             Teacher
           </span>
+          {school && (
+            <span className="hidden sm:flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-300">
+              <Building2 className="h-3 w-3 text-indigo-400" />
+              {school.name}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -69,12 +82,21 @@ export default function TeacherNavbar() {
           >
             Exams & Results
           </Link>
-          <Link
-            href="/teacher/requests?tab=school"
-            className={linkClass(pathname === "/teacher/school/join")}
-          >
-            Join School
-          </Link>
+          {school ? (
+            <Link
+              href="/teacher/school"
+              className={linkClass(pathname.startsWith("/teacher/school"))}
+            >
+              My School
+            </Link>
+          ) : (
+            <Link
+              href="/teacher/school/join"
+              className={linkClass(pathname === "/teacher/school/join")}
+            >
+              Join School
+            </Link>
+          )}
           <Link
             href="/students"
             className={linkClass(pathname.startsWith("/students"))}

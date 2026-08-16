@@ -7,7 +7,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
-import { useSchoolClassStore } from "@/stores";
+import { useAuthStore, useSchoolClassStore } from "@/stores";
 import { api } from "@/lib/axios";
 import {
   ArrowLeft,
@@ -61,11 +61,18 @@ interface ClassExamResultData {
 export default function ClassPage() {
   const { classId } = useParams<{ classId: string }>();
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const { classes, loading, error, fetchClass, deleteClass } = useSchoolClassStore();
 
   const [activeTab, setActiveTab] = useState<"overview" | "results">("overview");
   const [resultsData, setResultsData] = useState<ClassExamResultData | null>(null);
   const [loadingResults, setLoadingResults] = useState(false);
+
+  useEffect(() => {
+    if (user && user.role !== "PRINCIPAL" && user.role !== "ADMIN") {
+      router.replace(`/teacher/classes/${classId}`);
+    }
+  }, [user, classId, router]);
 
   const schoolClass = classes.find((c) => c.id === classId);
   useEffect(() => {

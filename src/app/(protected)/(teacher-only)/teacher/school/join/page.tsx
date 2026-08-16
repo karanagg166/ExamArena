@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/axios";
 import type { School } from "@/types/school";
-import { useTeacherRequestStore } from "@/stores";
+import { useSchoolStore, useTeacherRequestStore } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/loading";
 import { Building2, Plus, RefreshCw, Search } from "lucide-react";
@@ -17,6 +17,7 @@ export default function TeacherJoinSchoolPage() {
   const [submittingSchoolId, setSubmittingSchoolId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const currentSchool = useSchoolStore((s) => s.school);
 
   const {
     mySchoolRequests,
@@ -112,6 +113,33 @@ export default function TeacherJoinSchoolPage() {
           </div>
         </div>
 
+        {currentSchool && (
+          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-400">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-white">Active Institution: {currentSchool.name}</h3>
+                  <span className="rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold">
+                    Currently Enrolled
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 mt-1">
+                  You are actively enrolled in {currentSchool.name} ({currentSchool.schoolCode}). You cannot request to join another school until you leave your current school.
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => router.push("/teacher/school")}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 text-xs"
+            >
+              View School Profile
+            </Button>
+          </div>
+        )}
+
         {/* Search Bar */}
         {schools.length > 0 && (
           <div className="relative">
@@ -185,11 +213,12 @@ export default function TeacherJoinSchoolPage() {
         {!loading && filteredSchools.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filteredSchools.map((school) => {
+              const isCurrentSchool = currentSchool?.id === school.id;
               const existingReq = mySchoolRequests.find(
                 (r) => r.schoolId === school.id
               );
               const isPending = existingReq?.status === "PENDING";
-              const isApproved = existingReq?.status === "APPROVED";
+              const isApproved = existingReq?.status === "APPROVED" || isCurrentSchool;
               const isRejected = existingReq?.status === "REJECTED";
 
               return (
@@ -202,21 +231,23 @@ export default function TeacherJoinSchoolPage() {
                       <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                         {school.name}
                       </h2>
-                      {isPending && (
+                      {isCurrentSchool ? (
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
+                          Active School
+                        </span>
+                      ) : isPending ? (
                         <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800">
                           Pending Approval
                         </span>
-                      )}
-                      {isApproved && (
+                      ) : isApproved ? (
                         <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
                           Approved
                         </span>
-                      )}
-                      {isRejected && (
+                      ) : isRejected ? (
                         <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800">
                           Declined
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {school.city}, {school.state}, {school.country}
@@ -227,14 +258,25 @@ export default function TeacherJoinSchoolPage() {
                   </div>
 
                   <div className="mt-5">
-                    {isPending ? (
+                    {isCurrentSchool ? (
+                      <Button
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => router.push("/teacher/school")}
+                      >
+                        Active School Portal
+                      </Button>
+                    ) : currentSchool ? (
+                      <Button className="w-full text-xs" disabled variant="outline">
+                        Leave {currentSchool.name} to Join
+                      </Button>
+                    ) : isPending ? (
                       <Button className="w-full" disabled variant="outline">
                         Request Pending Approval
                       </Button>
                     ) : isApproved ? (
                       <Button
                         className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                        onClick={() => window.location.assign("/teacher/school")}
+                        onClick={() => router.push("/teacher/school")}
                       >
                         Go to School Portal
                       </Button>

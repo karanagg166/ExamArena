@@ -27,6 +27,7 @@ import { Spinner } from "@/components/ui/loading";
 import {
   useJoinRequestStore,
   useTeacherRequestStore,
+  useSchoolStore,
 } from "@/stores";
 import { api } from "@/lib/axios";
 import type { ClassJoinRequest } from "@/types";
@@ -69,6 +70,8 @@ function TeacherRequestsContent() {
   const [customRollNo, setCustomRollNo] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const { school, fetchSchool, hasFetched } = useSchoolStore();
+
   const {
     mySchoolRequests,
     myClassRequests,
@@ -81,6 +84,10 @@ function TeacherRequestsContent() {
     fetchSchoolRequests: fetchStudentRequests,
     decideRequest: decideStudentRequest,
   } = useJoinRequestStore();
+
+  useEffect(() => {
+    if (!hasFetched) fetchSchool();
+  }, [hasFetched, fetchSchool]);
 
   const loadData = useCallback(async (silent = false) => {
     if (!silent) {
@@ -398,25 +405,57 @@ function TeacherRequestsContent() {
                 <h3 className="text-lg font-bold text-white">Your School Affiliation</h3>
                 <p className="text-xs text-zinc-400">Track and manage your requests to join educational institutions.</p>
               </div>
-              <Link href="/teacher/school/join">
-                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Browse Schools to Join
-                </Button>
-              </Link>
+              {!school && (
+                <Link href="/teacher/school/join">
+                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Browse Schools to Join
+                  </Button>
+                </Link>
+              )}
             </div>
+
+            {school && (
+              <div className="p-5 rounded-2xl border border-emerald-500/40 bg-emerald-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-400">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-base font-bold text-white">Currently Enrolled: {school.name}</h4>
+                      <Badge variant="success" className="text-[10px] uppercase tracking-wider">Active Faculty</Badge>
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      School Code: <span className="text-zinc-200 font-mono font-bold">{school.schoolCode}</span> • You are actively enrolled in this institution.
+                    </p>
+                  </div>
+                </div>
+                <Link href="/teacher/school" className="shrink-0">
+                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+                    View School Profile <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            )}
 
             {mySchoolRequests.length === 0 ? (
               <GlassCard padding="lg" className="text-center py-12 text-zinc-400 space-y-3">
                 <Building2 size={36} className="mx-auto text-zinc-600" />
-                <p className="text-base font-semibold text-zinc-200">No School Join Requests</p>
-                <p className="text-xs text-zinc-500 max-w-md mx-auto">
-                  You have not submitted any join requests to schools yet. Browse registered institutions to join their faculty.
+                <p className="text-base font-semibold text-zinc-200">
+                  {school ? "Active School Enrollment" : "No School Join Requests"}
                 </p>
-                <Link href="/teacher/school/join">
-                  <Button size="sm" variant="outline" className="mt-2 text-xs">
-                    Browse Schools <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                </Link>
+                <p className="text-xs text-zinc-500 max-w-md mx-auto">
+                  {school
+                    ? `You are an active faculty member of ${school.name}. You cannot submit new join requests while affiliated with an active school.`
+                    : "You have not submitted any join requests to schools yet. Browse registered institutions to join their faculty."}
+                </p>
+                {!school && (
+                  <Link href="/teacher/school/join">
+                    <Button size="sm" variant="outline" className="mt-2 text-xs">
+                      Browse Schools <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </Link>
+                )}
               </GlassCard>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

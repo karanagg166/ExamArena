@@ -66,6 +66,14 @@ async def create_or_reopen_join_request(
     """Create a request, allowing a previously rejected student to reapply."""
 
     async def _create(s: AsyncSession):
+        existing_student = await s.scalar(
+            select(Student).where(Student.userId == student_user_id)
+        )
+        if existing_student:
+            raise ValueError(
+                "You already have an active class and school enrollment. You cannot join another class until you leave your current class."
+            )
+
         existing = await s.scalar(
             select(ClassJoinRequest)
             .where(

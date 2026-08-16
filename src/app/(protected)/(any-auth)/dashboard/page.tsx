@@ -25,6 +25,8 @@ import {
   Users,
 } from "lucide-react";
 
+import { useSchoolStore } from "@/stores";
+
 type User = {
   name: string;
   role: "STUDENT" | "TEACHER" | "PRINCIPAL" | "ADMIN";
@@ -34,12 +36,26 @@ type User = {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [hasStudentProfile, setHasStudentProfile] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const { school, hasFetched, fetchSchool } = useSchoolStore();
+
+  useEffect(() => {
+    if (!hasFetched) fetchSchool();
+  }, [hasFetched, fetchSchool]);
 
   useEffect(() => {
     api
       .get("/api/v1/auth/me")
-      .then((r) => setUser(r.data))
+      .then((r) => {
+        setUser(r.data);
+        if (r.data.role === "STUDENT") {
+          api
+            .get("/api/v1/students/me")
+            .then(() => setHasStudentProfile(true))
+            .catch(() => setHasStudentProfile(false));
+        }
+      })
       .catch(() => router.push("/login"))
       .finally(() => setLoading(false));
   }, [router]);
@@ -123,11 +139,19 @@ export default function DashboardPage() {
                       <UserCheck className="w-3.5 h-3.5 mr-1" /> Student Requests
                     </Button>
                   </Link>
-                  <Link href="/teacher/requests?tab=school">
-                    <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm text-xs">
-                      <School className="w-3.5 h-3.5 mr-1" /> Join School
-                    </Button>
-                  </Link>
+                  {!school ? (
+                    <Link href="/teacher/school/join">
+                      <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm text-xs">
+                        <School className="w-3.5 h-3.5 mr-1" /> Join School
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/teacher/school">
+                      <Button size="sm" variant="outline" className="border-indigo-500/40 text-indigo-300 hover:bg-indigo-950/30 text-xs">
+                        <Building2 className="w-3.5 h-3.5 mr-1 text-indigo-400" /> {school.name}
+                      </Button>
+                    </Link>
+                  )}
                   <Link href="/teacher/exams/create">
                     <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm text-xs">
                       <Plus className="w-3.5 h-3.5 mr-1" /> Create Exam
@@ -138,11 +162,13 @@ export default function DashboardPage() {
 
               {role === "STUDENT" && (
                 <>
-                  <Link href="/student/profile">
-                    <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm text-xs">
-                      <GraduationCap className="w-3.5 h-3.5 mr-1" /> Join Class Code
-                    </Button>
-                  </Link>
+                  {!hasStudentProfile && (
+                    <Link href="/student/profile">
+                      <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm text-xs">
+                        <GraduationCap className="w-3.5 h-3.5 mr-1" /> Join Class Code
+                      </Button>
+                    </Link>
+                  )}
                   <Link href="/exams">
                     <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm text-xs">
                       <Sparkles className="w-3.5 h-3.5 mr-1" /> Take Exam
@@ -326,22 +352,41 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-400">
-                    <School className="h-5 w-5" />
+              {!school ? (
+                <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-400">
+                      <School className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">School Join Requests & Status</h4>
+                      <p className="text-xs text-zinc-400 mt-0.5">Browse schools or check your faculty application approval status.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white">School Join Requests & Status</h4>
-                    <p className="text-xs text-zinc-400 mt-0.5">Browse schools or check your faculty application approval status.</p>
-                  </div>
+                  <Link href="/teacher/school/join" className="shrink-0">
+                    <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">
+                      Join School / Status <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </Link>
                 </div>
-                <Link href="/teacher/requests?tab=school" className="shrink-0">
-                  <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">
-                    Join School / Status <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                </Link>
-              </div>
+              ) : (
+                <div className="p-5 rounded-2xl border border-indigo-500/30 bg-indigo-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-indigo-500/15 text-indigo-400">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Enrolled in {school.name}</h4>
+                      <p className="text-xs text-zinc-400 mt-0.5">School Code: {school.schoolCode} • Manage assigned classes and roster.</p>
+                    </div>
+                  </div>
+                  <Link href="/teacher/school" className="shrink-0">
+                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
+                      School Profile <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Teacher Cards Grid */}
@@ -395,23 +440,25 @@ export default function DashboardPage() {
                 bg="bg-violet-500/15"
               />
 
-              <DashboardCard
-                title="Join a School"
-                description="Browse available institutions and submit direct faculty join applications."
-                href="/teacher/school/join"
-                icon={School}
-                color="text-amber-400"
-                bg="bg-amber-500/15"
-              />
-
-              <DashboardCard
-                title="School Directory"
-                description="Access information on your current school administration and faculty members."
-                href="/teacher/school"
-                icon={Building2}
-                color="text-cyan-400"
-                bg="bg-cyan-500/15"
-              />
+              {!school ? (
+                <DashboardCard
+                  title="Join a School"
+                  description="Browse available institutions and submit direct faculty join applications."
+                  href="/teacher/school/join"
+                  icon={School}
+                  color="text-amber-400"
+                  bg="bg-amber-500/15"
+                />
+              ) : (
+                <DashboardCard
+                  title="School Directory"
+                  description="Access information on your current school administration and faculty members."
+                  href="/teacher/school"
+                  icon={Building2}
+                  color="text-cyan-400"
+                  bg="bg-cyan-500/15"
+                />
+              )}
 
               <DashboardCard
                 title="Teacher Profile"
@@ -439,22 +486,41 @@ export default function DashboardPage() {
           <div className="space-y-8">
             {/* Student Action Banners */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-400">
-                    <GraduationCap className="h-5 w-5" />
+              {!hasStudentProfile ? (
+                <div className="p-5 rounded-2xl border border-amber-500/30 bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-400">
+                      <GraduationCap className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Join a Class with Code</h4>
+                      <p className="text-xs text-zinc-400 mt-0.5">Enter the 8-character class join code given by your teacher.</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white">Join a Class with Code</h4>
-                    <p className="text-xs text-zinc-400 mt-0.5">Enter the 8-character class join code given by your teacher.</p>
-                  </div>
+                  <Link href="/student/profile" className="shrink-0">
+                    <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">
+                      Enter Join Code <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </Link>
                 </div>
-                <Link href="/student/profile" className="shrink-0">
-                  <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white text-xs">
-                    Enter Join Code <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                </Link>
-              </div>
+              ) : (
+                <div className="p-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-400">
+                      <GraduationCap className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">My Enrolled Class</h4>
+                      <p className="text-xs text-zinc-400 mt-0.5">View your class section details, assigned teachers, and peers.</p>
+                    </div>
+                  </div>
+                  <Link href="/student/class" className="shrink-0">
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
+                      View My Class <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </Link>
+                </div>
+              )}
 
               <div className="p-5 rounded-2xl border border-sky-500/30 bg-sky-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -496,16 +562,29 @@ export default function DashboardPage() {
                 bg="bg-indigo-500/15"
               />
 
-              <DashboardCard
-                title="Class Enrollment & Join Codes"
-                description="Enter class join codes, check admission status, and update guardian information."
-                href="/student/profile"
-                icon={UserCircle}
-                color="text-amber-400"
-                bg="bg-amber-500/15"
-                badge="Join Code"
-                badgeVariant="warning"
-              />
+              {!hasStudentProfile ? (
+                <DashboardCard
+                  title="Class Enrollment & Join Codes"
+                  description="Enter class join codes, check admission status, and update guardian information."
+                  href="/student/profile"
+                  icon={UserCircle}
+                  color="text-amber-400"
+                  bg="bg-amber-500/15"
+                  badge="Join Code"
+                  badgeVariant="warning"
+                />
+              ) : (
+                <DashboardCard
+                  title="My Profile & Roll No"
+                  description="View your active student profile, assigned roll number, and personal details."
+                  href="/student/profile"
+                  icon={UserCircle}
+                  color="text-amber-400"
+                  bg="bg-amber-500/15"
+                  badge="Profile"
+                  badgeVariant="default"
+                />
+              )}
 
               <DashboardCard
                 title="My Class & Teachers"

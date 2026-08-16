@@ -15,7 +15,7 @@ import { ArrowLeft, UserPlus, Check, X } from "lucide-react";
 import { api } from "@/lib/axios";
 import { getErrorMessage } from "@/lib/error";
 
-export default function PrincipalSchoolClassPage() {
+export default function TeacherClassesPage() {
   const router = useRouter();
   const { school, loading: schoolLoading, hasFetched, fetchSchool } = useSchoolStore();
   const {
@@ -24,6 +24,7 @@ export default function PrincipalSchoolClassPage() {
     fetchClassesBySchool,
   } = useSchoolClassStore();
 
+  const [assignedClassIds, setAssignedClassIds] = useState<string[]>([]);
   const [requestModalOpen, setRequestModalOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("MATHS");
@@ -38,6 +39,17 @@ export default function PrincipalSchoolClassPage() {
   useEffect(() => {
     if (school?.id) fetchClassesBySchool(school.id);
   }, [school?.id, fetchClassesBySchool]);
+
+  useEffect(() => {
+    api
+      .get("/api/v1/teachers/me")
+      .then((res) => {
+        const teaches = res.data?.teaches || [];
+        const ids = teaches.map((t: { classId: string }) => t.classId);
+        setAssignedClassIds(ids);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSendRequest = async () => {
     if (!selectedClassId) {
@@ -231,7 +243,17 @@ export default function PrincipalSchoolClassPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {classes.map((cls) => (
-            <SchoolClassCard key={cls.id} schoolClass={cls} />
+            <SchoolClassCard
+              key={cls.id}
+              schoolClass={cls}
+              basePath="/teacher/classes"
+              showDelete={false}
+              isTeacherAssigned={assignedClassIds.includes(cls.id)}
+              onRequestJoin={(classId) => {
+                setSelectedClassId(classId);
+                setRequestModalOpen(true);
+              }}
+            />
           ))}
         </div>
       )}

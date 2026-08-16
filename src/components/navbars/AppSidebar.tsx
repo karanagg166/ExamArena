@@ -26,7 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useSchoolStore } from "@/stores";
 import type { UserRole } from "@/types/user";
 
 /* ─── Nav item config per role ─── */
@@ -177,11 +177,19 @@ export function AppSidebar({ collapsed, setCollapsed }: AppSidebarProps) {
         : null;
 
   const roleRaw = user?.role ?? inferredRole;
+  const school = useSchoolStore((s) => s.school);
   const role: UserRole | null = roleRaw ? (roleRaw.toUpperCase() as UserRole) : null;
   
   if (!role || isExamAttempt) return null;
 
-  const navItems = navItemsByRole[role] ?? [];
+  const rawNavItems = navItemsByRole[role] ?? [];
+  const navItems = rawNavItems.filter((item) => {
+    if (role === "TEACHER") {
+      if (school && item.href === "/teacher/school/join") return false;
+      if (!school && item.href === "/teacher/school") return false;
+    }
+    return true;
+  });
 
   const handleLogout = async () => {
     await logout();
