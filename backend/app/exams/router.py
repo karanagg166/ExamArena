@@ -32,6 +32,11 @@ async def create_new_exam(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     teacher = await get_teacher_from_user(current_user)
+    if not teacher.schoolId:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must first join and be approved by a School before creating exams.",
+        )
     try:
         return await crud.create_exam(exam_data, teacher.id)
     except HTTPException:

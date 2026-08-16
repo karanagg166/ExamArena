@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, UserPlus, Check, X } from "lucide-react";
+import { ArrowLeft, UserPlus, Check, X } from "lucide-react";
 import { api } from "@/lib/axios";
 import { getErrorMessage } from "@/lib/error";
 
@@ -129,10 +129,6 @@ export default function PrincipalSchoolClassPage() {
             >
               <UserPlus className="mr-2 h-4 w-4" />
               Request to Teach Class
-            </Button>
-            <Button onClick={() => router.push("/teacher/classes/new")}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Class
             </Button>
           </div>
         </CardHeader>

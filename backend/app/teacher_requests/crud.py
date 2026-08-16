@@ -128,6 +128,20 @@ async def create_teacher_class_request(
         if not school_class:
             raise ValueError("Class not found")
 
+        # Verify teacher has an approved school membership
+        t_stmt = select(Teacher).where(Teacher.id == teacher_id)
+        teacher = (await s.execute(t_stmt)).scalar_one_or_none()
+        if not teacher:
+            raise ValueError("Teacher profile not found")
+        if not teacher.schoolId:
+            raise ValueError(
+                "You must first join and be approved by a School before you can request to teach a class."
+            )
+        if teacher.schoolId != school_class.schoolId:
+            raise ValueError(
+                "You can only request to teach classes within your approved school."
+            )
+
         # 2. Check if already teaching this class
         tc_stmt = select(TeacherClass).where(
             and_(

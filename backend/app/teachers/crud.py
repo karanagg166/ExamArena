@@ -16,15 +16,27 @@ from app.teachers.schemas import (
 
 
 async def get_teacher_by_user_id(user_id: str, session: AsyncSession | None = None):
-    """Get teacher by user ID with user data"""
+    """Get teacher by user ID with user data and auto-cascade school affiliation if needed"""
+    from app.core.models import TeacherClass
 
     async def _do_get(s: AsyncSession):
         stmt = (
             select(Teacher)
             .where(Teacher.userId == user_id)
-            .options(selectinload(Teacher.user))
+            .options(
+                selectinload(Teacher.user),
+                selectinload(Teacher.classes).selectinload(TeacherClass.schoolClass),
+            )
         )
-        return (await s.execute(stmt)).scalar_one_or_none()
+        teacher = (await s.execute(stmt)).scalar_one_or_none()
+        if teacher and not teacher.schoolId and teacher.classes:
+            for tc in teacher.classes:
+                if tc.schoolClass and tc.schoolClass.schoolId:
+                    teacher.schoolId = tc.schoolClass.schoolId
+                    await s.commit()
+                    await s.refresh(teacher)
+                    break
+        return teacher
 
     if session:
         return await _do_get(session)
@@ -33,15 +45,27 @@ async def get_teacher_by_user_id(user_id: str, session: AsyncSession | None = No
 
 
 async def get_teacher_by_id(teacher_id: str, session: AsyncSession | None = None):
-    """Get teacher by primary ID with user data"""
+    """Get teacher by primary ID with user data and auto-cascade school affiliation if needed"""
+    from app.core.models import TeacherClass
 
     async def _do_get(s: AsyncSession):
         stmt = (
             select(Teacher)
             .where(Teacher.id == teacher_id)
-            .options(selectinload(Teacher.user))
+            .options(
+                selectinload(Teacher.user),
+                selectinload(Teacher.classes).selectinload(TeacherClass.schoolClass),
+            )
         )
-        return (await s.execute(stmt)).scalar_one_or_none()
+        teacher = (await s.execute(stmt)).scalar_one_or_none()
+        if teacher and not teacher.schoolId and teacher.classes:
+            for tc in teacher.classes:
+                if tc.schoolClass and tc.schoolClass.schoolId:
+                    teacher.schoolId = tc.schoolClass.schoolId
+                    await s.commit()
+                    await s.refresh(teacher)
+                    break
+        return teacher
 
     if session:
         return await _do_get(session)

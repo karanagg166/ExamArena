@@ -261,8 +261,10 @@ export default function StudentDashboard() {
       <div className="page-shell text-white">
         <div className="mx-auto max-w-2xl space-y-6">
           <div>
-            <h1 className="text-3xl font-bold">Class enrollment</h1>
-            <p className="mt-1 text-zinc-400">Join a class with the code shared by your teacher.</p>
+            <h1 className="text-3xl font-bold">Class & School Enrollment</h1>
+            <p className="mt-1 text-zinc-400">
+              Enter the 8-character join code provided by your teacher or principal. Once approved, you will be enrolled in the school & class, assigned a roll number, and gain access to all class exams.
+            </p>
           </div>
 
           {latestRequest && latestRequest.status !== "REJECTED" ? (

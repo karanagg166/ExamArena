@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Building2 } from "lucide-react";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/ui/page-header";
@@ -10,15 +10,22 @@ import { Button } from "@/components/ui/button";
 import { FormMessage } from "@/components/ui/form-message";
 import { ExamForm } from "@/components/exam/ExamForm";
 import { QuestionList } from "@/components/question/QuestionList";
+import { Spinner } from "@/components/ui/loading";
 import { api } from "@/lib/axios";
 import { getErrorMessage } from "@/lib/error";
 import { validateExam, computeMaxMarks } from "@/lib/exam-validation";
+import { useSchoolStore } from "@/stores";
 import type { ExamCreate } from "@/types";
 
 export default function CreateExamPage() {
   const router = useRouter();
+  const { school, loading: schoolLoading, hasFetched, fetchSchool } = useSchoolStore();
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hasFetched) fetchSchool();
+  }, [hasFetched, fetchSchool]);
 
   const [exam, setExam] = useState<ExamCreate>({
     name: "",
@@ -59,6 +66,38 @@ export default function CreateExamPage() {
       setLoading(false);
     }
   };
+
+  if (schoolLoading) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <Spinner className="h-10 w-10 text-indigo-500 border-4" />
+      </div>
+    );
+  }
+
+  if (!school) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center p-6 text-center">
+        <div className="max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950/60 p-8 shadow-xl space-y-4">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+            <Building2 className="h-7 w-7" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">School Affiliation Required</h2>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            You must first join and be approved by a School before you can create and publish exams. Once your school affiliation is confirmed by the Principal, you can create exams for your assigned classes.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <Button onClick={() => router.push("/teacher/school/join")}>
+              Join a School →
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/teacher/requests?tab=status")}>
+              View Request Status
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-shell">

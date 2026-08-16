@@ -13,7 +13,7 @@ from app.students.schemas import (
 
 
 async def get_student_by_user_id(user_id: str, session: AsyncSession | None = None):
-    """Get student by user ID with user data"""
+    """Get student by user ID with user data and auto-cascade school affiliation if needed"""
 
     async def _do_get(s: AsyncSession):
         stmt = (
@@ -29,6 +29,10 @@ async def get_student_by_user_id(user_id: str, session: AsyncSession | None = No
         if student:
             if getattr(student, "schoolClass", None):
                 student.className = student.schoolClass.name
+                if not student.schoolId and student.schoolClass.schoolId:
+                    student.schoolId = student.schoolClass.schoolId
+                    await s.commit()
+                    await s.refresh(student)
             if getattr(student, "school", None):
                 student.schoolName = student.school.name
         return student
@@ -40,7 +44,7 @@ async def get_student_by_user_id(user_id: str, session: AsyncSession | None = No
 
 
 async def get_student_by_id(student_id: str, session: AsyncSession | None = None):
-    """Get student by primary ID with user data"""
+    """Get student by primary ID with user data and auto-cascade school affiliation if needed"""
 
     async def _do_get(s: AsyncSession):
         stmt = (
@@ -56,6 +60,10 @@ async def get_student_by_id(student_id: str, session: AsyncSession | None = None
         if student:
             if getattr(student, "schoolClass", None):
                 student.className = student.schoolClass.name
+                if not student.schoolId and student.schoolClass.schoolId:
+                    student.schoolId = student.schoolClass.schoolId
+                    await s.commit()
+                    await s.refresh(student)
             if getattr(student, "school", None):
                 student.schoolName = student.school.name
         return student

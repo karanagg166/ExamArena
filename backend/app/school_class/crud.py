@@ -286,6 +286,12 @@ async def assign_teacher_to_class(
         if not teacher:
             return False
 
+        # Ensure cascading school affiliation: if teacher has no schoolId, set it to school_class.schoolId
+        if not teacher.schoolId:
+            teacher.schoolId = school_class.schoolId
+        elif teacher.schoolId != school_class.schoolId:
+            return False
+
         existing_stmt = select(TeacherClass).where(
             TeacherClass.classId == class_id, TeacherClass.teacherId == teacher_id
         )

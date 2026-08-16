@@ -35,6 +35,10 @@ async def start_exam_attempt(
     student = await get_student_by_user_id(user_id, session=session)
     if not student:
         raise ValueError("Only students can start an exam")
+    if not student.schoolId or not student.classId:
+        raise ValueError(
+            "You must first join a school and class using your class join code and get approved before taking exams."
+        )
 
     async def _do_start(s: AsyncSession):
         exam_stmt = (

@@ -38,7 +38,12 @@ async def create_class(
     class_data: SchoolClassCreateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    """Create a new school class."""
+    """Create a new school class (Principal and Admin only)."""
+    if current_user.role not in (Role.PRINCIPAL, Role.ADMIN):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only school principals or admins can create new classes. Teachers cannot create classes on their own.",
+        )
     logger.debug(
         "Received class creation request: %s from user: %s", class_data, current_user.id
     )

@@ -30,6 +30,18 @@ class TestSchoolClassesApi:
         assert response.status_code == 403
         assert "only create classes for your own school" in response.json()["detail"]
 
+    async def test_teacher_cannot_create_class(
+        self, client, override_auth, mock_class_db
+    ):
+        override_auth(role="TEACHER")
+        payload = {"name": "12th - A", "year": "12th", "section": "A"}
+        response = await client.post("/api/v1/classes", json=payload)
+        assert response.status_code == 403
+        assert (
+            "Only school principals or admins can create new classes"
+            in response.json()["detail"]
+        )
+
     async def test_list_by_school(self, client, override_auth, mock_class_db):
         override_auth(role="ADMIN")
         fake_class = make_fake_school_class()
