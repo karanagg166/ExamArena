@@ -42,10 +42,10 @@ export default function PrincipalNavbar() {
             Dashboard
           </Link>
           <Link
-            href="/principal/teacher-requests"
+            href="/principal/teacher-requests?tab=faculty"
             className={linkClass(pathname.startsWith("/principal/teacher-requests"))}
           >
-            Requests
+            Requests Hub
           </Link>
           <Link
             href="/principal/school/classes"

@@ -42,10 +42,16 @@ export default function TeacherNavbar() {
             Dashboard
           </Link>
           <Link
+            href="/teacher/requests?tab=students"
+            className={linkClass(pathname.startsWith("/teacher/requests"))}
+          >
+            Student Requests
+          </Link>
+          <Link
             href="/teacher/classes"
             className={linkClass(pathname.startsWith("/teacher/classes"))}
           >
-            Classes & Requests
+            My Classes
           </Link>
           <Link
             href="/teacher/exams/create"
@@ -64,16 +70,16 @@ export default function TeacherNavbar() {
             Exams & Results
           </Link>
           <Link
+            href="/teacher/requests?tab=school"
+            className={linkClass(pathname === "/teacher/school/join")}
+          >
+            Join School
+          </Link>
+          <Link
             href="/students"
             className={linkClass(pathname.startsWith("/students"))}
           >
             Students
-          </Link>
-          <Link
-            href="/teacher/school"
-            className={linkClass(pathname === "/teacher/school" || pathname.startsWith("/teacher/school/join"))}
-          >
-            School
           </Link>
           <Link
             href="/teacher/profile"

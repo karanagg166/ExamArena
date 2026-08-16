@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   UserCheck,
   UserX,
@@ -33,6 +33,9 @@ import type { ClassJoinRequest } from "@/types";
 
 export default function PrincipalTeacherRequestsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -41,7 +44,17 @@ export default function PrincipalTeacherRequestsPage() {
   // Top Section Category Tab: TEACHER_SCHOOL | TEACHER_CLASS | STUDENT_ENROLLMENT
   const [category, setCategory] = useState<
     "TEACHER_SCHOOL" | "TEACHER_CLASS" | "STUDENT_ENROLLMENT"
-  >("TEACHER_SCHOOL");
+  >(() => {
+    if (tabParam === "student" || tabParam === "students") return "STUDENT_ENROLLMENT";
+    if (tabParam === "teaching" || tabParam === "class" || tabParam === "classes") return "TEACHER_CLASS";
+    return "TEACHER_SCHOOL";
+  });
+
+  useEffect(() => {
+    if (tabParam === "student" || tabParam === "students") setCategory("STUDENT_ENROLLMENT");
+    else if (tabParam === "teaching" || tabParam === "class" || tabParam === "classes") setCategory("TEACHER_CLASS");
+    else if (tabParam === "faculty" || tabParam === "teacher" || tabParam === "teachers") setCategory("TEACHER_SCHOOL");
+  }, [tabParam]);
 
   // Status Tab: ALL | PENDING | APPROVED | REJECTED
   const [statusTab, setStatusTab] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">(
