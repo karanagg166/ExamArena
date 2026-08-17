@@ -1,3 +1,5 @@
+import '@testing-library/jest-dom/vitest';
+
 const storageMock = () => {
   let store: Record<string, string> = {};
   return {

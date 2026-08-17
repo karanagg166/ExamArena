@@ -43,6 +43,7 @@ python-multipart
 pytest
 pytest-mock
 pytest-asyncio
+pytest-cov
 httpx
 
 # Linting and Formatting
