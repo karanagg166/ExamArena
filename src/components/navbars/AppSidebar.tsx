@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   LayoutDashboard,
@@ -19,10 +19,10 @@ import {
   UserCheck,
   Building2,
   Search,
-  History,
   Sun,
   Moon,
   MessageSquare,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,80 +39,43 @@ interface NavItem {
   matchPrefix?: string;
 }
 
-/**
- * Each role's nav items are derived from the actual Next.js route tree:
- *
- * STUDENT:
- *   /dashboard              — Dashboard
- *   /student/profile        — My Profile
- *   /student/school         — My School
- *   /student/class          — My Class
- *   /exams                  — Browse Exams  (any-auth)
- *   /student/exams          — My Exams (history / results)
- *
- * TEACHER:
- *   /dashboard              — Dashboard
- *   /teacher/profile        — My Profile
- *   /teacher/school         — School (join)
- *   /teacher/classes        — My Classes
- *   /teacher/exams/create   — Create Exam
- *   /teacher/exams          — My Exams
- *   /students               — Students   (staff-only)
- *   /teachers               — Teachers   (any-auth)
- *   /exams                  — Browse Exams
- *
- * PRINCIPAL:
- *   /dashboard              — Dashboard
- *   /principal/profile      — My Profile
- *   /principal/school       — My School
- *   /principal/school/classes -- Classes
- *   /teacher/exams/create   — Create Exam
- *   /teacher/exams          — My Exams
- *   /teachers               — Teachers
- *   /students               — Students
- *   /exams                  — Browse Exams
- *
- * ADMIN:
- *   /dashboard              — Dashboard
- *   /profile                — Profile
- *   /schools                — Schools
- *   /teachers               — Teachers
- *   /students               — Students
- *   /exams                  — Browse Exams
- */
 const navItemsByRole: Record<UserRole, NavItem[]> = {
   STUDENT: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Take Exam", href: "/exams", icon: Search, matchPrefix: "/exams" },
-    { label: "Exams & Results", href: "/student/exams", icon: History, matchPrefix: "/student/exams" },
+    { label: "My Assessments", href: "/student/exams", icon: ClipboardList },
+    { label: "Results & Scores", href: "/student/exams?tab=results", icon: Award },
     { label: "My Class", href: "/student/class", icon: GraduationCap, matchPrefix: "/student/class" },
     { label: "Classmates", href: "/students", icon: Users, matchPrefix: "/students" },
+    { label: "Teachers", href: "/teachers", icon: BookOpen, matchPrefix: "/teachers" },
     { label: "My School", href: "/student/school", icon: School, matchPrefix: "/student/school" },
     { label: "My Profile", href: "/student/profile", icon: User, matchPrefix: "/student/profile" },
     { label: "Chat Support", href: "/chat", icon: MessageSquare, matchPrefix: "/chat" },
   ],
   TEACHER: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Create Exam", href: "/teacher/exams/create", icon: Plus, matchPrefix: "/teacher/exams/create" },
+    { label: "My Exams", href: "/teacher/exams", icon: ClipboardList },
+    { label: "Exam Results", href: "/teacher/exams?tab=results", icon: Award },
     { label: "Student Requests", href: "/teacher/requests?tab=students", icon: UserCheck, matchPrefix: "/teacher/requests" },
     { label: "My Classes", href: "/teacher/classes", icon: GraduationCap, matchPrefix: "/teacher/classes" },
-    { label: "Create Exam", href: "/teacher/exams/create", icon: Plus, matchPrefix: "/teacher/exams/create" },
-    { label: "Exams & Results", href: "/teacher/exams", icon: ClipboardList, matchPrefix: "/teacher/exams" },
-    { label: "Join a School", href: "/teacher/school/join", icon: School, matchPrefix: "/teacher/school/join" },
     { label: "Students", href: "/students", icon: Users, matchPrefix: "/students" },
     { label: "Teachers", href: "/teachers", icon: BookOpen, matchPrefix: "/teachers" },
     { label: "School", href: "/teacher/school", icon: Building2, matchPrefix: "/teacher/school" },
+    { label: "Join a School", href: "/teacher/school/join", icon: School, matchPrefix: "/teacher/school/join" },
     { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
     { label: "My Profile", href: "/teacher/profile", icon: User, matchPrefix: "/teacher/profile" },
     { label: "Chat Support", href: "/chat", icon: MessageSquare, matchPrefix: "/chat" },
   ],
   PRINCIPAL: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Requests & Approvals", href: "/principal/teacher-requests", icon: Users, matchPrefix: "/principal/teacher-requests" },
-    { label: "Classes & Rosters", href: "/principal/school/classes", icon: GraduationCap, matchPrefix: "/principal/school/classes" },
     { label: "Create Exam", href: "/teacher/exams/create", icon: Plus, matchPrefix: "/teacher/exams/create" },
-    { label: "Exams & Results", href: "/teacher/exams", icon: ClipboardList, matchPrefix: "/teacher/exams" },
-    { label: "Students", href: "/students", icon: GraduationCap, matchPrefix: "/students" },
-    { label: "Teachers", href: "/teachers", icon: Users, matchPrefix: "/teachers" },
+    { label: "Exams & Tests", href: "/teacher/exams", icon: ClipboardList },
+    { label: "Results & Leaderboards", href: "/teacher/exams?tab=results", icon: Award },
+    { label: "Requests & Approvals", href: "/principal/teacher-requests", icon: UserCheck, matchPrefix: "/principal/teacher-requests" },
+    { label: "Classes & Rosters", href: "/principal/school/classes", icon: GraduationCap, matchPrefix: "/principal/school/classes" },
+    { label: "Students", href: "/students", icon: Users, matchPrefix: "/students" },
+    { label: "Teachers", href: "/teachers", icon: BookOpen, matchPrefix: "/teachers" },
     { label: "My School", href: "/principal/school", icon: Building2, matchPrefix: "/principal/school" },
     { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
     { label: "My Profile", href: "/principal/profile", icon: User, matchPrefix: "/principal/profile" },
@@ -120,11 +83,11 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
   ],
   ADMIN: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Profile", href: "/profile", icon: User, matchPrefix: "/profile" },
     { label: "Schools", href: "/schools", icon: School, matchPrefix: "/schools" },
-    { label: "Teachers", href: "/teachers", icon: Users, matchPrefix: "/teachers" },
-    { label: "Students", href: "/students", icon: GraduationCap, matchPrefix: "/students" },
+    { label: "Teachers", href: "/teachers", icon: BookOpen, matchPrefix: "/teachers" },
+    { label: "Students", href: "/students", icon: Users, matchPrefix: "/students" },
     { label: "Browse Exams", href: "/exams", icon: Search, matchPrefix: "/exams" },
+    { label: "Profile", href: "/profile", icon: User, matchPrefix: "/profile" },
     { label: "Chat Support", href: "/chat", icon: MessageSquare, matchPrefix: "/chat" },
   ],
 };
@@ -154,6 +117,7 @@ interface AppSidebarProps {
 export function AppSidebar({ collapsed, setCollapsed }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   
@@ -197,6 +161,21 @@ export function AppSidebar({ collapsed, setCollapsed }: AppSidebarProps) {
   };
 
   const isActive = (item: NavItem) => {
+    if (item.href.includes("?")) {
+      const [itemPath, itemQuery] = item.href.split("?");
+      if (pathname !== itemPath) return false;
+      const itemParams = new URLSearchParams(itemQuery);
+      for (const [key, val] of itemParams.entries()) {
+        if (searchParams.get(key) !== val) return false;
+      }
+      return true;
+    }
+
+    const currentTab = searchParams.get("tab");
+    if (currentTab && (pathname === item.href || (item.matchPrefix && pathname.startsWith(item.matchPrefix)))) {
+      return false;
+    }
+
     if (item.matchPrefix) return pathname.startsWith(item.matchPrefix);
     return pathname === item.href;
   };
@@ -383,7 +362,9 @@ export function SidebarLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <AppSidebar collapsed={collapsed} setCollapsed={handleSetCollapsed} />
+      <React.Suspense fallback={null}>
+        <AppSidebar collapsed={collapsed} setCollapsed={handleSetCollapsed} />
+      </React.Suspense>
       {/* Main content area — offset by sidebar width unless in exam attempt view */}
       <main
         className={cn(

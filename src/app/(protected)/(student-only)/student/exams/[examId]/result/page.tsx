@@ -136,16 +136,48 @@ export default function ExamResultPage() {
                         {exam.questions.map((q, idx) => {
                             const studentAns = (attempt?.answers || []).find((a) => a.questionId === q.id);
                             const selectedOptIds = new Set(studentAns?.selectedOptions?.map((o) => o.optionId) || []);
+                            const isAttempted = Boolean(
+                              (studentAns?.selectedOptions && studentAns.selectedOptions.length > 0) ||
+                              (studentAns?.textAnswer && studentAns.textAnswer.trim() !== "")
+                            );
+                            const correctness = studentAns?.isCorrect;
+                            const marksAwarded = studentAns?.marksAwarded ?? 0;
 
                             return (
                                 <GlassCard key={q.id} padding="md" className="space-y-3">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <p className="text-sm font-semibold text-white">
-                                            Q{idx + 1}. {q.text}
-                                        </p>
-                                        <span className="text-xs text-indigo-400 font-medium shrink-0">
-                                            {q.marks} Marks
-                                        </span>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className="text-sm font-semibold text-white">
+                                                Q{idx + 1}. {q.text}
+                                            </p>
+                                            {q.questionType === "MULTIPLE_SELECT" && (
+                                              <span className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded font-medium">
+                                                Multi-Select (Partial Marking)
+                                              </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {correctness === "FULLY_CORRECT" && (
+                                              <span className="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                <Check className="w-3 h-3" /> Fully Correct (+{marksAwarded} Marks)
+                                              </span>
+                                            )}
+                                            {correctness === "PARTIALLY_CORRECT" && (
+                                              <span className="px-2 py-0.5 text-xs font-semibold rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                                                <Award className="w-3 h-3" /> Partially Correct (+{marksAwarded} / {q.marks} Marks)
+                                              </span>
+                                            )}
+                                            {correctness === "INCORRECT" && isAttempted && (
+                                              <span className="px-2 py-0.5 text-xs font-semibold rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                                                Incorrect ({marksAwarded < 0 ? `${marksAwarded}` : "0"} / {q.marks} Marks)
+                                              </span>
+                                            )}
+                                            {!isAttempted && (
+                                              <span className="px-2 py-0.5 text-xs font-semibold rounded bg-zinc-800 text-zinc-400">
+                                                Unattempted (0 / {q.marks} Marks)
+                                              </span>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Options */}
@@ -156,10 +188,12 @@ export default function ExamResultPage() {
                                                 const isCorrect = opt.isCorrect;
 
                                                 let itemStyle = "border-zinc-800 bg-zinc-900/40 text-zinc-300";
-                                                if (isCorrect) {
-                                                    itemStyle = "border-emerald-500/40 bg-emerald-500/10 text-emerald-300 font-medium";
+                                                if (isSelected && isCorrect) {
+                                                    itemStyle = "border-emerald-500/50 bg-emerald-500/15 text-emerald-300 font-medium ring-1 ring-emerald-500/20";
                                                 } else if (isSelected && !isCorrect) {
-                                                    itemStyle = "border-red-500/40 bg-red-500/10 text-red-300";
+                                                    itemStyle = "border-red-500/50 bg-red-500/15 text-red-300 ring-1 ring-red-500/20";
+                                                } else if (!isSelected && isCorrect) {
+                                                    itemStyle = "border-emerald-500/30 bg-emerald-950/20 text-emerald-400/90 border-dashed";
                                                 }
 
                                                 return (
@@ -172,14 +206,19 @@ export default function ExamResultPage() {
                                                             <span>{opt.text}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1 text-[11px]">
-                                                            {isSelected && (
-                                                                <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">
-                                                                    Your Choice
+                                                            {isSelected && !isCorrect && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 text-[10px] font-medium border border-red-500/30">
+                                                                    Your Choice (Incorrect)
                                                                 </span>
                                                             )}
-                                                            {isCorrect && (
-                                                                <span className="flex items-center gap-0.5 text-emerald-400 font-bold">
-                                                                    <Check className="w-3 h-3" /> Correct
+                                                            {isSelected && isCorrect && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-medium border border-emerald-500/30 flex items-center gap-0.5">
+                                                                    <Check className="w-3 h-3" /> Your Choice (Correct)
+                                                                </span>
+                                                            )}
+                                                            {!isSelected && isCorrect && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-emerald-400 text-[10px] font-medium border border-emerald-500/20 flex items-center gap-0.5">
+                                                                    <Check className="w-3 h-3" /> Correct Option (Missed)
                                                                 </span>
                                                             )}
                                                         </div>
