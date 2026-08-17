@@ -251,32 +251,30 @@ class TestChangePasswordUnit:
 @pytest.mark.integration
 class TestAuthIntegration:
     @pytest.mark.asyncio
-    async def test_signup_writes_to_db(self, real_client, real_db, cleanup_real_user):
+    async def test_signup_writes_to_db(self, client, db_session):
         from sqlalchemy import select
 
         from app.core.models import User
 
-        response = await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
+        response = await client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
 
         assert response.status_code == 200
         stmt = select(User).where(User.email == TEST_USER_PAYLOAD["email"])
-        user_in_db = (await real_db.execute(stmt)).scalar_one_or_none()
+        user_in_db = (await db_session.execute(stmt)).scalar_one_or_none()
         assert user_in_db is not None
         assert user_in_db.email == TEST_USER_PAYLOAD["email"]
         assert user_in_db.password != TEST_USER_PAYLOAD["password"]
 
     @pytest.mark.asyncio
-    async def test_signup_unique_email_enforced(
-        self, real_client, real_db, cleanup_real_user
-    ):
-        await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
-        response = await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
+    async def test_signup_unique_email_enforced(self, client, db_session):
+        await client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
+        response = await client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_login_reads_from_db(self, real_client, real_db, cleanup_real_user):
-        await real_client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
-        response = await real_client.post(
+    async def test_login_reads_from_db(self, client, db_session):
+        await client.post("/api/v1/auth/signup", json=TEST_USER_PAYLOAD)
+        response = await client.post(
             "/api/v1/auth/login",
             json={
                 "email": TEST_USER_PAYLOAD["email"],

@@ -3,7 +3,9 @@ import secrets
 import string
 from typing import Any
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -26,7 +28,7 @@ def generate_join_code() -> str:
 
 def _to_school_class_response(school_class: SchoolClass) -> SchoolClassResponse:
     teachers_list: list[ClassTeacherResponse] = []
-    if school_class.teachers:
+    if "teachers" in school_class.__dict__ and school_class.teachers:
         for tc in school_class.teachers:
             t = getattr(tc, "teacher", None)
             if not t:
@@ -122,11 +124,18 @@ async def create_school_class(
         else:
             raise RuntimeError("Unable to generate a unique class join code")
 
-        school_class = SchoolClass(**data_dict)
-        s.add(school_class)
-        await s.commit()
-        await s.refresh(school_class)
-        return _to_school_class_response(school_class)
+        try:
+            school_class = SchoolClass(**data_dict)
+            s.add(school_class)
+            await s.commit()
+            await s.refresh(school_class)
+            return _to_school_class_response(school_class)
+        except IntegrityError as exc:
+            await s.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A class with this year and section already exists in this school.",
+            ) from exc
 
     if session:
         return await _do_create(session)

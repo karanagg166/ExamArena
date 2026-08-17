@@ -239,18 +239,7 @@ async def assign_teacher_endpoint(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
-    if current_user.role == Role.PRINCIPAL:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied."
-            )
-        principal = await get_principal_by_teacher_id(teacher.id)
-        if not principal or principal.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied for this school.",
-            )
+    await _check_class_access(current_user, school_class)
 
     success = await assign_teacher_to_class(class_id, payload.teacherId)
     if not success:

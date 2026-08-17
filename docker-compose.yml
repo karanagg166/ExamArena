@@ -64,7 +64,6 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     volumes:
       - .:/app                         # ← mounts source for hot reload
-      - /app/node_modules              # ← preserves container's node_modules
       - /app/.next                     # ← preserves Next.js build cache
     depends_on:
       backend:
