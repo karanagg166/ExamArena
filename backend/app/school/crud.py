@@ -50,11 +50,14 @@ async def create_school(
         school = School(**data_dict)
         s.add(school)
         await s.commit()
+        await s.refresh(school)
 
         # Re-query with eager loading
         stmt = select(School).where(School.id == school.id).options(*SCHOOL_OPTIONS)
         res = await s.execute(stmt)
-        created_school = res.scalar_one()
+        created_school = res.scalar_one_or_none()
+        if not created_school:
+            return _to_school_response(school)
         return _to_school_response(created_school)
 
     if session:

@@ -434,3 +434,27 @@ enum Correctness {
   PARTIALLY_CORRECT
   INCORRECT
 }
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  actorId      String?
+  actorEmail   String?
+  actorRole    String?
+  action       String
+  resourceType String
+  resourceId   String?
+  status       String   @default("SUCCESS")
+  requestId    String?
+  ipAddress    String?
+  userAgent    String?
+  metadata     Json?
+
+  @@index([timestamp])
+  @@index([actorId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([resourceId])
+  @@index([requestId])
+}
+

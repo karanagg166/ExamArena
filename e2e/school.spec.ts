@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('E2E: School & Class Management Views', () => {
-  test('E3: Schools explorer page renders search and list components', async ({ page }) => {
-    await page.goto('/schools');
-    await expect(page.locator('body')).toBeVisible();
+  test('E9: Direct navigation to school views requires authentication', async ({ page }) => {
+    await page.goto('/principal');
+    await expect(page).toHaveURL(/\/(login|sign-in|$)/, { timeout: 8000 });
   });
 
-  test('E4: Classes overview page loads without crashing', async ({ page }) => {
-    await page.goto('/classes');
-    await expect(page.locator('body')).toBeVisible();
+  test('E10: Teacher dashboard route is protected from unauthenticated access', async ({ page }) => {
+    await page.goto('/teacher');
+    await expect(page).toHaveURL(/\/(login|sign-in|$)/, { timeout: 8000 });
   });
 });

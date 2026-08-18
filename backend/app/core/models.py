@@ -3,6 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Float,
@@ -840,3 +841,31 @@ class Notification(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="notifications")
+
+
+class AuditLog(Base):
+    __tablename__ = "AuditLog"
+    __table_args__ = (
+        Index("auditlog_timestamp_idx", "timestamp"),
+        Index("auditlog_actorid_idx", "actorId"),
+        Index("auditlog_action_idx", "action"),
+        Index("auditlog_resourcetype_idx", "resourceType"),
+        Index("auditlog_resourceid_idx", "resourceId"),
+        Index("auditlog_requestid_idx", "requestId"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    actorId: Mapped[str | None] = mapped_column(String, nullable=True)
+    actorEmail: Mapped[str | None] = mapped_column(String, nullable=True)
+    actorRole: Mapped[str | None] = mapped_column(String, nullable=True)
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    resourceType: Mapped[str] = mapped_column(String, nullable=False)
+    resourceId: Mapped[str | None] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="SUCCESS", nullable=False)
+    requestId: Mapped[str | None] = mapped_column(String, nullable=True)
+    ipAddress: Mapped[str | None] = mapped_column(String, nullable=True)
+    userAgent: Mapped[str | None] = mapped_column(String, nullable=True)
+    metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)

@@ -70,3 +70,11 @@ backend/__pycache__/
 .env.sentry-build-plugin
 
 .env*.local
+
+# Implementation plan
+implementationplan.md
+
+# Playwright & test output
+test-results/
+playwright-report/
+

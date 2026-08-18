@@ -1,5 +1,6 @@
 from fastapi import Cookie, HTTPException, status
 
+from app.audit.context import set_current_actor
 from app.core.security import verify_token
 from app.users.crud import get_user_by_id
 from app.users.schemas import UserResponse
@@ -24,6 +25,7 @@ async def get_current_user(access_token: str = Cookie(None)):
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
 
+    set_current_actor(user.id, user.email, user.role)
     return user
 
 

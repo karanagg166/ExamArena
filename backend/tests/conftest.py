@@ -132,7 +132,30 @@ async def init_test_db() -> None:
                         "decidedAt" TIMESTAMPTZ,
                         "decidedBy" VARCHAR,
                         CONSTRAINT "teacherschooljoinrequest_teacherid_schoolid_key" UNIQUE ("teacherId", "schoolId")
-                    )
+                    );
+                    CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_schoolid_idx" ON "TeacherSchoolJoinRequest" ("schoolId");
+                    CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_teacherid_idx" ON "TeacherSchoolJoinRequest" ("teacherId");
+                    CREATE TABLE IF NOT EXISTS "AuditLog" (
+                        "id" VARCHAR PRIMARY KEY,
+                        "timestamp" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        "actorId" VARCHAR,
+                        "actorEmail" VARCHAR,
+                        "actorRole" VARCHAR,
+                        "action" VARCHAR NOT NULL,
+                        "resourceType" VARCHAR NOT NULL,
+                        "resourceId" VARCHAR,
+                        "status" VARCHAR NOT NULL DEFAULT 'SUCCESS',
+                        "requestId" VARCHAR,
+                        "ipAddress" VARCHAR,
+                        "userAgent" VARCHAR,
+                        "metadata" JSON
+                    );
+                    CREATE INDEX IF NOT EXISTS "auditlog_timestamp_idx" ON "AuditLog" ("timestamp");
+                    CREATE INDEX IF NOT EXISTS "auditlog_actorid_idx" ON "AuditLog" ("actorId");
+                    CREATE INDEX IF NOT EXISTS "auditlog_action_idx" ON "AuditLog" ("action");
+                    CREATE INDEX IF NOT EXISTS "auditlog_resourcetype_idx" ON "AuditLog" ("resourceType");
+                    CREATE INDEX IF NOT EXISTS "auditlog_resourceid_idx" ON "AuditLog" ("resourceId");
+                    CREATE INDEX IF NOT EXISTS "auditlog_requestid_idx" ON "AuditLog" ("requestId");
                     """
                 )
             )
@@ -162,6 +185,7 @@ async def truncate_all_tables():
                 text(
                     """
                     TRUNCATE TABLE
+                        "AuditLog",
                         "SelectedOption",
                         "StudentExamAnswer",
                         "StudentExam",

@@ -5,6 +5,8 @@ from fastapi.responses import Response
 from jose import jwt
 
 from app.api.deps import get_current_user
+from app.audit.actions import AuditAction, AuditResourceType
+from app.audit.service import record_audit_event
 from app.core.config import settings
 from app.core.security import create_access_token, verify_password
 from app.users.crud import (
@@ -39,12 +41,30 @@ async def signup(user_data: UserRequest, response: Response):
     # Check if user already exists
     existing_user = await get_user_by_email(user_data.email)
     if existing_user:
+        await record_audit_event(
+            action=AuditAction.AUTH_SIGNUP,
+            resource_type=AuditResourceType.USER,
+            status="FAILURE",
+            metadata={"reason": "EMAIL_ALREADY_REGISTERED", "email": user_data.email},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     # Create new user
     new_user = await crud_create_user(user_data)
+
+    # Record persistent audit event
+    await record_audit_event(
+        action=AuditAction.AUTH_SIGNUP,
+        resource_type=AuditResourceType.USER,
+        resource_id=new_user.id,
+        actor_id=new_user.id,
+        actor_email=new_user.email,
+        actor_role=new_user.role,
+        status="SUCCESS",
+        metadata={"role": new_user.role, "name": new_user.name},
+    )
 
     # Generate token
     access_token = create_access_token(new_user.id)
@@ -72,16 +92,44 @@ async def login(credentials: LoginRequest, response: Response):
     # Find user
     user = await get_user_by_email(credentials.email)
     if not user:
+        await record_audit_event(
+            action=AuditAction.AUTH_LOGIN_FAILED,
+            resource_type=AuditResourceType.AUTH,
+            status="FAILURE",
+            metadata={"reason": "INVALID_EMAIL", "email": credentials.email},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email"
         )
     if not verify_password(credentials.password, user.password):
+        await record_audit_event(
+            action=AuditAction.AUTH_LOGIN_FAILED,
+            resource_type=AuditResourceType.AUTH,
+            resource_id=user.id,
+            actor_id=user.id,
+            actor_email=user.email,
+            actor_role=user.role,
+            status="FAILURE",
+            metadata={"reason": "INVALID_PASSWORD"},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid password"
         )
 
     # Generate token
     access_token = create_access_token(user.id)
+
+    # Record persistent audit event
+    await record_audit_event(
+        action=AuditAction.AUTH_LOGIN_SUCCESS,
+        resource_type=AuditResourceType.AUTH,
+        resource_id=user.id,
+        actor_id=user.id,
+        actor_email=user.email,
+        actor_role=user.role,
+        status="SUCCESS",
+        metadata={"role": user.role},
+    )
 
     is_production = settings.ENVIRONMENT == "production"
     response.set_cookie(
@@ -99,6 +147,11 @@ async def login(credentials: LoginRequest, response: Response):
 @router.post("/logout")
 async def logout(response: Response):
     """Logout - clears token cookie"""
+    await record_audit_event(
+        action=AuditAction.AUTH_LOGOUT,
+        resource_type=AuditResourceType.AUTH,
+        status="SUCCESS",
+    )
     response.delete_cookie(key="access_token", httponly=True)
     return {"message": "Logged out successfully"}
 
@@ -117,7 +170,17 @@ async def update_current_user_info(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Update current authenticated user"""
-    return await update_user(current_user.id, user_data)
+    updated = await update_user(current_user.id, user_data)
+    await record_audit_event(
+        action=AuditAction.USER_PROFILE_UPDATED,
+        resource_type=AuditResourceType.USER,
+        resource_id=current_user.id,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        actor_role=current_user.role,
+        status="SUCCESS",
+    )
+    return updated
 
 
 @router.post("/change-password")
@@ -130,6 +193,15 @@ async def change_password(
         user_id=current_user.id,
         current_password=body.currentPassword,
         new_password=body.newPassword,
+    )
+    await record_audit_event(
+        action=AuditAction.AUTH_PASSWORD_CHANGED,
+        resource_type=AuditResourceType.USER,
+        resource_id=current_user.id,
+        actor_id=current_user.id,
+        actor_email=current_user.email,
+        actor_role=current_user.role,
+        status="SUCCESS",
     )
     return {"message": "Password changed successfully"}
 

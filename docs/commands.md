@@ -271,56 +271,85 @@ docker compose exec frontend pnpm exec tsc --noEmit
    docker compose exec backend black app/
    docker compose exec backend ruff check app/ --fix
    docker compose exec backend mypy app/
+   docker compose exec backend pytest -v
 
    # Frontend (Next.js / pnpm)
    docker compose exec frontend pnpm exec prettier --write src/
    docker compose exec frontend pnpm lint --fix
    docker compose exec frontend pnpm exec tsc --noEmit
+   docker compose exec frontend pnpm test:run
 6. Check logs if needed:
    docker compose logs -f backend
 7. End work with docker compose stop (or docker compose down if you want cleanup)
-## 11. Makefile Commands
+
+## 11. Makefile & Test Commands
 
 There are two Makefiles in the project. Each command and what it does is listed below.
 
 ---
 
-### `Makefile` — Base CI (no lint / type checks)
+### `Makefile` — Base CI & Local Dev
 
 ```bash
 make ci
 ```
-Runs the full pipeline before pushing code — builds Docker images, starts containers, waits for backend to be healthy, runs all Prisma steps (validate → generate → db push), runs pytest tests, then stops everything. Use this before every `git push`.
+Runs the full pipeline before pushing code — builds Docker images, starts containers, waits for backend to be healthy, initializes database schema, runs pytest test suite, then stops everything.
 
 ```bash
 make test
 ```
-Runs only backend pytest tests inside the container. Skips build, prisma, everything else. Use this while writing code to quickly check if tests pass.
+Runs backend pytest tests inside the container.
+
+```bash
+make test-frontend
+```
+Runs frontend Vitest tests inside the frontend container.
 
 ```bash
 make db-push
 ```
-Runs only the three Prisma steps — validate schema, generate Python client, push schema to database. Use this after editing `schema.prisma`.
+Initializes SQLAlchemy database tables.
 
 ```bash
 make up
 ```
-Starts all services in the background (`docker compose up -d`). Use this to spin up your local dev environment.
+Starts all services in the background (`docker compose up -d`).
 
 ```bash
 make down
 ```
-Stops and removes all running containers (`docker compose down`). Volumes are kept so your database data is safe.
+Stops and removes all running containers (`docker compose down`).
 
 ---
 
-### Quick reference — which Makefile to use
+### `Makefile.Full-ci` — Strict Production Pipeline
+
+```bash
+make -f Makefile.Full-ci ci
+```
+Runs full production-grade gate: Docker build -> Health check -> Ruff & Black lint -> ESLint & Prettier lint -> Mypy & TypeScript type checks -> Database schema init -> Pytest & Vitest test suites -> Clean teardown.
+
+---
+
+### Audit Logging & Access Traceability
+
+- **Audit Query Endpoint:** `GET /api/v1/audit/logs` (Requires `ADMIN` or `PRINCIPAL` role)
+  - Query params: `action`, `resource_type`, `resource_id`, `actor_id`, `status`, `limit`, `offset`
+- **Request Correlation:** All incoming/outgoing HTTP requests carry and propagate `X-Request-ID`.
+- **Proctoring Violation Auditing:** `POST /api/v1/attempts/{attempt_id}/proctoring-violation`
+
+---
+
+### Quick reference — which command to use
 
 | Situation | Command |
 |---|---|
-| Quick check before push (no lint) | `make ci` |
-| Run tests only | `make test` |
-| Push Prisma schema changes | `make db-push` |
+| Quick check before push | `make ci` |
+| Full strict CI (lint + types + tests) | `make -f Makefile.Full-ci ci` |
+| Run all backend tests | `make test` or `docker compose exec backend pytest -v` |
+| Run all frontend unit tests | `pnpm test:run` or `docker compose exec frontend pnpm test:run` |
+| Run E2E Playwright tests | `pnpm test:e2e` |
+| Auto-format code | `make -f Makefile.Full-ci format` |
 | Start dev environment | `make up` |
 | Stop dev environment | `make down` |
 

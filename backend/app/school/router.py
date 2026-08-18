@@ -4,6 +4,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_current_user
+from app.audit.actions import AuditAction, AuditResourceType
+from app.audit.service import record_audit_event
 from app.core.models import Role
 from app.principals.crud import (
     create_principal,
@@ -23,8 +25,9 @@ from app.school_class.crud import get_school_classes_by_school_id
 from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
 
-router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
 logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/v1/schools", tags=["school"])
 
 
 @router.get("/my-school", response_model=SchoolResponse)
@@ -71,6 +74,13 @@ async def create_school(
         from app.teachers.crud import join_school
 
         await join_school(current_user.id, school.id)
+
+    await record_audit_event(
+        action=AuditAction.SCHOOL_CREATED,
+        resource_type=AuditResourceType.SCHOOL,
+        resource_id=school.id,
+        metadata={"name": school.name, "city": school.city, "state": school.state},
+    )
     return school
 
 
@@ -93,6 +103,13 @@ async def update_my_school_profile(
     if not updated_school:
         raise HTTPException(status_code=500, detail="Failed to update school.")
 
+    await record_audit_event(
+        action=AuditAction.SCHOOL_UPDATED,
+        resource_type=AuditResourceType.SCHOOL,
+        resource_id=school.id,
+        metadata=school_data.model_dump(exclude_unset=True),
+    )
+
     return updated_school
 
 
@@ -104,6 +121,11 @@ async def delete_my_school_profile(
     """Delete the current user's school."""
     school = await get_current_user_school(current_user)
     await crud.delete_school(school.id)
+    await record_audit_event(
+        action=AuditAction.SCHOOL_DELETED,
+        resource_type=AuditResourceType.SCHOOL,
+        resource_id=school.id,
+    )
     return None
 
 

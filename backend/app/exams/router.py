@@ -6,6 +6,8 @@ from pydantic import ValidationError
 import app.exams.crud as crud
 from app.api.deps import get_current_user
 from app.attempts.schemas import ExamScoreboardItem
+from app.audit.actions import AuditAction, AuditResourceType
+from app.audit.service import record_audit_event
 from app.core.models import Role, StudentExamStatus
 from app.exams.permissions import can_manage_exam, redact_exam_solutions
 from app.exams.schemas import (
@@ -52,7 +54,14 @@ async def create_new_exam(
             detail="You must first join and be approved by a School before creating exams.",
         )
     try:
-        return await crud.create_exam(exam_data, teacher.id)
+        exam = await crud.create_exam(exam_data, teacher.id)
+        await record_audit_event(
+            action=AuditAction.EXAM_CREATED,
+            resource_type=AuditResourceType.EXAM,
+            resource_id=exam.id,
+            metadata={"name": exam.name, "type": exam.type, "duration": exam.duration},
+        )
+        return exam
     except HTTPException:
         raise
     except (ValueError, ValidationError) as exc:
@@ -210,7 +219,14 @@ async def patch_exam(
 
     await require_exam_manager(current_user, exam)
 
-    return await crud.update_exam(exam_id, update_data)
+    updated = await crud.update_exam(exam_id, update_data)
+    await record_audit_event(
+        action=AuditAction.EXAM_UPDATED,
+        resource_type=AuditResourceType.EXAM,
+        resource_id=exam_id,
+        metadata=update_data.model_dump(exclude_unset=True),
+    )
+    return updated
 
 
 @router.post("/{exam_id}/release-results", response_model=ExamResponse)
@@ -228,6 +244,12 @@ async def release_exam_results(
     released = await crud.release_results(exam_id)
     if not released:
         raise HTTPException(status_code=404, detail="Exam not found")
+
+    await record_audit_event(
+        action=AuditAction.EXAM_RESULTS_RELEASED,
+        resource_type=AuditResourceType.EXAM,
+        resource_id=exam_id,
+    )
     return released
 
 
@@ -260,3 +282,9 @@ async def delete_exam_endpoint(
     deleted = await crud.delete_exam(exam_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Exam not found")
+
+    await record_audit_event(
+        action=AuditAction.EXAM_DELETED,
+        resource_type=AuditResourceType.EXAM,
+        resource_id=exam_id,
+    )

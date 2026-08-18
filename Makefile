@@ -52,6 +52,10 @@ test:
 	@echo "🧪 Running backend tests..."
 	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
 
+test-frontend:
+	@echo "🧪 Running frontend tests..."
+	$(COMPOSE) exec frontend pnpm test:run
+
 # ── Main CI pipeline ──────────────────────────────────────────
 ci:
 	@echo "🐳 Building Docker images..."
@@ -64,8 +68,8 @@ ci:
 
 	$(MAKE) db-push
 
-# 	@echo "🧪 Running backend tests..."
-# 	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
+	@echo "🧪 Running backend tests..."
+	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
 
 	$(MAKE) down
 

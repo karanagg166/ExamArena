@@ -26,9 +26,11 @@ def _response(request: ClassJoinRequest) -> JoinRequestResponse:
         classId=request.classId,
         className=class_name,
         schoolId=school_id,
-        status=request.status.value
-        if isinstance(request.status, JoinRequestStatus)
-        else str(request.status),
+        status=(
+            request.status.value
+            if isinstance(request.status, JoinRequestStatus)
+            else str(request.status)
+        ),
         requestedAt=request.requestedAt,
         decidedAt=request.decidedAt,
         studentName=user.name if user else "",

@@ -175,3 +175,10 @@ class ExamScoreboardItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ProctoringViolationRequest(BaseModel):
+    """Proctoring violation event reported by student client or exam proctor."""
+
+    violationType: str
+    details: dict | None = None

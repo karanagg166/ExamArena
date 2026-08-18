@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import app.exams.crud as exam_crud
 import app.questions.crud as crud
 from app.api.deps import get_current_user
+from app.audit.actions import AuditAction, AuditResourceType
+from app.audit.service import record_audit_event
 from app.core.models import Role
 from app.exams.permissions import can_manage_exam
 from app.questions.schemas import (
@@ -56,7 +58,17 @@ async def add_new_question(
             status_code=400, detail="examId is required to create a question"
         )
     await _require_exam_manager(current_user, question_data.examId)
-    return await crud.create_question(question_data)
+    q = await crud.create_question(question_data)
+    await record_audit_event(
+        action=AuditAction.QUESTION_CREATED,
+        resource_type=AuditResourceType.QUESTION,
+        resource_id=q.id,
+        metadata={
+            "examId": question_data.examId,
+            "questionType": str(question_data.questionType),
+        },
+    )
+    return q
 
 
 @router.patch("/{question_id}", response_model=QuestionResponse)
@@ -72,7 +84,14 @@ async def patch_question(
     if not question.examId:
         raise HTTPException(status_code=409, detail="Question is not linked to an exam")
     await _require_exam_manager(current_user, question.examId)
-    return await crud.update_question(question_id, update_data)
+    updated = await crud.update_question(question_id, update_data)
+    await record_audit_event(
+        action=AuditAction.QUESTION_UPDATED,
+        resource_type=AuditResourceType.QUESTION,
+        resource_id=question_id,
+        metadata=update_data.model_dump(exclude_unset=True),
+    )
+    return updated
 
 
 @router.delete("/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -87,4 +106,10 @@ async def remove_question(
         raise HTTPException(status_code=409, detail="Question is not linked to an exam")
     await _require_exam_manager(current_user, question.examId)
     await crud.delete_question(question_id)
+    await record_audit_event(
+        action=AuditAction.QUESTION_DELETED,
+        resource_type=AuditResourceType.QUESTION,
+        resource_id=question_id,
+        metadata={"examId": question.examId},
+    )
     return None

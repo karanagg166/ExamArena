@@ -163,6 +163,19 @@ echo -e "     docker compose exec frontend pnpm exec prettier --write 'src/**/*.
 echo ""
 
 # ─────────────────────────────────────────────────────────────
+#  CHECK 5 — Tests (Backend Pytest + Frontend Vitest)
+# ─────────────────────────────────────────────────────────────
+echo -e "${BOLD}[5/5] 🧪 Unit & Integration Tests${NC}"
+
+run_check "Backend Pytest Suite" \
+  docker compose exec -T backend pytest -v
+
+run_check "Frontend Vitest Suite" \
+  docker compose exec -T frontend pnpm test:run
+
+echo ""
+
+# ─────────────────────────────────────────────────────────────
 #  Cleanup
 # ─────────────────────────────────────────────────────────────
 echo -e "${YELLOW}🧹 Stopping containers...${NC}"

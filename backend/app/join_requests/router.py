@@ -3,6 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_current_user
+from app.audit.actions import AuditAction, AuditResourceType
+from app.audit.service import record_audit_event
 from app.core.models import JoinRequestStatus, Role
 from app.join_requests.crud import (
     create_or_reopen_join_request,
@@ -79,7 +81,14 @@ async def join_by_code(
     if not school_class:
         raise HTTPException(status_code=404, detail="Invalid or expired join code.")
     try:
-        return await create_or_reopen_join_request(current_user.id, school_class)
+        req = await create_or_reopen_join_request(current_user.id, school_class)
+        await record_audit_event(
+            action=AuditAction.STUDENT_JOIN_REQUEST_SUBMITTED,
+            resource_type=AuditResourceType.JOIN_REQUEST,
+            resource_id=req.id,
+            metadata={"classId": school_class.id, "className": school_class.name},
+        )
+        return req
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -171,4 +180,22 @@ async def decide_request(
         raise HTTPException(
             status_code=409, detail="Only pending requests can be decided."
         )
+
+    action = (
+        AuditAction.STUDENT_JOIN_REQUEST_APPROVED
+        if decision.status == JoinRequestStatus.APPROVED
+        else AuditAction.STUDENT_JOIN_REQUEST_REJECTED
+    )
+    await record_audit_event(
+        action=action,
+        resource_type=AuditResourceType.JOIN_REQUEST,
+        resource_id=request_id,
+        metadata={
+            "status": decision.status,
+            "studentUserId": getattr(request, "studentUserId", None),
+            "classId": getattr(request, "classId", None),
+            "rollNo": decision.rollNo,
+        },
+    )
+
     return updated

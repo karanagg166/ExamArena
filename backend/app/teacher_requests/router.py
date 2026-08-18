@@ -3,6 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_staff_teacher, get_current_user
+from app.audit.actions import AuditAction, AuditResourceType
+from app.audit.service import record_audit_event
 from app.core.models import Role
 from app.principals.crud import get_principal_by_teacher_id
 from app.teacher_requests import crud
@@ -37,7 +39,14 @@ async def submit_teacher_class_request(
     """Teacher requests to teach a class in their school"""
     teacher = await get_current_staff_teacher(current_user)
     try:
-        return await crud.create_teacher_class_request(teacher.id, payload)
+        req = await crud.create_teacher_class_request(teacher.id, payload)
+        await record_audit_event(
+            action=AuditAction.TEACHER_REQUEST_SUBMITTED,
+            resource_type=AuditResourceType.TEACHER_REQUEST,
+            resource_id=req.id,
+            metadata={"classId": payload.classId, "subject": payload.subject},
+        )
+        return req
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
@@ -113,7 +122,14 @@ async def submit_teacher_school_request(
         )
 
     try:
-        return await crud.create_teacher_school_request(teacher.id, payload.schoolId)
+        req = await crud.create_teacher_school_request(teacher.id, payload.schoolId)
+        await record_audit_event(
+            action=AuditAction.TEACHER_REQUEST_SUBMITTED,
+            resource_type=AuditResourceType.TEACHER_REQUEST,
+            resource_id=req.id,
+            metadata={"schoolId": payload.schoolId},
+        )
+        return req
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
@@ -164,11 +180,23 @@ async def decide_teacher_class_request(
     await _verify_principal_access(current_user, school_id)
 
     try:
-        return await crud.decide_teacher_class_request(
+        res = await crud.decide_teacher_class_request(
             request_id=request_id,
             decision_status=decision.status,
             decided_by_user_name=current_user.name,
         )
+        action = (
+            AuditAction.TEACHER_REQUEST_APPROVED
+            if decision.status == "APPROVED"
+            else AuditAction.TEACHER_REQUEST_REJECTED
+        )
+        await record_audit_event(
+            action=action,
+            resource_type=AuditResourceType.TEACHER_REQUEST,
+            resource_id=request_id,
+            metadata={"status": decision.status},
+        )
+        return res
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
@@ -205,11 +233,23 @@ async def decide_teacher_school_request(
     await _verify_principal_access(current_user, school_id)
 
     try:
-        return await crud.decide_teacher_school_request(
+        res = await crud.decide_teacher_school_request(
             request_id=request_id,
             decision_status=decision.status,
             decided_by_user_name=current_user.name,
         )
+        action = (
+            AuditAction.TEACHER_REQUEST_APPROVED
+            if decision.status == "APPROVED"
+            else AuditAction.TEACHER_REQUEST_REJECTED
+        )
+        await record_audit_event(
+            action=action,
+            resource_type=AuditResourceType.TEACHER_REQUEST,
+            resource_id=request_id,
+            metadata={"status": decision.status},
+        )
+        return res
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail=str(exc)
@@ -248,12 +288,22 @@ async def assign_classes_to_teacher(
         )
 
     try:
-        return await crud.assign_multiple_classes_to_teacher(
+        res = await crud.assign_multiple_classes_to_teacher(
             school_id=principal.schoolId,
             teacher_id=payload.teacherId,
             class_ids=payload.classIds,
             subject=payload.subject,
         )
+        await record_audit_event(
+            action=AuditAction.TEACHER_CLASS_ASSIGNED,
+            resource_type=AuditResourceType.TEACHER_CLASS,
+            metadata={
+                "teacherId": payload.teacherId,
+                "classIds": payload.classIds,
+                "subject": payload.subject,
+            },
+        )
+        return res
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)

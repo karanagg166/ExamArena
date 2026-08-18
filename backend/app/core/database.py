@@ -193,9 +193,7 @@ async def init_db() -> None:
                         )
                         break
 
-            await conn.execute(
-                text(
-                    """
+            await conn.execute(text("""
                     UPDATE "SchoolClass" AS class
                     SET "nextRollNo" = COALESCE((
                       SELECT MAX(CASE WHEN student."rollNo" ~ '^[0-9]+$'
@@ -204,9 +202,7 @@ async def init_db() -> None:
                       WHERE student."classId" = class."id"
                     ), 0) + 1
                     WHERE class."nextRollNo" = 1;
-                    """
-                )
-            )
+                    """))
             await conn.execute(
                 text('ALTER TABLE "SchoolClass" ALTER COLUMN "joinCode" SET NOT NULL;')
             )
@@ -216,9 +212,7 @@ async def init_db() -> None:
                     'ON "SchoolClass" ("joinCode");'
                 )
             )
-            await conn.execute(
-                text(
-                    """
+            await conn.execute(text("""
                     DO $$
                     DECLARE constraint_name TEXT;
                     BEGIN
@@ -234,18 +228,14 @@ async def init_db() -> None:
                         EXECUTE format('ALTER TABLE "Student" DROP CONSTRAINT %I', constraint_name);
                       END IF;
                     END $$;
-                    """
-                )
-            )
+                    """))
             await conn.execute(
                 text(
                     "CREATE UNIQUE INDEX IF NOT EXISTS student_classid_rollno_key "
                     'ON "Student" ("classId", "rollNo");'
                 )
             )
-            await conn.execute(
-                text(
-                    """
+            await conn.execute(text("""
                     CREATE TABLE IF NOT EXISTS "TeacherSchoolJoinRequest" (
                         "id" VARCHAR PRIMARY KEY,
                         "teacherId" VARCHAR NOT NULL REFERENCES "Teacher"("id") ON DELETE CASCADE,
@@ -256,9 +246,7 @@ async def init_db() -> None:
                         "decidedBy" VARCHAR,
                         CONSTRAINT "teacherschooljoinrequest_teacherid_schoolid_key" UNIQUE ("teacherId", "schoolId")
                     )
-                    """
-                )
-            )
+                    """))
             await conn.execute(
                 text(
                     'CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_schoolid_idx" ON "TeacherSchoolJoinRequest" ("schoolId")'

@@ -11,6 +11,7 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from app.api.router import api_router
 from app.core import database as db
 from app.core.config import settings
+from app.core.middleware import RequestCorrelationAndLoggingMiddleware
 from app.core.redis import connect_redis, disconnect_redis
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.add_middleware(RequestCorrelationAndLoggingMiddleware)
 
 # CORS Middleware
 app.add_middleware(

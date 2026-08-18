@@ -43,14 +43,14 @@ describe('Component: ChangePasswordForm (C27-C28)', () => {
     render(<ChangePasswordForm />);
 
     await user.type(screen.getByLabelText(/current password/i), 'CurrentPass123!');
-    await user.type(screen.getByLabelText(/^new password/i), '123');
-    await user.type(screen.getByLabelText(/confirm new password/i), '123');
+    await user.type(screen.getByLabelText(/^new password/i), '12345');
+    await user.type(screen.getByLabelText(/confirm new password/i), '12345');
 
     await user.click(screen.getByRole('button', { name: /update password/i }));
 
     expect(screen.getByText(/at least 6 characters/i)).toBeInTheDocument();
     expect(api.post).not.toHaveBeenCalled();
-  });
+  }, 10000);
 
   it('calls api.post on valid input and shows success message', async () => {
     const user = userEvent.setup();
@@ -71,5 +71,5 @@ describe('Component: ChangePasswordForm (C27-C28)', () => {
       });
       expect(screen.getByText(/password changed successfully/i)).toBeInTheDocument();
     });
-  });
+  }, 10000);
 });

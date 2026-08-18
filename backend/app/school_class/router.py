@@ -4,6 +4,8 @@ from typing import Annotated  # noqa: I001
 from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
 
 from app.api.deps import get_current_user
+from app.audit.actions import AuditAction, AuditResourceType
+from app.audit.service import record_audit_event
 from app.core.models import Role
 from app.principals.crud import get_principal_by_teacher_id
 from app.students.crud import get_student_by_user_id, get_students_by_class_id
@@ -53,6 +55,13 @@ async def create_class(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only create classes for your own school.",
         )
+
+    await record_audit_event(
+        action=AuditAction.CLASS_CREATED,
+        resource_type=AuditResourceType.SCHOOL_CLASS,
+        resource_id=created_class.id,
+        metadata={"name": created_class.name, "schoolId": created_class.schoolId},
+    )
 
     return created_class
 
@@ -181,6 +190,11 @@ async def delete_class(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Class not found or you do not have permission to delete it.",
         )
+    await record_audit_event(
+        action=AuditAction.CLASS_DELETED,
+        resource_type=AuditResourceType.SCHOOL_CLASS,
+        resource_id=class_id,
+    )
     return None
 
 
@@ -217,6 +231,13 @@ async def assign_student_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to assign student to class. Verify student exists.",
         )
+
+    await record_audit_event(
+        action="STUDENT_CLASS_ASSIGNED",
+        resource_type=AuditResourceType.SCHOOL_CLASS,
+        resource_id=class_id,
+        metadata={"studentId": payload.studentId},
+    )
     return {"message": "Student successfully assigned to class"}
 
 
@@ -247,6 +268,13 @@ async def assign_teacher_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to assign teacher to class. Verify teacher exists.",
         )
+
+    await record_audit_event(
+        action=AuditAction.TEACHER_CLASS_ASSIGNED,
+        resource_type=AuditResourceType.TEACHER_CLASS,
+        resource_id=class_id,
+        metadata={"teacherId": payload.teacherId},
+    )
     return {"message": "Teacher successfully assigned to class"}
 
 

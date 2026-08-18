@@ -107,9 +107,16 @@ db-push:
 	$(COMPOSE) exec $(BACKEND_CONTAINER) python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
 
 # ── Tests ─────────────────────────────────────────────────────
-test:
+test-backend:
 	@echo "🧪 Running backend tests..."
 	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
+
+test-frontend:
+	@echo "🧪 Running frontend tests..."
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm test:run
+
+test: test-backend test-frontend
+	@echo "✅ All tests passed for backend and frontend!"
 
 # ── Main CI pipeline ──────────────────────────────────────────
 ci:
@@ -138,12 +145,12 @@ ci:
 	$(MAKE) type-check
 
 	@echo ""
-	@echo "📦 [6/7] Prisma..."
+	@echo "📦 [6/7] Database schema init..."
 	$(MAKE) db-push
 
 	@echo ""
-	@echo "🧪 [7/7] Tests..."
-	$(COMPOSE) exec $(BACKEND_CONTAINER) pytest -v
+	@echo "🧪 [7/7] Unit and Integration Tests..."
+	$(MAKE) test
 
 	$(MAKE) down
 

@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.attempts.router import router as attempts_router
+from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.exams.router import router as exams_router
 from app.join_requests.router import router as join_requests_router
@@ -15,6 +16,7 @@ from app.teachers.router import router as teachers_router
 
 api_router = APIRouter()
 api_router.include_router(auth_router)
+api_router.include_router(audit_router)
 api_router.include_router(students_router)
 api_router.include_router(join_requests_router)
 api_router.include_router(teacher_requests_router)

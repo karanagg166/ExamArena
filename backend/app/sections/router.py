@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import app.exams.crud as exam_crud
 import app.sections.crud as crud
 from app.api.deps import get_current_user
+from app.audit.actions import AuditAction, AuditResourceType
+from app.audit.service import record_audit_event
 from app.core.models import Role
 from app.exams.permissions import can_manage_exam
 from app.sections.schemas import (
@@ -54,7 +56,14 @@ async def create_new_section(
             status_code=400, detail="examId is required to create a section"
         )
     await _require_exam_manager(current_user, section_data.examId)
-    return await crud.create_section(section_data)
+    section = await crud.create_section(section_data)
+    await record_audit_event(
+        action=AuditAction.SECTION_CREATED,
+        resource_type=AuditResourceType.SECTION,
+        resource_id=section.id,
+        metadata={"name": section.name, "examId": section.examId},
+    )
+    return section
 
 
 @router.get("/exam/{exam_id}", response_model=list[SectionResponse])
@@ -89,7 +98,14 @@ async def patch_section(
     if not section:
         raise HTTPException(status_code=404, detail="Section not found")
     await _require_exam_manager(current_user, section.examId)
-    return await crud.update_section(section_id, update_data)
+    updated = await crud.update_section(section_id, update_data)
+    await record_audit_event(
+        action=AuditAction.SECTION_UPDATED,
+        resource_type=AuditResourceType.SECTION,
+        resource_id=section_id,
+        metadata=update_data.model_dump(exclude_unset=True),
+    )
+    return updated
 
 
 @router.delete("/{section_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -103,4 +119,9 @@ async def remove_section(
         raise HTTPException(status_code=404, detail="Section not found")
     await _require_exam_manager(current_user, section.examId)
     await crud.delete_section(section_id)
+    await record_audit_event(
+        action=AuditAction.SECTION_DELETED,
+        resource_type=AuditResourceType.SECTION,
+        resource_id=section_id,
+    )
     return None
