@@ -46,9 +46,9 @@ class TestPrincipalsApi:
         override_auth(role="PRINCIPAL")
         fake_teacher = make_fake_teacher()
         mock_principal_db["get_teacher_by_user_id"].return_value = fake_teacher
-        mock_principal_db[
-            "get_principal_by_teacher_id"
-        ].return_value = make_fake_principal()
+        mock_principal_db["get_principal_by_teacher_id"].return_value = (
+            make_fake_principal()
+        )
 
         payload = {
             "experience": 10,

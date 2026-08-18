@@ -320,9 +320,9 @@ class TestExamsApi:
         self, client, override_auth, mock_exams_db
     ):
         override_auth(role="STUDENT")
-        mock_exams_db[
-            "student_crud_get_student_by_user_id"
-        ].return_value = make_fake_student()
+        mock_exams_db["student_crud_get_student_by_user_id"].return_value = (
+            make_fake_student()
+        )
         fake_exam = make_fake_exam(
             {
                 "isPublished": True,

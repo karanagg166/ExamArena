@@ -46,9 +46,12 @@ app_db.AsyncSessionLocal = TestAsyncSessionLocal
 async def init_test_db() -> None:
     """Ensure test database exists, create schema, and apply schema migrations."""
     import urllib.parse
+
     import asyncpg
 
-    clean_url = TEST_DB_URL.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
+    clean_url = TEST_DB_URL.replace("postgresql+asyncpg://", "postgresql://").replace(
+        "postgres://", "postgresql://"
+    )
     parsed = urllib.parse.urlparse(clean_url)
     user = parsed.username or "postgres"
     password = parsed.password or "postgres"
@@ -77,7 +80,7 @@ async def init_test_db() -> None:
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # Apply columns migrations
+        # Apply column migrations individually so each statement succeeds safely
         try:
             await conn.execute(
                 text('ALTER TABLE "Exam" ADD COLUMN IF NOT EXISTS "examCode" VARCHAR;')
@@ -132,47 +135,8 @@ async def init_test_db() -> None:
                     'ALTER TABLE "SchoolClass" ADD COLUMN IF NOT EXISTS "nextRollNo" INTEGER NOT NULL DEFAULT 1;'
                 )
             )
-            await conn.execute(
-                text(
-                    """
-                    CREATE TABLE IF NOT EXISTS "TeacherSchoolJoinRequest" (
-                        "id" VARCHAR PRIMARY KEY,
-                        "teacherId" VARCHAR NOT NULL REFERENCES "Teacher"("id") ON DELETE CASCADE,
-                        "schoolId" VARCHAR NOT NULL REFERENCES "School"("id") ON DELETE CASCADE,
-                        "status" VARCHAR NOT NULL DEFAULT 'PENDING',
-                        "requestedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        "decidedAt" TIMESTAMPTZ,
-                        "decidedBy" VARCHAR,
-                        CONSTRAINT "teacherschooljoinrequest_teacherid_schoolid_key" UNIQUE ("teacherId", "schoolId")
-                    );
-                    CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_schoolid_idx" ON "TeacherSchoolJoinRequest" ("schoolId");
-                    CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_teacherid_idx" ON "TeacherSchoolJoinRequest" ("teacherId");
-                    CREATE TABLE IF NOT EXISTS "AuditLog" (
-                        "id" VARCHAR PRIMARY KEY,
-                        "timestamp" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        "actorId" VARCHAR,
-                        "actorEmail" VARCHAR,
-                        "actorRole" VARCHAR,
-                        "action" VARCHAR NOT NULL,
-                        "resourceType" VARCHAR NOT NULL,
-                        "resourceId" VARCHAR,
-                        "status" VARCHAR NOT NULL DEFAULT 'SUCCESS',
-                        "requestId" VARCHAR,
-                        "ipAddress" VARCHAR,
-                        "userAgent" VARCHAR,
-                        "metadata" JSON
-                    );
-                    CREATE INDEX IF NOT EXISTS "auditlog_timestamp_idx" ON "AuditLog" ("timestamp");
-                    CREATE INDEX IF NOT EXISTS "auditlog_actorid_idx" ON "AuditLog" ("actorId");
-                    CREATE INDEX IF NOT EXISTS "auditlog_action_idx" ON "AuditLog" ("action");
-                    CREATE INDEX IF NOT EXISTS "auditlog_resourcetype_idx" ON "AuditLog" ("resourceType");
-                    CREATE INDEX IF NOT EXISTS "auditlog_resourceid_idx" ON "AuditLog" ("resourceId");
-                    CREATE INDEX IF NOT EXISTS "auditlog_requestid_idx" ON "AuditLog" ("requestId");
-                    """
-                )
-            )
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Notice: column migration in test db: {e}")
 
 
 # ── 2. Session and Clean DB Fixtures ──────────────────────────────────────────
@@ -192,6 +156,7 @@ def setup_test_db_infrastructure():
 @pytest.fixture(autouse=True)
 def override_db_dependency_globally():
     """Ensure FastAPI dependency get_db always resolves to the isolated test database."""
+
     async def _override_get_db():
         async with TestAsyncSessionLocal() as session:
             try:
@@ -208,9 +173,7 @@ async def truncate_all_tables():
     """Truncate all tables for complete isolation."""
     async with test_engine.begin() as conn:
         try:
-            await conn.execute(
-                text(
-                    """
+            await conn.execute(text("""
                     TRUNCATE TABLE
                         "AuditLog",
                         "SelectedOption",
@@ -232,9 +195,7 @@ async def truncate_all_tables():
                         "Notification",
                         "User"
                     CASCADE;
-                    """
-                )
-            )
+                    """))
         except Exception:
             pass
 

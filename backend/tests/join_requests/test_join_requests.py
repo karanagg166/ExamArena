@@ -56,9 +56,9 @@ class TestJoinRequestsApi:
         school_class = make_fake_school_class()
         mock_join_request_db["get_student_by_user_id"].return_value = None
         mock_join_request_db["get_class_by_join_code"].return_value = school_class
-        mock_join_request_db[
-            "create_or_reopen_join_request"
-        ].return_value = make_request()
+        mock_join_request_db["create_or_reopen_join_request"].return_value = (
+            make_request()
+        )
 
         response = await client.post(
             "/api/v1/join-requests/join-by-code", json={"joinCode": "class1a2"}
@@ -76,9 +76,9 @@ class TestJoinRequestsApi:
     ):
         override_auth(role="STUDENT")
         mock_join_request_db["get_student_by_user_id"].return_value = None
-        mock_join_request_db[
-            "get_class_by_join_code"
-        ].return_value = make_fake_school_class()
+        mock_join_request_db["get_class_by_join_code"].return_value = (
+            make_fake_school_class()
+        )
         mock_join_request_db["create_or_reopen_join_request"].side_effect = ValueError(
             "A join request for this class already exists"
         )

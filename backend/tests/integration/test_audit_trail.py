@@ -90,9 +90,7 @@ async def test_audit_log_persisted_on_signup_and_login(
 
 
 @pytest.mark.asyncio
-async def test_audit_log_on_failed_login(
-    client: AsyncClient, db_session: AsyncSession
-):
+async def test_audit_log_on_failed_login(client: AsyncClient, db_session: AsyncSession):
     """Verify failed login attempts generate audit logs with failure status."""
     # Attempt login with non-existent email
     resp = await client.post(
@@ -130,6 +128,7 @@ async def test_audit_logs_query_endpoint_rbac(
 
     # 2. Record an audit log event and verify admin can query it -> 200
     from app.audit.service import record_audit_event
+
     await record_audit_event(
         action=AuditAction.SCHOOL_CREATED,
         resource_type=AuditResourceType.SCHOOL,

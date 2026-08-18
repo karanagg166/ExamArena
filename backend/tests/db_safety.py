@@ -61,7 +61,16 @@ def get_test_database_url() -> str:
         parsed = urlparse(clean_url)
         db_name = parsed.path.lstrip("/")
         hostname = (parsed.hostname or "").lower()
-        is_cloud = any(forbidden in hostname for forbidden in ["neon.tech", "supabase.co", "render.com", "railway.app", "amazonaws.com"])
+        is_cloud = any(
+            forbidden in hostname
+            for forbidden in [
+                "neon.tech",
+                "supabase.co",
+                "render.com",
+                "railway.app",
+                "amazonaws.com",
+            ]
+        )
         if db_name and hostname and not is_cloud:
             test_url = db_url.replace(f"/{db_name}", "/exam_arena_test")
             try:
@@ -73,7 +82,11 @@ def get_test_database_url() -> str:
     # Check host vs container default
     # Inside docker compose network, 'db' is reachable.
     # On host, 'localhost' is reachable.
-    default_host = "db" if (os.path.exists("/.dockerenv") or os.getenv("ENVIRONMENT") == "ci") else "localhost"
+    default_host = (
+        "db"
+        if (os.path.exists("/.dockerenv") or os.getenv("ENVIRONMENT") == "ci")
+        else "localhost"
+    )
     url = f"postgresql+asyncpg://postgres:postgres@{default_host}:5432/exam_arena_test"
     verify_database_safety(url)
     return url
