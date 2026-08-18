@@ -54,16 +54,21 @@ def get_test_database_url() -> str:
         verify_database_safety(env_test_url)
         return env_test_url
 
-    # Check if DATABASE_URL is set in environment to inherit host/credentials
+    # Check if DATABASE_URL is set in environment and is a local database
     db_url = os.getenv("DATABASE_URL")
     if db_url:
         clean_url = db_url.replace("+asyncpg", "")
         parsed = urlparse(clean_url)
         db_name = parsed.path.lstrip("/")
-        if db_name and parsed.hostname:
+        hostname = (parsed.hostname or "").lower()
+        is_cloud = any(forbidden in hostname for forbidden in ["neon.tech", "supabase.co", "render.com", "railway.app", "amazonaws.com"])
+        if db_name and hostname and not is_cloud:
             test_url = db_url.replace(f"/{db_name}", "/exam_arena_test")
-            verify_database_safety(test_url)
-            return test_url
+            try:
+                verify_database_safety(test_url)
+                return test_url
+            except RuntimeError:
+                pass
 
     # Check host vs container default
     # Inside docker compose network, 'db' is reachable.

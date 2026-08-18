@@ -30,7 +30,7 @@ jobs:
       - name: Create root .env from secrets
         run: |
           cat <<'EOF' > .env
-          DATABASE_URL=${{ secrets.DATABASE_URL || 'postgresql+asyncpg://postgres:postgres@db:5432/exam_arena' }}
+          DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/exam_arena
           SECRET_KEY=${{ secrets.SECRET_KEY || 'ci-secret-key-for-testing-only-32-chars-long' }}
           ALGORITHM=HS256
           ACCESS_TOKEN_EXPIRE_MINUTES=30
