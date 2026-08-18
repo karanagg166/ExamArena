@@ -13,7 +13,7 @@ import {
   MessageComposer,
   Thread,
 } from "stream-chat-react";
-import "stream-chat-react/dist/css/v2/index.css";
+import "stream-chat-react/dist/css/index.css";
 
 import { api } from "@/lib/axios";
 import { useAuthStore } from "@/stores";
