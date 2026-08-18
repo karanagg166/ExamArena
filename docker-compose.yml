@@ -65,6 +65,7 @@ services:
     volumes:
       - .:/app                         # ← mounts source for hot reload
       - /app/.next                     # ← preserves Next.js build cache
+      - /app/node_modules              # ← preserves container node_modules
     depends_on:
       backend:
         condition: service_started
