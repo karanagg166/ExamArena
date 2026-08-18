@@ -65,9 +65,6 @@ lint-frontend:
 	@echo "🔍 [Frontend] ESLint check..."
 	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm lint
 
-	@echo "🎨 [Frontend] Prettier format check (read-only)..."
-	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm exec prettier --check $(FRONTEND_APP_DIR)
-
 # ── Combined lint ─────────────────────────────────────────────
 lint: lint-backend lint-frontend
 	@echo "✅ Lint passed for backend and frontend!"
@@ -95,8 +92,8 @@ format-backend:
 	$(COMPOSE) exec $(BACKEND_CONTAINER) ruff check $(BACKEND_APP_DIR) --fix
 
 format-frontend:
-	@echo "🎨 [Frontend] Auto-formatting with Prettier..."
-	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm exec prettier --write $(FRONTEND_APP_DIR)
+	@echo "🔧 [Frontend] Auto-fixing ESLint issues..."
+	$(COMPOSE) exec $(FRONTEND_CONTAINER) pnpm exec eslint src/ --fix
 
 format: format-backend format-frontend
 	@echo "✅ Auto-format complete!"

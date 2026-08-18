@@ -41,27 +41,32 @@ TestAsyncSessionLocal = async_sessionmaker(
 
 async def init_test_db() -> None:
     """Ensure test database exists, create schema, and apply schema migrations."""
-    # Ensure postgres database exists
-    clean_url = TEST_DB_URL.replace("+asyncpg", "")
     import urllib.parse
+    import asyncpg
 
+    clean_url = TEST_DB_URL.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
     parsed = urllib.parse.urlparse(clean_url)
-    maintenance_urls = [
-        TEST_DB_URL.replace(f"/{parsed.path.lstrip('/')}", "/postgres"),
-        TEST_DB_URL.replace(f"/{parsed.path.lstrip('/')}", "/exam_arena"),
-    ]
-    for db_url in maintenance_urls:
+    user = parsed.username or "postgres"
+    password = parsed.password or "postgres"
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 5432
+    test_db_name = parsed.path.lstrip("/") or "exam_arena_test"
+
+    for maintenance_db in ["postgres", "exam_arena"]:
         try:
-            maintenance_engine = create_async_engine(
-                db_url, isolation_level="AUTOCOMMIT"
+            sys_conn = await asyncpg.connect(
+                user=user,
+                password=password,
+                host=host,
+                port=port,
+                database=maintenance_db,
             )
-            async with maintenance_engine.connect() as conn:
-                exists = await conn.execute(
-                    text("SELECT 1 FROM pg_database WHERE datname = 'exam_arena_test'")
-                )
-                if not exists.scalar_one_or_none():
-                    await conn.execute(text("CREATE DATABASE exam_arena_test"))
-            await maintenance_engine.dispose()
+            exists = await sys_conn.fetchval(
+                "SELECT 1 FROM pg_database WHERE datname = $1", test_db_name
+            )
+            if not exists:
+                await sys_conn.execute(f'CREATE DATABASE "{test_db_name}"')
+            await sys_conn.close()
             break
         except Exception:
             pass
@@ -178,6 +183,21 @@ def setup_test_db_infrastructure():
     app_db.AsyncSessionLocal = TestAsyncSessionLocal
     yield
     asyncio.run(test_engine.dispose())
+
+
+@pytest.fixture(autouse=True)
+def override_db_dependency_globally():
+    """Ensure FastAPI dependency get_db always resolves to the isolated test database."""
+    async def _override_get_db():
+        async with TestAsyncSessionLocal() as session:
+            try:
+                yield session
+            finally:
+                await session.close()
+
+    app.dependency_overrides[get_db] = _override_get_db
+    yield
+    app.dependency_overrides.pop(get_db, None)
 
 
 async def truncate_all_tables():

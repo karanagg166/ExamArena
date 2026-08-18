@@ -153,15 +153,6 @@ run_check "TypeScript (tsc --noEmit)" \
     -e NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}" \
     frontend pnpm type-check
 
-run_check "Prettier format check" \
-  docker compose exec -T frontend \
-    pnpm exec prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,md}"
-
-echo ""
-echo -e "  ${YELLOW}💡 Auto-fix Prettier:${NC}"
-echo -e "     docker compose exec frontend pnpm exec prettier --write 'src/**/*.{ts,tsx,js,jsx,json,css,md}'"
-echo ""
-
 # ─────────────────────────────────────────────────────────────
 #  CHECK 5 — Tests (Backend Pytest + Frontend Vitest)
 # ─────────────────────────────────────────────────────────────

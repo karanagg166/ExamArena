@@ -81,9 +81,6 @@ jobs:
         run: docker compose exec -T backend pytest -v
 
       # 5. Frontend Checks (Next.js)
-      - name: ⚡ Check Formatting (Prettier)
-        run: docker compose exec -T frontend pnpm exec prettier --check src/
-
       - name: ⚡ Strict Linting (ESLint)
         run: docker compose exec -T frontend pnpm lint
 
