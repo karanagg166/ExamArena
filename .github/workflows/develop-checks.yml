@@ -27,8 +27,8 @@ jobs:
       - name: Create root .env from secrets
         run: |
           cat <<'EOF' > .env
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          DATABASE_URL=${{ secrets.DATABASE_URL || 'postgresql+asyncpg://postgres:postgres@db:5432/exam_arena' }}
+          SECRET_KEY=${{ secrets.SECRET_KEY || 'ci-secret-key-for-testing-only-32-chars-long' }}
           ALGORITHM=HS256
           ACCESS_TOKEN_EXPIRE_MINUTES=30
           ENVIRONMENT=ci
@@ -43,9 +43,6 @@ jobs:
       # 2. Build & Start Stack
       - name: Build and Start Services
         run: docker compose up -d --build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Wait for Backend Health
         run: |
@@ -65,7 +62,7 @@ jobs:
 
       # 3. Database Schema Initialization
       - name: Database Schema Init
-        run: docker compose exec -T -e DATABASE_URL="${{ secrets.DATABASE_URL }}" backend python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
+        run: docker compose exec -T backend python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
 
       # 4. Backend Checks (FastAPI)
       - name: 🐍 Check Formatting (Black)

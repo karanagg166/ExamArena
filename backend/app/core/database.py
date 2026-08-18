@@ -9,10 +9,9 @@ from app.core.models import Base
 
 
 def get_database_url() -> str:
-    url = os.getenv(
-        "DATABASE_URL",
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/exam_arena",
-    )
+    url = os.getenv("DATABASE_URL")
+    if not url:
+        url = "postgresql+asyncpg://postgres:postgres@localhost:5432/exam_arena"
     # Fix scheme for SQLAlchemy asyncpg driver
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
