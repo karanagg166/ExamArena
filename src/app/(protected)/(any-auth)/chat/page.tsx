@@ -10,7 +10,7 @@ import {
   Window,
   ChannelHeader,
   MessageList,
-  MessageInput,
+  MessageComposer,
   Thread,
 } from "stream-chat-react";
 import "stream-chat-react/dist/css/v2/index.css";
@@ -125,7 +125,7 @@ export default function ChatPage() {
             name: `${schoolName || "School Hub"}`,
             members: [user.id],
             image: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?w=100&h=100&fit=crop",
-          });
+          } as Record<string, unknown>);
           await schoolChannel.create();
           await schoolChannel.watch();
         }
@@ -135,7 +135,7 @@ export default function ChatPage() {
             name: `${className || "Classroom Hub"}`,
             members: [user.id],
             image: "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=100&h=100&fit=crop",
-          });
+          } as Record<string, unknown>);
           await classChannel.create();
           await classChannel.watch();
         }
@@ -345,7 +345,7 @@ export default function ChatPage() {
                 <Window>
                   <ChannelHeader />
                   <MessageList />
-                  <MessageInput />
+                  <MessageComposer />
                 </Window>
                 <Thread />
               </Channel>
