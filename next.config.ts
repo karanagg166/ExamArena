@@ -2,11 +2,12 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const isProduction = process.env.NODE_ENV === "production";
+const isVercel = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
 
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
-  output: "standalone",
+  ...(isVercel ? {} : { output: "standalone" }),
 };
 
 export default withSentryConfig(nextConfig, {
