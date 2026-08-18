@@ -65,7 +65,9 @@ jobs:
 
       # 3. Database Schema Initialization
       - name: Database Schema Init
-        run: docker compose exec -T backend python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
+        run: |
+          docker compose exec -T backend python -c "import asyncio; from app.core.database import init_db; asyncio.run(init_db())"
+          docker compose exec -T backend python -c "import asyncio; from tests.conftest import init_test_db; asyncio.run(init_test_db())"
 
       # 4. Backend Checks (FastAPI)
       - name: 🐍 Check Formatting (Black)

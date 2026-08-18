@@ -38,6 +38,10 @@ TestAsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
+# Bind app database engine and session factory to test database immediately on test setup
+app_db.engine = test_engine
+app_db.AsyncSessionLocal = TestAsyncSessionLocal
+
 
 async def init_test_db() -> None:
     """Ensure test database exists, create schema, and apply schema migrations."""
