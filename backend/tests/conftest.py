@@ -46,22 +46,25 @@ async def init_test_db() -> None:
     import urllib.parse
 
     parsed = urllib.parse.urlparse(clean_url)
-    default_db_url = TEST_DB_URL.replace(f"/{parsed.path.lstrip('/')}", "/postgres")
-
-    try:
-        maintenance_engine = create_async_engine(
-            default_db_url, isolation_level="AUTOCOMMIT"
-        )
-        async with maintenance_engine.connect() as conn:
-            exists = await conn.execute(
-                text("SELECT 1 FROM pg_database WHERE datname = 'exam_arena_test'")
+    maintenance_urls = [
+        TEST_DB_URL.replace(f"/{parsed.path.lstrip('/')}", "/postgres"),
+        TEST_DB_URL.replace(f"/{parsed.path.lstrip('/')}", "/exam_arena"),
+    ]
+    for db_url in maintenance_urls:
+        try:
+            maintenance_engine = create_async_engine(
+                db_url, isolation_level="AUTOCOMMIT"
             )
-            if not exists.scalar_one_or_none():
-                await conn.execute(text("CREATE DATABASE exam_arena_test"))
-        await maintenance_engine.dispose()
-    except Exception as exc:
-        # Fallback if already exists or permission denied
-        pass
+            async with maintenance_engine.connect() as conn:
+                exists = await conn.execute(
+                    text("SELECT 1 FROM pg_database WHERE datname = 'exam_arena_test'")
+                )
+                if not exists.scalar_one_or_none():
+                    await conn.execute(text("CREATE DATABASE exam_arena_test"))
+            await maintenance_engine.dispose()
+            break
+        except Exception:
+            pass
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

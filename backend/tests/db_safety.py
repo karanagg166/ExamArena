@@ -54,10 +54,21 @@ def get_test_database_url() -> str:
         verify_database_safety(env_test_url)
         return env_test_url
 
+    # Check if DATABASE_URL is set in environment to inherit host/credentials
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        clean_url = db_url.replace("+asyncpg", "")
+        parsed = urlparse(clean_url)
+        db_name = parsed.path.lstrip("/")
+        if db_name and parsed.hostname:
+            test_url = db_url.replace(f"/{db_name}", "/exam_arena_test")
+            verify_database_safety(test_url)
+            return test_url
+
     # Check host vs container default
     # Inside docker compose network, 'db' is reachable.
     # On host, 'localhost' is reachable.
-    default_host = "db" if os.path.exists("/.dockerenv") else "localhost"
+    default_host = "db" if (os.path.exists("/.dockerenv") or os.getenv("ENVIRONMENT") == "ci") else "localhost"
     url = f"postgresql+asyncpg://postgres:postgres@{default_host}:5432/exam_arena_test"
     verify_database_safety(url)
     return url
