@@ -31,6 +31,7 @@ services:
       dockerfile: backend/backend.Dockerfile
       target: dev
     container_name: exam_arena_backend
+    init: true
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -57,6 +58,7 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:8000
     container_name: exam_arena_frontend
+    init: true
     restart: unless-stopped
     ports:
       - "3000:3000"

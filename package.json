@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.15.0",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "python3 backend/prisma/generate.py 2>/dev/null || true && next build",
     "start": "next start",
     "lint": "eslint src/",
@@ -91,21 +91,17 @@
     "tailwindcss": "^4",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5",
-    "vite": "^8.2.1",
+    "vite": "^6.2.0",
     "vitest": "^4.1.10"
-  },
-  "optionalDependencies": {
-    "@rolldown/binding-linux-arm64-musl": "1.0.0-rc.12"
   },
   "overrides": {
     "brace-expansion@<1.1.18": "1.1.18",
     "brace-expansion@>=2.0.0 <2.0.2": "2.0.2",
     "brace-expansion@>=5.0.0 <5.0.9": "5.0.9",
-    "vite": ">=8.0.16",
     "ws": ">=8.21.0",
     "lodash": ">=4.18.0",
     "dompurify": ">=3.4.13",
-    "undici": ">=7.29.0",
+    "undici": ">=7.29.0 <8.0.0",
     "fast-uri": ">=3.1.5",
     "hono": ">=4.12.34",
     "postcss": ">=8.5.23",
