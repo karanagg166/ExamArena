@@ -6,7 +6,13 @@ import { GlassCard } from '@/components/ui/glass-card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 
-export const AttemptQuestion = ({ question }: { question: Question }) => {
+interface AttemptQuestionProps {
+  question: Question;
+  questionIndex?: number;
+  totalQuestions?: number;
+}
+
+export const AttemptQuestion = ({ question, questionIndex, totalQuestions }: AttemptQuestionProps) => {
   const { answers, updateAnswer, markQuestionForReview, unmarkQuestionForReview } = useAttemptEngine();
 
   const answerState = answers[question.id];
@@ -46,34 +52,58 @@ export const AttemptQuestion = ({ question }: { question: Question }) => {
 
   const selectedOptionsList = answerState?.selectedOptions?.map(o => o.optionId) || [];
 
+  // Determine display question numbering
+  const displayNum = questionIndex !== undefined ? questionIndex + 1 : (question.questionNumber || 1);
+
   return (
     <GlassCard padding="lg" className="min-h-[500px] flex flex-col">
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white mb-2">Question {question.questionNumber}</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
+            <h2 className="text-xl md:text-2xl font-bold text-white tracking-tight">
+              Question {displayNum}
+              {totalQuestions ? (
+                <span className="text-sm font-normal text-[var(--text-muted)] ml-2">
+                  of {totalQuestions}
+                </span>
+              ) : null}
+            </h2>
+          </div>
+          
+          <div className="flex items-center gap-2 flex-wrap">
             {question.section && (
               <span className="text-xs font-semibold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-md">
                 {question.section}
               </span>
             )}
-            <span className="text-xs text-[var(--text-muted)] bg-[var(--surface-3)] px-2 py-0.5 rounded-md">
-              {question.questionType.replace(/_/g, " ")}
+            <span className="text-xs text-[var(--text-muted)] bg-[var(--surface-3)] px-2.5 py-0.5 rounded-md capitalize">
+              {question.questionType === 'MULTIPLE_CHOICE'
+                ? 'Single Choice (MCQ)'
+                : question.questionType === 'MULTIPLE_SELECT'
+                ? 'Multiple Select'
+                : question.questionType === 'TRUE_FALSE'
+                ? 'True / False'
+                : question.questionType === 'SHORT_ANSWER'
+                ? 'Short Answer'
+                : question.questionType.replace(/_/g, " ")}
             </span>
             {question.questionType === 'MULTIPLE_SELECT' && (
-              <span className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md font-medium">
+              <span className="text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-md font-medium">
                 Multiple options may be correct
               </span>
             )}
           </div>
         </div>
-        <div className="bg-indigo-500/10 border border-indigo-500/20 px-3 py-1.5 rounded-lg">
-          <span className="text-indigo-400 font-medium">{question.marks} Marks</span>
+        
+        <div className="bg-indigo-500/10 border border-indigo-500/20 px-3.5 py-1.5 rounded-lg self-start shrink-0">
+          <span className="text-indigo-400 font-semibold text-sm">
+            {question.marks} Mark{question.marks === 1 ? '' : 's'}
+          </span>
         </div>
       </div>
 
       <div className="flex-1 space-y-8">
-        <div className="text-lg text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
+        <div className="text-base md:text-lg text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">
           {question.text}
         </div>
 
@@ -118,14 +148,14 @@ export const AttemptQuestion = ({ question }: { question: Question }) => {
           {(question.questionType === 'SHORT_ANSWER' || question.questionType === 'ESSAY') && (
             <div className="space-y-2">
                 <textarea
-                  className="w-full h-48 p-4 rounded-xl bg-[var(--surface-1)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition-all"
+                  className="w-full h-48 p-4 rounded-xl bg-[var(--surface-1)] border border-[var(--border-subtle)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none transition-all placeholder:text-[var(--text-dimmed)]"
                   placeholder="Type your answer here..."
                   value={answerState?.textAnswer || ''}
                   onChange={handleTextChange}
                 />
                 {question.wordLimit && (
                    <p className="text-xs text-[var(--text-muted)] text-right">
-                       Word limit: {question.wordLimit}
+                       Word limit: {question.wordLimit} words
                    </p>
                 )}
             </div>
@@ -138,7 +168,7 @@ export const AttemptQuestion = ({ question }: { question: Question }) => {
             <Checkbox 
                 checked={isMarked} 
                 onCheckedChange={toggleReviewMark} 
-                className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
+                className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
             />
             <span className="text-sm text-[var(--text-muted)] group-hover:text-white transition-colors">Mark for review</span>
         </label>

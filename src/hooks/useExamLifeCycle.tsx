@@ -9,6 +9,13 @@ export function useExamLifeCycle() {
     const currentState = useAttemptStore.getState();
     // Only initialize if we're starting a new attempt or forcing a refresh of the SAME attempt.
     if (currentState.attemptId === attemptId && Object.keys(currentState.answers).length > 0) {
+      if ((!currentState.durationSeconds || currentState.timeRemainingSeconds === null) && defaultTimeLimitSeconds) {
+        store.setAllState({
+          durationSeconds: defaultTimeLimitSeconds,
+          timeRemainingSeconds: currentState.timeRemainingSeconds ?? defaultTimeLimitSeconds,
+          startedAt: currentState.startedAt || startedAt,
+        });
+      }
       return; 
     }
 
