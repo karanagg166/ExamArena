@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/loading";
 import { useJoinRequestStore, useSchoolClassStore } from "@/stores";
+import { formatDateTimeIST } from "@/lib/date";
 import type { ClassJoinRequest } from "@/types";
 
 export default function ClassRequestsPage() {
@@ -105,7 +106,7 @@ export default function ClassRequestsPage() {
                     <div>
                       <p className="font-medium text-zinc-100">{request.studentName}</p>
                       <p className="text-sm text-zinc-400">{request.studentEmail}</p>
-                      <p className="mt-1 text-xs text-zinc-500">Requested {new Date(request.requestedAt).toLocaleString()}</p>
+                      <p className="mt-1 text-xs text-zinc-500">Requested {formatDateTimeIST(request.requestedAt)}</p>
                     </div>
                     <div className="flex gap-2">
                       <Button

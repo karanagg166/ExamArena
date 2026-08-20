@@ -16,7 +16,7 @@ import {
   ArrowLeft,
   HelpCircle,
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateTimeIST } from "@/lib/date";
 import type { Exam } from "@/types";
 import { useAuthStore } from "@/stores/useAuthStore";
 
@@ -222,7 +222,7 @@ export default function ExamDetailViewPage() {
                     Scheduled At
                   </p>
                   <p className="text-sm font-semibold text-white">
-                    {format(new Date(exam.scheduledAt), "PPP p")}
+                    {formatDateTimeIST(exam.scheduledAt)}
                   </p>
                 </div>
               </div>

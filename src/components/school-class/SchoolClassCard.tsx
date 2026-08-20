@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { Copy, Trash2, Check } from "lucide-react";
 import { useSchoolClassStore, useAuthStore } from "@/stores";
 import { toast } from "sonner";
+import { formatDateIST } from "@/lib/date";
 
 interface SchoolClassCardProps {
   schoolClass: SchoolClass;
@@ -148,7 +149,7 @@ export default function SchoolClassCard({
       {/* Footer & Action */}
       <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400 gap-2">
         <span>
-          Created {new Date(schoolClass.createdAt).toLocaleDateString()}
+          Created {formatDateIST(schoolClass.createdAt)}
         </span>
         {isAssigned ? (
           <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold text-[11px] inline-flex items-center gap-1.5">
@@ -164,7 +165,7 @@ export default function SchoolClassCard({
           </button>
         ) : (
           <span>
-            Updated {new Date(schoolClass.updatedAt).toLocaleDateString()}
+            Updated {formatDateIST(schoolClass.updatedAt)}
           </span>
         )}
       </div>

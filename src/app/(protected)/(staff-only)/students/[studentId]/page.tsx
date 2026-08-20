@@ -72,18 +72,9 @@ type StudentExamHistory = {
   isResultsReleased: boolean;
 };
 
-const fmt = (ds: string | null | undefined) => {
-  if (!ds) return "—";
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-    }).format(new Date(ds));
-  } catch {
-    return "—";
-  }
-};
+import { formatDateIST } from "@/lib/date";
+
+const fmt = (ds: string | null | undefined) => formatDateIST(ds);
 
 export default function StudentDetailPage() {
   const { studentId } = useParams<{ studentId: string }>();

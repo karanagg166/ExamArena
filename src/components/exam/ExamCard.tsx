@@ -3,6 +3,7 @@ import Link from "next/link";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, FileText, CheckCircle2, Circle } from "lucide-react";
+import { formatDateTimeIST } from "@/lib/date";
 import type { Exam } from "@/types";
 
 interface ExamCardProps {
@@ -10,13 +11,7 @@ interface ExamCardProps {
 }
 
 export function ExamCard({ exam }: ExamCardProps) {
-  const formattedDate = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(exam.scheduledAt));
+  const formattedDate = formatDateTimeIST(exam.scheduledAt);
 
   return (
     <Link href={`/teacher/exams/${exam.id}`}>

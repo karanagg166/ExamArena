@@ -3,6 +3,7 @@ import Link from "next/link";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User as UserIcon, School } from "lucide-react";
+import { formatDateTimeIST } from "@/lib/date";
 import type { Exam } from "@/types";
 
 interface ExamPublicCardProps {
@@ -11,13 +12,7 @@ interface ExamPublicCardProps {
 }
 
 export function ExamPublicCard({ exam, isStudent }: ExamPublicCardProps) {
-  const formattedDate = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(exam.scheduledAt));
+  const formattedDate = formatDateTimeIST(exam.scheduledAt);
 
   const isSubmitted =
     exam.studentStatus === "SUBMITTED" ||

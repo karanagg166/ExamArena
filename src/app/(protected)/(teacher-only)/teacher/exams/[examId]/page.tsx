@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import type { Exam } from "@/types";
-import { format } from "date-fns";
+import { formatDateTimeIST } from "@/lib/date";
 
 export default function ExamViewPage() {
   const { examId } = useParams();
@@ -162,7 +162,7 @@ export default function ExamViewPage() {
                   <div>
                     <p className="text-xs text-[var(--text-dimmed)] uppercase tracking-wider font-bold">Scheduled Date</p>
                     <p className="text-[var(--text-primary)] font-medium">
-                      {format(new Date(exam.scheduledAt), "PPP p")}
+                      {formatDateTimeIST(exam.scheduledAt)}
                     </p>
                   </div>
                 </div>

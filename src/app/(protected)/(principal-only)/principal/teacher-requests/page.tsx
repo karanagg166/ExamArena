@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
+import { formatDateIST } from "@/lib/date";
 import { Spinner } from "@/components/ui/loading";
 import {
   useJoinRequestStore,
@@ -521,7 +522,7 @@ function PrincipalTeacherRequestsContent() {
                       )}
                       <span className="flex items-center gap-1 text-slate-400">
                         <Calendar size={13} />
-                        Requested on {new Date(req.requestedAt).toLocaleDateString()}
+                        Requested on {formatDateIST(req.requestedAt)}
                       </span>
                     </div>
                   </div>
@@ -604,7 +605,7 @@ function PrincipalTeacherRequestsContent() {
                       )}
                       <span className="flex items-center gap-1 text-slate-400">
                         <Calendar size={13} />
-                        Requested on {new Date(req.requestedAt).toLocaleDateString()}
+                        Requested on {formatDateIST(req.requestedAt)}
                       </span>
                     </div>
                   </div>
@@ -682,7 +683,7 @@ function PrincipalTeacherRequestsContent() {
                       </span>
                       <span className="flex items-center gap-1 text-slate-400">
                         <Calendar size={13} />
-                        Requested on {new Date(req.requestedAt).toLocaleDateString()}
+                        Requested on {formatDateIST(req.requestedAt)}
                       </span>
                     </div>
                   </div>

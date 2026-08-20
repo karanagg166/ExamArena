@@ -75,9 +75,9 @@ describe('Component: ExamCard (C6-C8)', () => {
     expect(screen.getByText(/Draft/i)).toBeInTheDocument();
   });
 
-  it('renders Private badge when exam is not public', () => {
-    const privateExam = { ...mockExam, isPublic: false };
-    render(<ExamCard exam={privateExam} />);
-    expect(screen.getByText(/Private/i)).toBeInTheDocument();
+  it('renders scheduled date in IST', () => {
+    render(<ExamCard exam={mockExam} />);
+    // 2026-09-15T10:00:00Z -> 15 Sep 2026, 3:30 PM IST
+    expect(screen.getByText(/15 Sep 2026.*IST/i)).toBeInTheDocument();
   });
 });

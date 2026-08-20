@@ -46,20 +46,19 @@ const SUBJECTS: { label: string; value: Subject }[] = [
   { label: "Physical Education", value: "PHYSICAL_EDUCATION" },
 ];
 
+import { toISTInputString, fromISTInputStringToISO } from "@/lib/date";
+
 export function ExamForm({ exam, onChange }: ExamFormProps) {
-  // Convert standard ISO date to datetime-local format if present
-  const scheduledDateString = exam.scheduledAt
-    ? new Date(exam.scheduledAt).toISOString().slice(0, 16)
-    : "";
+  // Convert standard ISO date to datetime-local format in IST (+05:30)
+  const scheduledDateString = toISTInputString(exam.scheduledAt);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.value) {
       onChange({ scheduledAt: "" });
       return;
     }
-    // Convert back to full ISO string
-    const date = new Date(e.target.value);
-    onChange({ scheduledAt: date.toISOString() });
+    // Convert IST datetime-local input back to full ISO string
+    onChange({ scheduledAt: fromISTInputStringToISO(e.target.value) });
   };
 
   const generateRandomCode = () => {
@@ -143,7 +142,7 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="scheduledAt">Scheduled Start Date & Time <span className="text-red-400">*</span></Label>
+            <Label htmlFor="scheduledAt">Scheduled Start Date & Time (IST) <span className="text-red-400">*</span></Label>
             <Input
               id="scheduledAt"
               type="datetime-local"
@@ -151,7 +150,7 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
               onChange={handleDateChange}
             />
             <p className="text-[11px] text-[var(--text-muted)]">
-              ℹ️ Students can take this exam at any time on or after this scheduled start time.
+              ℹ️ Time is in Indian Standard Time (IST, UTC+5:30). Students can take this exam at any time on or after this scheduled start time.
             </p>
           </div>
 

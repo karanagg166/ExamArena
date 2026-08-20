@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Phone, MapPin, Calendar, User, Hash, Users } from "lucide-react";
 
+import { formatDateIST } from "@/lib/date";
+
 export default function StudentProfileCard({
   student,
 }: {
@@ -11,19 +13,9 @@ export default function StudentProfileCard({
   const { user } = student;
 
   const formatDate = (ds: string) => {
-    try {
-      if (!ds) return "N/A";
-      const formatOptions: Intl.DateTimeFormatOptions = {
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-      };
-      return new Intl.DateTimeFormat("en-US", formatOptions).format(
-        new Date(ds),
-      );
-    } catch {
-      return "Invalid date";
-    }
+    if (!ds) return "N/A";
+    const res = formatDateIST(ds);
+    return res === "—" ? "Invalid date" : res;
   };
 
   return (

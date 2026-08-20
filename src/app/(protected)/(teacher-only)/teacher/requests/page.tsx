@@ -23,6 +23,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
+import { formatDateIST } from "@/lib/date";
 import { Spinner } from "@/components/ui/loading";
 import {
   useJoinRequestStore,
@@ -376,7 +377,7 @@ function TeacherRequestsContent() {
 
                     <div className="text-xs text-zinc-500 flex items-center gap-1.5">
                       <Calendar size={13} />
-                      Requested on {new Date(req.requestedAt).toLocaleDateString()}
+                      Requested on {formatDateIST(req.requestedAt)}
                     </div>
 
                     {req.status === "PENDING" && (
@@ -500,7 +501,7 @@ function TeacherRequestsContent() {
 
                     <div className="text-xs text-zinc-500 flex items-center gap-1.5 pt-2 border-t border-zinc-800">
                       <Clock size={13} />
-                      Status: {req.status} • Submitted on {new Date(req.requestedAt).toLocaleDateString()}
+                      Status: {req.status} • Submitted on {formatDateIST(req.requestedAt)}
                     </div>
                   </div>
                 ))}
@@ -564,7 +565,7 @@ function TeacherRequestsContent() {
 
                     <div className="text-xs text-zinc-500 flex items-center gap-1.5 pt-2 border-t border-zinc-800">
                       <Clock size={13} />
-                      Submitted on {new Date(req.requestedAt).toLocaleDateString()}
+                      Submitted on {formatDateIST(req.requestedAt)}
                     </div>
                   </div>
                 ))}

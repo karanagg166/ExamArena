@@ -1,4 +1,6 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
+
+IST = timezone(timedelta(hours=5, minutes=30))
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,8 +73,9 @@ async def start_exam_attempt(
             )
             # Allow start if current time is equal to or past scheduled time (with small grace)
             if now < scheduled_time:
+                ist_time = scheduled_time.astimezone(IST)
                 raise ValueError(
-                    f"This exam is scheduled for {scheduled_time.strftime('%Y-%m-%d %H:%M UTC')}. "
+                    f"This exam is scheduled for {ist_time.strftime('%d %b %Y, %I:%M %p')} IST. "
                     "You can take it any time after the scheduled start time."
                 )
 

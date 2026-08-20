@@ -11,6 +11,7 @@ import {
   Hash,
   UserCheck,
 } from "lucide-react";
+import { formatDateIST } from "@/lib/date";
 
 export default function SchoolProfileCard({ school }: { school: School }) {
   return (
@@ -124,11 +125,7 @@ export default function SchoolProfileCard({ school }: { school: School }) {
                 <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm">
                   <span>Registered:</span>
                   <span className="font-medium text-slate-900 dark:text-slate-300">
-                    {new Date(school.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    {formatDateIST(school.createdAt)}
                   </span>
                 </div>
               </div>

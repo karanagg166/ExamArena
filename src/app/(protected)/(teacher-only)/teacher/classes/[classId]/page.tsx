@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
 import { useSchoolClassStore, useAuthStore } from "@/stores";
 import { api } from "@/lib/axios";
+import { formatDateIST } from "@/lib/date";
 import {
   ArrowLeft,
   Copy,
@@ -303,11 +304,11 @@ export default function ClassPage() {
                 </p>
                 <p>
                   <span className="text-zinc-500">Created:</span>{" "}
-                  {new Date(schoolClass.createdAt).toLocaleDateString()}
+                  {formatDateIST(schoolClass.createdAt)}
                 </p>
                 <p>
                   <span className="text-zinc-500">Updated:</span>{" "}
-                  {new Date(schoolClass.updatedAt).toLocaleDateString()}
+                  {formatDateIST(schoolClass.updatedAt)}
                 </p>
               </div>
 

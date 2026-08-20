@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/loading";
 import { Button } from "@/components/ui/button";
 import { useAuthStore, useSchoolClassStore } from "@/stores";
 import { api } from "@/lib/axios";
+import { formatDateIST } from "@/lib/date";
 import {
   ArrowLeft,
   BookOpen,
@@ -251,11 +252,11 @@ export default function ClassPage() {
               </p>
               <p>
                 <span className="text-zinc-500">Created:</span>{" "}
-                {new Date(schoolClass.createdAt).toLocaleDateString()}
+                {formatDateIST(schoolClass.createdAt)}
               </p>
               <p>
                 <span className="text-zinc-500">Updated:</span>{" "}
-                {new Date(schoolClass.updatedAt).toLocaleDateString()}
+                {formatDateIST(schoolClass.updatedAt)}
               </p>
             </div>
 
