@@ -28,6 +28,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuthStore, useSchoolStore } from "@/stores";
 import type { UserRole } from "@/types/user";
+import { useAbility, type AppAction, type AppSubject } from "@/lib/casl";
 
 /* ─── Nav item config per role ─── */
 
@@ -37,6 +38,8 @@ interface NavItem {
   icon: LucideIcon;
   /** Match paths starting with this prefix */
   matchPrefix?: string;
+  action?: AppAction;
+  subject?: AppSubject;
 }
 
 const navItemsByRole: Record<UserRole, NavItem[]> = {
@@ -143,11 +146,15 @@ export function AppSidebar({ collapsed, setCollapsed }: AppSidebarProps) {
   const roleRaw = user?.role ?? inferredRole;
   const school = useSchoolStore((s) => s.school);
   const role: UserRole | null = roleRaw ? (roleRaw.toUpperCase() as UserRole) : null;
+  const ability = useAbility();
   
   if (!role || isExamAttempt) return null;
 
   const rawNavItems = navItemsByRole[role] ?? [];
   const navItems = rawNavItems.filter((item) => {
+    if (item.action && item.subject && !ability.can(item.action, item.subject)) {
+      return false;
+    }
     if (role === "TEACHER") {
       if (school && item.href === "/teacher/school/join") return false;
       if (!school && item.href === "/teacher/school") return false;

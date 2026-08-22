@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_current_user
+from app.api.deps import enforce_rbac_permission, get_current_user
 from app.audit.schemas import AuditLogResponse
 from app.audit.service import get_audit_logs
 from app.core.models import Role
@@ -26,13 +26,9 @@ async def list_audit_logs(
 ):
     """
     Retrieve persistent security and business audit logs.
-    Restricted to ADMIN and PRINCIPAL roles.
+    Restricted to ADMIN and PRINCIPAL roles via Casbin RBAC.
     """
-    if current_user.role not in (Role.ADMIN, Role.PRINCIPAL):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators and principals can view audit logs.",
-        )
+    enforce_rbac_permission(current_user.role, "audit", "read")
 
     logs = await get_audit_logs(
         action=action,

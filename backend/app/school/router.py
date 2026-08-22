@@ -3,7 +3,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_current_user
+from app.api.deps import enforce_rbac_permission, get_current_user
 from app.audit.actions import AuditAction, AuditResourceType
 from app.audit.service import record_audit_event
 from app.core.models import Role
@@ -50,11 +50,12 @@ async def create_school(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Create a school for the authenticated user."""
-    if current_user.role not in (Role.PRINCIPAL, Role.ADMIN):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only principals or admins can create schools.",
-        )
+    enforce_rbac_permission(
+        current_user.role,
+        "school",
+        "create",
+        "Only principals or admins can create schools.",
+    )
     existing_school = await crud.get_school_by_user_id(current_user.id)
     if existing_school:
         raise HTTPException(status_code=400, detail="User already manages a school.")

@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@casl/ability": "^7.0.1",
+    "@casl/react": "^7.0.1",
     "@clerk/nextjs": "^7.7.7",
     "@hookform/resolvers": "^5.2.2",
     "@lottiefiles/dotlottie-react": "^0.14.3",

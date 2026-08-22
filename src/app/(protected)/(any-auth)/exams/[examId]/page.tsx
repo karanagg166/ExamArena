@@ -18,14 +18,14 @@ import {
 } from "lucide-react";
 import { formatDateTimeIST } from "@/lib/date";
 import type { Exam } from "@/types";
-import { useAuthStore } from "@/stores/useAuthStore";
+import { useAbility } from "@/lib/casl";
 
 export default function ExamDetailViewPage() {
   const { examId } = useParams();
   const router = useRouter();
   const [exam, setExam] = useState<Exam | null>(null);
   const [loading, setLoading] = useState(true);
-  const user = useAuthStore((state) => state.user);
+  const ability = useAbility();
 
   // We no longer automatically redirect, to avoid flash/confusion.
   // Instead, we immediately intercept the rendering below.
@@ -152,7 +152,7 @@ export default function ExamDetailViewPage() {
                             </div>
                           </div>
 
-                          {user?.role !== "STUDENT" &&
+                          {ability.can("update", "Exam") &&
                             q.options &&
                             q.options.length > 0 && (
                               <div className="space-y-2 mt-4 pl-3 border-l-2 border-[var(--border-subtle)]">
@@ -176,7 +176,7 @@ export default function ExamDetailViewPage() {
                               </div>
                             )}
 
-                          {user?.role !== "STUDENT" && q.explanation && (
+                          {ability.can("update", "Exam") && q.explanation && (
                             <div className="text-xs text-[var(--text-dimmed)] bg-white/5 p-3 rounded-lg border border-white/5 mt-3 leading-relaxed">
                               <span className="font-semibold text-white/70 block mb-1">
                                 Explanation / Rubric
@@ -296,8 +296,7 @@ export default function ExamDetailViewPage() {
             </div>
           </GlassCard>
 
-          {user?.role === "STUDENT" ||
-          user?.role?.toLowerCase() === "student" ? (
+          {ability.can("start", "Attempt") ? (
             <Button
               onClick={() => router.push(`/student/exams/${exam.id}/start`)}
               className="w-full py-6 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:scale-[1.02] transition-transform shadow-xl shadow-sky-500/20 text-white font-semibold"

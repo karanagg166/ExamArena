@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: examarena-backend
+    runtime: docker
+    dockerfilePath: backend/backend.Dockerfile
+    dockerContext: .
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000

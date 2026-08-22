@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
 from pydantic import ValidationError
 
 import app.exams.crud as crud
-from app.api.deps import get_current_user
+from app.api.deps import enforce_rbac_permission, get_current_user
 from app.attempts.schemas import ExamScoreboardItem
 from app.audit.actions import AuditAction, AuditResourceType
 from app.audit.service import record_audit_event
@@ -45,8 +45,12 @@ async def create_new_exam(
     exam_data: ExamCreateRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    if current_user.role not in (Role.TEACHER, Role.PRINCIPAL):
-        raise HTTPException(status_code=403, detail="Only teachers can manage exams")
+    enforce_rbac_permission(
+        current_user.role,
+        "exams",
+        "create",
+        "Only teachers can manage exams",
+    )
     teacher = await get_teacher_from_user(current_user)
     if not teacher.schoolId:
         raise HTTPException(

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 import app.exams.crud as exam_crud
 import app.sections.crud as crud
-from app.api.deps import get_current_user
+from app.api.deps import enforce_rbac_permission, get_current_user
 from app.audit.actions import AuditAction, AuditResourceType
 from app.audit.service import record_audit_event
 from app.core.models import Role
@@ -23,11 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 async def _require_teacher(current_user: UserResponse):
-    """Ensure the current user is a teacher and return their profile."""
+    """Ensure the current user is authorized to manage sections via Casbin."""
+    enforce_rbac_permission(
+        current_user.role,
+        "sections",
+        "create",
+        "Only teachers can manage sections",
+    )
     if current_user.role == Role.ADMIN:
         return None
-    if current_user.role not in (Role.TEACHER, Role.PRINCIPAL):
-        raise HTTPException(status_code=403, detail="Only teachers can manage sections")
     teacher = await get_teacher_by_user_id(current_user.id)
     if not teacher:
         raise HTTPException(status_code=403, detail="Teacher profile not found")

@@ -1,6 +1,12 @@
 from fastapi import Cookie, HTTPException, status
 
 from app.audit.context import set_current_actor
+from app.core.rbac import (
+    check_rbac_permission,
+    enforce_rbac_permission,
+    get_casbin_enforcer,
+    require_rbac_permission,
+)
 from app.core.security import verify_token
 from app.users.crud import get_user_by_id
 from app.users.schemas import UserResponse

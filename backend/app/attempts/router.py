@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 import app.attempts.crud as crud
-from app.api.deps import get_current_user
+from app.api.deps import enforce_rbac_permission, get_current_user
 from app.attempts.schemas import (
     ProctoringViolationRequest,
     StudentExamCreate,
@@ -26,8 +26,12 @@ async def start_exam(
     attempt_data: StudentExamCreate,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    if current_user.role != Role.STUDENT:
-        raise HTTPException(status_code=403, detail="Only students can start exams")
+    enforce_rbac_permission(
+        current_user.role,
+        "attempts",
+        "start",
+        "Only students can start exams",
+    )
     try:
         res = await crud.start_exam_attempt(attempt_data, current_user.id)
         await record_audit_event(
@@ -61,8 +65,12 @@ async def submit_exam(
     submit_data: StudentExamSubmit,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    if current_user.role != Role.STUDENT:
-        raise HTTPException(status_code=403, detail="Only students can submit exams")
+    enforce_rbac_permission(
+        current_user.role,
+        "attempts",
+        "submit",
+        "Only students can submit exams",
+    )
     try:
         res = await crud.submit_exam_attempt(submit_data, current_user.id)
         await record_audit_event(
