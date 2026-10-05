@@ -30,13 +30,22 @@ async def get_current_user(access_token: str = Cookie(None)):
     claims = decode_token_claims(access_token)
     jti = claims.get("jti") if claims else None
     if jti:
-        from app.auth.token_blacklist import is_token_blacklisted
+        from app.auth.token_blacklist import (
+            TokenBlacklistUnavailableError,
+            is_token_blacklisted,
+        )
 
-        if await is_token_blacklisted(jti):
+        try:
+            if await is_token_blacklisted(jti):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has been revoked",
+                )
+        except TokenBlacklistUnavailableError as exc:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-            )
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service temporarily unavailable",
+            ) from exc
 
     user = await get_user_by_id(user_id)
     if not user:

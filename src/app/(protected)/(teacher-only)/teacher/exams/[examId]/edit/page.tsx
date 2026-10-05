@@ -95,10 +95,19 @@ export default function EditExamPage() {
 
     setLoading(true);
     try {
-      await api.patch(`/api/v1/exams/${examId}`, {
+      const payload: Record<string, unknown> = {
         ...exam,
         maxMarks: computedMaxMarks,
-      });
+      };
+
+      const trimmedPassword = exam.accessPassword?.trim();
+      if (!trimmedPassword) {
+        delete payload.accessPassword;
+      } else {
+        payload.accessPassword = trimmedPassword;
+      }
+
+      await api.patch(`/api/v1/exams/${examId}`, payload);
       router.push(`/teacher/exams/${examId}`);
     } catch (err: unknown) {
       setErrorText(getErrorMessage(err));

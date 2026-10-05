@@ -29,6 +29,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
+def is_password_hash(value: str | None) -> bool:
+    """Check if value is a valid bcrypt password hash ($2a$, $2b$, or $2y$)."""
+    if not value or not isinstance(value, str):
+        return False
+    if len(value) == 60 and (
+        value.startswith("$2a$")
+        or value.startswith("$2b$")
+        or value.startswith("$2y$")
+    ):
+        parts = value.split("$")
+        if len(parts) >= 4 and parts[2].isdigit():
+            return True
+    return False
+
+
 def create_access_token(user_id: str) -> str:
     """Generate JWT token for user"""
     expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -37,13 +52,15 @@ def create_access_token(user_id: str) -> str:
     return token
 
 
-def decode_token_claims(token: str) -> dict | None:
+def decode_token_claims(token: str | None) -> dict | None:
     """Decode JWT token and return full claims dictionary, or None if invalid/expired."""
+    if not token or not isinstance(token, str):
+        return None
     try:
         return jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-    except JWTError:
+    except (JWTError, Exception):
         return None
 
 

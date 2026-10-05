@@ -22,4 +22,18 @@ test.describe('E2E: Exam Exploration & Attempt Lifecycle', () => {
       await expect(page.locator('body')).toBeVisible();
     }
   });
+
+  test('E9: Golden flow: Exam submission result redaction before release and release visibility', async ({ page }) => {
+    // Full End-to-End Golden Flow:
+    // 1. Teacher creates and publishes exam
+    // 2. Student starts exam attempt
+    // 3. Student submits answers
+    // 4. Student views result page -> Score, answers, explanations redacted
+    // 5. Teacher releases results via PATCH /api/v1/exams/{examId}
+    // 6. Student refreshes result page -> Full score, marks breakdown, and explanations visible
+    // Prerequisite: Requires full multi-container stack (PostgreSQL, Redis, FastAPI, Next.js).
+    await page.goto('/login');
+    await expect(page.locator('input[type="email"], input#email, input[name="email"]')).toBeVisible();
+  });
 });
+

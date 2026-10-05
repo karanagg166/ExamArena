@@ -223,7 +223,13 @@ async def patch_exam(
 
     await require_exam_manager(current_user, exam)
 
-    updated = await crud.update_exam(exam_id, update_data)
+    try:
+        updated = await crud.update_exam(exam_id, update_data)
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
     await record_audit_event(
         action=AuditAction.EXAM_UPDATED,
         resource_type=AuditResourceType.EXAM,

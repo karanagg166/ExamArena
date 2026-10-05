@@ -37,7 +37,7 @@ from tests.factories.user_factory import create_user_factory
 
 @pytest.mark.asyncio
 async def test_result_release_authorization_matrix_and_pending_gate(
-    auth_client_factory, db_session: AsyncSession
+    auth_client_factory, client, db_session: AsyncSession
 ):
     # School A
     school_a = await create_school_factory(db_session, school_code="REL-A-01")
@@ -126,6 +126,16 @@ async def test_result_release_authorization_matrix_and_pending_gate(
     client_student_a = await auth_client_factory(user_student_a)
 
     # ── 1. Authorization checks ────────────────────────────────────────────────
+    # Unauthenticated request -> 401
+    resp_unauth = await client.post(f"/api/v1/exams/{exam_id}/release-results")
+    assert resp_unauth.status_code == 401
+
+    # Nonexistent exam ID -> 404
+    resp_nonexistent = await client_teacher_a.post(
+        "/api/v1/exams/nonexistent-exam-id-9999/release-results"
+    )
+    assert resp_nonexistent.status_code == 404
+
     # Student -> 403
     resp_student = await client_student_a.post(f"/api/v1/exams/{exam_id}/release-results")
     assert resp_student.status_code == 403

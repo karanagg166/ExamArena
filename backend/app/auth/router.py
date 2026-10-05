@@ -160,7 +160,10 @@ async def logout(
     if token:
         from datetime import UTC, datetime
 
-        from app.auth.token_blacklist import blacklist_token
+        from app.auth.token_blacklist import (
+            TokenBlacklistUnavailableError,
+            blacklist_token,
+        )
         from app.core.security import decode_token_claims
 
         claims = decode_token_claims(token)
@@ -173,8 +176,11 @@ async def logout(
                 remaining = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
             try:
                 await blacklist_token(claims["jti"], remaining)
-            except Exception:
-                pass
+            except TokenBlacklistUnavailableError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Authentication service temporarily unavailable",
+                ) from exc
 
     await record_audit_event(
         action=AuditAction.AUTH_LOGOUT,

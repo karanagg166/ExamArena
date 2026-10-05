@@ -259,6 +259,14 @@ async def init_db() -> None:
         except Exception as err:
             print("DB Migration notice (class enrollment):", err)
 
+        try:
+            async with AsyncSessionLocal() as session:
+                from app.exams.crud import migrate_legacy_exam_passwords
+
+                await migrate_legacy_exam_passwords(session)
+        except Exception as err:
+            print("DB Migration notice (legacy exam passwords):", err)
+
 
 async def close_db() -> None:
     """Dispose engine connections."""

@@ -1,10 +1,11 @@
-"""Integration tests for authentication lifecycle, session cookies, and security."""
-
+from datetime import UTC, datetime, timedelta
 import pytest
 from httpx import AsyncClient
+from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.models import Role, User
 from tests.factories.user_factory import create_user_factory
 
@@ -209,3 +210,75 @@ async def test_password_change_flow(
         },
     )
     assert success_resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_expired_token_rejected_returns_401(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Verify expired JWT tokens return 401 Unauthorized."""
+    user = await create_user_factory(
+        db_session, email="expired.token@test.examarena.dev"
+    )
+    await db_session.commit()
+
+    expired_time = datetime.now(UTC) - timedelta(minutes=15)
+    payload = {"sub": str(user.id), "exp": expired_time, "jti": "expired-jti-uuid"}
+    expired_token = jwt.encode(
+        payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+
+    client.cookies.set("access_token", expired_token)
+    resp = await client.get("/api/v1/auth/me")
+    assert resp.status_code == 401
+    assert "invalid token" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_malformed_token_rejected_returns_401(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Verify malformed or invalidly signed JWT returns 401 Unauthorized."""
+    user = await create_user_factory(
+        db_session, email="malformed.token@test.examarena.dev"
+    )
+    await db_session.commit()
+
+    # Token signed with completely different secret key
+    bad_token = jwt.encode(
+        {"sub": str(user.id), "exp": datetime.now(UTC) + timedelta(hours=1)},
+        "wrong-secret-key-123",
+        algorithm=settings.ALGORITHM,
+    )
+    client.cookies.set("access_token", bad_token)
+    resp = await client.get("/api/v1/auth/me")
+    assert resp.status_code == 401
+    assert "invalid token" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_legacy_token_without_jti_is_accepted(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Verify backward compatibility: JWT tokens without 'jti' bypass blacklist checks and authenticate."""
+    user = await create_user_factory(
+        db_session, email="legacy.token@test.examarena.dev"
+    )
+    await db_session.commit()
+
+    # Token created without 'jti' claim (legacy token)
+    legacy_payload = {
+        "sub": str(user.id),
+        "exp": datetime.now(UTC) + timedelta(minutes=30),
+    }
+    legacy_token = jwt.encode(
+        legacy_payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+
+    client.cookies.set("access_token", legacy_token)
+    resp = await client.get("/api/v1/auth/me")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == user.id
+    assert data["email"] == "legacy.token@test.examarena.dev"
+

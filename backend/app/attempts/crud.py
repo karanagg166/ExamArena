@@ -127,20 +127,19 @@ async def start_exam_attempt(
             answers=answers_payload,
         )
         s.add(new_attempt)
+        from sqlalchemy.exc import IntegrityError
+
         try:
             await s.commit()
-        except Exception as commit_exc:
-            from sqlalchemy.exc import IntegrityError
-
-            if isinstance(commit_exc, IntegrityError):
-                await s.rollback()
-                existing = (await s.execute(existing_stmt)).scalar_one_or_none()
-                if existing:
-                    resp = StudentExamResponse.model_validate(existing)
-                    resp.isResultsReleased = (
-                        existing.exam.isResultsReleased if existing.exam else False
-                    )
-                    return resp
+        except IntegrityError:
+            await s.rollback()
+            existing = (await s.execute(existing_stmt)).scalar_one_or_none()
+            if existing:
+                resp = StudentExamResponse.model_validate(existing)
+                resp.isResultsReleased = (
+                    existing.exam.isResultsReleased if existing.exam else False
+                )
+                return resp
             raise
 
         res_stmt = (

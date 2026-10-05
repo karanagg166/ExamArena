@@ -153,7 +153,9 @@ async def create_exam(
     )
 
     hashed_password = None
-    if not exam_data.isPublic and exam_data.accessPassword and exam_data.accessPassword.strip():
+    if not exam_data.isPublic:
+        if not exam_data.accessPassword or not exam_data.accessPassword.strip():
+            raise ValueError("Private exams require an access password.")
         from app.core.security import hash_password
 
         hashed_password = hash_password(exam_data.accessPassword.strip())
@@ -403,9 +405,9 @@ async def update_exam(
             return None
 
         # Handle accessPassword and isPublic safely
-        if "accessPassword" in update_dict:
-            new_pwd = update_dict.pop("accessPassword")
-            if new_pwd and new_pwd.strip():
+        new_pwd = update_dict.pop("accessPassword", None)
+        if new_pwd is not None:
+            if new_pwd.strip():
                 from app.core.security import hash_password
 
                 exam.accessPassword = hash_password(new_pwd.strip())
@@ -414,6 +416,9 @@ async def update_exam(
             # If new_pwd is empty/None and isPublic is not True, preserve existing password hash
         elif update_dict.get("isPublic") is True:
             exam.accessPassword = None
+
+        if update_dict.get("isPublic") is False and not exam.accessPassword:
+            raise ValueError("Private exams require an access password.")
 
         for k, v in update_dict.items():
             setattr(exam, k, v)
@@ -552,3 +557,32 @@ async def delete_exam(exam_id: str, session: AsyncSession | None = None) -> bool
         return await _do_delete(session)
     async with db.get_session() as s:
         return await _do_delete(s)
+
+
+async def migrate_legacy_exam_passwords(session: AsyncSession) -> int:
+    """Safely migrate any legacy plaintext exam accessPassword values to bcrypt hashes.
+
+    Identifies rows where accessPassword is not null, not empty, and not already a bcrypt hash.
+    Hashes each plaintext password using hash_password() and updates the row.
+    Never logs plaintext passwords.
+    Returns the count of migrated exam passwords.
+    """
+    from app.core.security import hash_password, is_password_hash
+
+    stmt = select(Exam).where(Exam.accessPassword.isnot(None))
+    exams = (await session.execute(stmt)).scalars().all()
+    migrated_count = 0
+    for exam in exams:
+        pwd = exam.accessPassword
+        if pwd and not is_password_hash(pwd):
+            clean_pwd = pwd.strip()
+            if clean_pwd:
+                exam.accessPassword = hash_password(clean_pwd)
+                migrated_count += 1
+            else:
+                exam.accessPassword = None
+                migrated_count += 1
+    if migrated_count > 0:
+        await session.commit()
+    return migrated_count
+
