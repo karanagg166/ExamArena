@@ -75,7 +75,7 @@ class StudentAnswerResponse(BaseModel):
     marksAwarded: float | None = None
     feedback: str | None = None
     isCorrect: Correctness | None = None
-    gradingStatus: GradingStatus = GradingStatus.PENDING
+    gradingStatus: GradingStatus | None = GradingStatus.PENDING
     createdAt: datetime
     updatedAt: datetime
     selectedOptions: list[SelectedOptionResponse] | None = None
@@ -88,10 +88,11 @@ class StudentAnswerResponse(BaseModel):
 
 
 class StudentExamCreate(BaseModel):
-    """When starting exam: frontend sends examId and optional examCode"""
+    """When starting exam: frontend sends examId and optional examCode or accessPassword"""
 
     examId: str
     examCode: str | None = None
+    accessPassword: str | None = None
 
 
 class StudentExamSubmit(BaseModel):
@@ -127,7 +128,7 @@ class StudentExamResponse(BaseModel):
     id: str
     studentId: str
     examId: str
-    marksObtained: float = 0.0
+    marksObtained: float | None = None
     startedAt: datetime
     submittedAt: datetime | None = None
     status: AttemptStatus = AttemptStatus.IN_PROGRESS
@@ -139,7 +140,7 @@ class StudentExamResponse(BaseModel):
 
 
 class StudentExamHistoryItem(BaseModel):
-    """Row in a student's complete exam history table for staff viewing."""
+    """Row in a student's complete exam history table."""
 
     id: str
     examId: str
@@ -150,9 +151,9 @@ class StudentExamHistoryItem(BaseModel):
     scheduledAt: datetime
     submittedAt: datetime | None = None
     status: str
-    marksObtained: float
+    marksObtained: float | None = None
     maxMarks: int
-    percentage: float
+    percentage: float | None = None
     isResultsReleased: bool
 
     class Config:

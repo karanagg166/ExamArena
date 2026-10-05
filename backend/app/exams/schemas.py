@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.questions.schemas import (
     QuestionCreateRequest,
@@ -45,6 +45,7 @@ class ExamBase(BaseModel):
     type: ExamType
     examCode: str | None = None
     accessPassword: str | None = None
+    hasAccessPassword: bool = False
     questionCount: int | None = None
 
     @field_validator("name", "description")
@@ -116,7 +117,18 @@ class ExamResponse(ExamBase):
     teacher: TeacherInfo | None = None
     sections: list[SectionResponse] | None = None
     questions: list[QuestionResponse] | None = None
+    hasAccessPassword: bool = False
+    accessPassword: str | None = None
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def sanitize_sensitive_fields(self):
+        # Determine whether a password was configured
+        if self.accessPassword:
+            self.hasAccessPassword = True
+        # NEVER return accessPassword or its hash in API responses
+        self.accessPassword = None
+        return self
 
 
 class StudentExamListItemResponse(ExamResponse):

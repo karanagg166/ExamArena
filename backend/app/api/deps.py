@@ -20,10 +20,23 @@ async def get_current_user(access_token: str = Cookie(None)):
         )
 
     user_id = verify_token(access_token)
-    if user_id is None:
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
         )
+
+    from app.core.security import decode_token_claims
+
+    claims = decode_token_claims(access_token)
+    jti = claims.get("jti") if claims else None
+    if jti:
+        from app.auth.token_blacklist import is_token_blacklisted
+
+        if await is_token_blacklisted(jti):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+            )
 
     user = await get_user_by_id(user_id)
     if not user:

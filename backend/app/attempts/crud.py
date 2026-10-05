@@ -81,8 +81,16 @@ async def start_exam_attempt(
 
         # 3. Check access code if exam is not public
         if not exam.isPublic:
-            password_input = (attempt_data.examCode or "").strip()
-            if not exam.accessPassword or password_input != exam.accessPassword.strip():
+            password_input = (
+                (attempt_data.accessPassword or attempt_data.examCode) or ""
+            ).strip()
+            from app.core.security import verify_password
+
+            if (
+                not password_input
+                or not exam.accessPassword
+                or not verify_password(password_input, exam.accessPassword)
+            ):
                 raise ValueError(
                     "This exam requires a valid access password. Please enter the correct password to proceed."
                 )
@@ -119,7 +127,21 @@ async def start_exam_attempt(
             answers=answers_payload,
         )
         s.add(new_attempt)
-        await s.commit()
+        try:
+            await s.commit()
+        except Exception as commit_exc:
+            from sqlalchemy.exc import IntegrityError
+
+            if isinstance(commit_exc, IntegrityError):
+                await s.rollback()
+                existing = (await s.execute(existing_stmt)).scalar_one_or_none()
+                if existing:
+                    resp = StudentExamResponse.model_validate(existing)
+                    resp.isResultsReleased = (
+                        existing.exam.isResultsReleased if existing.exam else False
+                    )
+                    return resp
+            raise
 
         res_stmt = (
             select(StudentExam)

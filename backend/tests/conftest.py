@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 import app.core.database as app_db
+import app.core.redis as app_redis
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.core.models import Base
@@ -149,6 +150,7 @@ def setup_test_db_infrastructure():
     asyncio.run(init_test_db())
     app_db.engine = test_engine
     app_db.AsyncSessionLocal = TestAsyncSessionLocal
+    app_redis.redis_client = app_redis.InMemoryRedisFallback()
     yield
     asyncio.run(test_engine.dispose())
 

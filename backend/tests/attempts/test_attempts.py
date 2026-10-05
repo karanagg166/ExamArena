@@ -20,7 +20,7 @@ class TestAttemptsApi:
         data = response.json()
         assert data["id"] == fake_attempt.id
         assert data["status"] == "IN_PROGRESS"
-        assert data["marksObtained"] == 0
+        assert data["marksObtained"] is None
         assert data["answers"] == []
 
     async def test_start_invalid(self, client, override_auth, mock_attempts_db):

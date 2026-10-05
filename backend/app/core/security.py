@@ -19,9 +19,14 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Check if plain password matches hashed password"""
-    pwd_bytes = plain_password.encode("utf-8")
-    hash_bytes = hashed_password.encode("utf-8")
-    return bcrypt.checkpw(pwd_bytes, hash_bytes)
+    if not plain_password or not hashed_password:
+        return False
+    try:
+        pwd_bytes = plain_password.encode("utf-8")
+        hash_bytes = hashed_password.encode("utf-8")
+        return bcrypt.checkpw(pwd_bytes, hash_bytes)
+    except Exception:
+        return False
 
 
 def create_access_token(user_id: str) -> str:
@@ -32,15 +37,22 @@ def create_access_token(user_id: str) -> str:
     return token
 
 
-def verify_token(token: str) -> str | None:
-    """Extract user_id string from token. Returns user_id or None."""
+def decode_token_claims(token: str) -> dict | None:
+    """Decode JWT token and return full claims dictionary, or None if invalid/expired."""
     try:
-        payload = jwt.decode(
+        return jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        user_id: str | None = payload.get("sub")
-        if user_id is None:
-            return None
-        return user_id
     except JWTError:
         return None
+
+
+def verify_token(token: str) -> str | None:
+    """Extract user_id string from token. Returns user_id or None."""
+    payload = decode_token_claims(token)
+    if not payload:
+        return None
+    user_id: str | None = payload.get("sub")
+    if user_id is None:
+        return None
+    return user_id

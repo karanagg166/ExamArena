@@ -152,6 +152,12 @@ async def create_exam(
         else generate_exam_code()
     )
 
+    hashed_password = None
+    if not exam_data.isPublic and exam_data.accessPassword and exam_data.accessPassword.strip():
+        from app.core.security import hash_password
+
+        hashed_password = hash_password(exam_data.accessPassword.strip())
+
     data = {
         "name": exam_data.name,
         "description": exam_data.description,
@@ -161,7 +167,7 @@ async def create_exam(
         "instructions": exam_data.instructions,
         "isPublished": exam_data.isPublished,
         "isPublic": exam_data.isPublic,
-        "accessPassword": exam_data.accessPassword,
+        "accessPassword": hashed_password,
         "isResultsReleased": exam_data.isResultsReleased,
         "negativeMarking": exam_data.negativeMarking,
         "negativeMarks": float(exam_data.negativeMarks or 0.0),
@@ -396,6 +402,19 @@ async def update_exam(
         if not exam:
             return None
 
+        # Handle accessPassword and isPublic safely
+        if "accessPassword" in update_dict:
+            new_pwd = update_dict.pop("accessPassword")
+            if new_pwd and new_pwd.strip():
+                from app.core.security import hash_password
+
+                exam.accessPassword = hash_password(new_pwd.strip())
+            elif update_dict.get("isPublic") is True:
+                exam.accessPassword = None
+            # If new_pwd is empty/None and isPublic is not True, preserve existing password hash
+        elif update_dict.get("isPublic") is True:
+            exam.accessPassword = None
+
         for k, v in update_dict.items():
             setattr(exam, k, v)
 
@@ -409,6 +428,40 @@ async def update_exam(
         return await _do_update(session)
     async with db.get_session() as s:
         return await _do_update(s)
+
+
+async def has_pending_subjective_answers(
+    exam_id: str, session: AsyncSession | None = None
+) -> bool:
+    """Check if any student submission for this exam has subjective answers still pending grading."""
+
+    async def _do_check(s: AsyncSession) -> bool:
+        from app.core.models import (
+            GradingStatus,
+            StudentExam,
+            StudentExamAnswer,
+            StudentExamStatus,
+        )
+
+        stmt = (
+            select(StudentExamAnswer.id)
+            .join(StudentExamAnswer.studentExam)
+            .where(
+                StudentExam.examId == exam_id,
+                StudentExam.status.in_(
+                    [StudentExamStatus.SUBMITTED, StudentExamStatus.GRADED]
+                ),
+                StudentExamAnswer.gradingStatus == GradingStatus.PENDING,
+            )
+            .limit(1)
+        )
+        res = (await s.execute(stmt)).scalar_one_or_none()
+        return res is not None
+
+    if session:
+        return await _do_check(session)
+    async with db.get_session() as s:
+        return await _do_check(s)
 
 
 async def release_results(

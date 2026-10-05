@@ -110,8 +110,8 @@ class TestLoginUnit:
             json={"email": "ghost@examarena.dev", "password": "anything"},
         )
 
-        assert response.status_code == 400
-        assert "invalid email" in response.json()["detail"].lower()
+        assert response.status_code == 401
+        assert "invalid email or password" in response.json()["detail"].lower()
         mock_db["verify_password"].assert_not_called()
 
     @pytest.mark.asyncio
@@ -124,8 +124,8 @@ class TestLoginUnit:
             json={"email": fake_user.email, "password": "WrongPass!"},
         )
 
-        assert response.status_code == 400
-        assert "invalid password" in response.json()["detail"].lower()
+        assert response.status_code == 401
+        assert "invalid email or password" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
     async def test_login_invalid_email_format(self, client, mock_db):

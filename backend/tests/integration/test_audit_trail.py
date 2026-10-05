@@ -97,7 +97,7 @@ async def test_audit_log_on_failed_login(client: AsyncClient, db_session: AsyncS
         "/api/v1/auth/login",
         json={"email": "nonexistent@test.examarena.dev", "password": "WrongPassword!"},
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 401
 
     await db_session.commit()
     stmt = (

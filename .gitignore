@@ -56,6 +56,10 @@ next-env.d.ts
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+*.coverage*
+backend/.coverage
+
 
 # Python Virtual Environments
 venv/

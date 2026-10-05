@@ -104,8 +104,43 @@ async def test_login_invalid_password_returns_400(
             "password": "WrongPassword!",
         },
     )
-    assert resp.status_code == 400
-    assert "invalid password" in resp.json()["detail"].lower()
+    assert resp.status_code == 401
+    assert "invalid email or password" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_login_enumeration_resistance(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Bug 5: Verify login does not disclose whether email exists by returning identical status and payload."""
+    await create_user_factory(
+        db_session,
+        email="realuser@test.examarena.dev",
+        password="RealPassword123!",
+    )
+    await db_session.commit()
+
+    resp_nonexistent = await client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "definitely.not.registered@test.examarena.dev",
+            "password": "AnyPassword123!",
+        },
+    )
+
+    resp_wrong_password = await client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "realuser@test.examarena.dev",
+            "password": "WrongPassword123!",
+        },
+    )
+
+    assert resp_nonexistent.status_code == 401
+    assert resp_wrong_password.status_code == 401
+    assert resp_nonexistent.status_code == resp_wrong_password.status_code
+    assert resp_nonexistent.json() == resp_wrong_password.json()
+    assert resp_nonexistent.json()["detail"] == "Invalid email or password"
 
 
 @pytest.mark.asyncio

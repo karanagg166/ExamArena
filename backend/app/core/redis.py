@@ -166,5 +166,6 @@ async def disconnect_redis() -> None:
 
 def get_redis() -> aioredis.Redis | UpstashRedisRESTClient | InMemoryRedisFallback:
     if redis_client is None:
-        raise RuntimeError("Redis client not initialized")
+        raise RuntimeError("Redis client not initialized. Call connect_redis() first.")
     return redis_client
+

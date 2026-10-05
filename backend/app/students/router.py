@@ -252,4 +252,15 @@ async def get_student_exam_history_endpoint(
                 detail="Access denied. You must be the principal of this student's school.",
             )
 
-    return await get_student_exam_history(student_id)
+    history = await get_student_exam_history(student_id)
+    if current_user.role == Role.STUDENT:
+        redacted = []
+        for item in history:
+            item_copy = dict(item) if isinstance(item, dict) else item.model_dump()
+            if not item_copy.get("isResultsReleased"):
+                item_copy["marksObtained"] = None
+                item_copy["percentage"] = None
+            redacted.append(item_copy)
+        return redacted
+
+    return history

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 import app.attempts.crud as crud
 from app.api.deps import enforce_rbac_permission, get_current_user
+from app.attempts.redaction import redact_attempt_for_student
 from app.attempts.schemas import (
     ProctoringViolationRequest,
     StudentExamCreate,
@@ -40,7 +41,9 @@ async def start_exam(
             resource_id=res.id,
             metadata={"examId": attempt_data.examId, "status": res.status},
         )
-        return res
+        return redact_attempt_for_student(
+            res, is_results_released=res.isResultsReleased
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -49,15 +52,40 @@ async def start_exam(
 async def get_attempt(
     attempt_id: str, current_user: Annotated[UserResponse, Depends(get_current_user)]
 ):
-    if current_user.role != Role.STUDENT:
-        raise HTTPException(status_code=403, detail="Only students can view attempts")
     attempt = await crud.get_attempt_by_id(attempt_id)
     if not attempt:
         raise HTTPException(status_code=404, detail="Attempt not found")
-    student = await get_student_by_user_id(current_user.id)
-    if not student or attempt.studentId != student.id:
-        raise HTTPException(status_code=404, detail="Attempt not found")
-    return attempt
+
+    if current_user.role == Role.STUDENT:
+        student = await get_student_by_user_id(current_user.id)
+        if not student or attempt.studentId != student.id:
+            raise HTTPException(status_code=404, detail="Attempt not found")
+        return redact_attempt_for_student(
+            attempt, is_results_released=attempt.isResultsReleased
+        )
+
+    if current_user.role == Role.ADMIN:
+        return attempt
+
+    if current_user.role in (Role.TEACHER, Role.PRINCIPAL):
+        from app.exams.crud import get_exam_by_id
+        from app.exams.permissions import can_manage_exam
+        from app.teachers.crud import get_teacher_by_user_id
+
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher:
+            raise HTTPException(
+                status_code=403, detail="Access denied to this attempt."
+            )
+
+        exam = await get_exam_by_id(attempt.examId)
+        if not exam or not can_manage_exam(current_user, teacher, exam):
+            raise HTTPException(
+                status_code=403, detail="Access denied to this attempt."
+            )
+        return attempt
+
+    raise HTTPException(status_code=403, detail="Only students can view attempts")
 
 
 @router.post("/submit", response_model=StudentExamResponse)
@@ -83,7 +111,9 @@ async def submit_exam(
                 "status": res.status,
             },
         )
-        return res
+        return redact_attempt_for_student(
+            res, is_results_released=res.isResultsReleased
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -99,16 +129,37 @@ async def log_proctoring_violation(
     if not attempt:
         raise HTTPException(status_code=404, detail="Attempt not found")
 
-    student = await get_student_by_user_id(current_user.id)
-    if not student or (
-        current_user.role == Role.STUDENT and attempt.studentId != student.id
-    ):
+    if current_user.role == Role.STUDENT:
+        student = await get_student_by_user_id(current_user.id)
+        if not student or attempt.studentId != student.id:
+            raise HTTPException(
+                status_code=403, detail="Access denied to this attempt."
+            )
+    elif current_user.role == Role.ADMIN:
+        pass
+    elif current_user.role in (Role.TEACHER, Role.PRINCIPAL):
+        from app.exams.crud import get_exam_by_id
+        from app.exams.permissions import can_manage_exam
+        from app.teachers.crud import get_teacher_by_user_id
+
+        teacher = await get_teacher_by_user_id(current_user.id)
+        if not teacher:
+            raise HTTPException(
+                status_code=403, detail="Access denied to this attempt."
+            )
+
+        exam = await get_exam_by_id(attempt.examId)
+        if not exam or not can_manage_exam(current_user, teacher, exam):
+            raise HTTPException(
+                status_code=403, detail="Access denied to this attempt."
+            )
+    else:
         raise HTTPException(status_code=403, detail="Access denied to this attempt.")
 
     await record_audit_event(
         action=AuditAction.PROCTORING_VIOLATION,
         resource_type=AuditResourceType.PROCTORING,
-        resource_id=attempt_id,
+        resource_id=attempt.id,
         metadata={
             "examId": attempt.examId,
             "studentId": attempt.studentId,
@@ -116,4 +167,4 @@ async def log_proctoring_violation(
             "details": payload.details,
         },
     )
-    return {"message": "Proctoring violation recorded", "attemptId": attempt_id}
+    return {"message": "Proctoring violation recorded", "attemptId": attempt.id}

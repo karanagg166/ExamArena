@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, status
 from fastapi.responses import Response
 from jose import jwt
 
@@ -99,7 +99,8 @@ async def login(credentials: LoginRequest, response: Response):
             metadata={"reason": "INVALID_EMAIL", "email": credentials.email},
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
         )
     if not verify_password(credentials.password, user.password):
         await record_audit_event(
@@ -113,7 +114,8 @@ async def login(credentials: LoginRequest, response: Response):
             metadata={"reason": "INVALID_PASSWORD"},
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid password"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
         )
 
     # Generate token
@@ -145,8 +147,35 @@ async def login(credentials: LoginRequest, response: Response):
 
 
 @router.post("/logout")
-async def logout(response: Response):
-    """Logout - clears token cookie"""
+async def logout(
+    response: Response,
+    access_token: Annotated[str | None, Cookie()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+):
+    """Logout - blacklists token jti and clears token cookie"""
+    token = access_token
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1].strip()
+
+    if token:
+        from datetime import UTC, datetime
+
+        from app.auth.token_blacklist import blacklist_token
+        from app.core.security import decode_token_claims
+
+        claims = decode_token_claims(token)
+        if claims and claims.get("jti"):
+            exp = claims.get("exp")
+            if exp:
+                now = datetime.now(UTC).timestamp()
+                remaining = max(1, int(exp - now))
+            else:
+                remaining = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            try:
+                await blacklist_token(claims["jti"], remaining)
+            except Exception:
+                pass
+
     await record_audit_event(
         action=AuditAction.AUTH_LOGOUT,
         resource_type=AuditResourceType.AUTH,

@@ -20,6 +20,7 @@ interface ExamFormProps {
     isPublic?: boolean;
     examCode?: string;
     accessPassword?: string;
+    hasAccessPassword?: boolean;
     negativeMarking?: boolean;
     negativeMarks?: number;
     subject?: Subject;
@@ -216,17 +217,30 @@ export function ExamForm({ exam, onChange }: ExamFormProps) {
 
           {exam.isPublic === false && (
             <div className="space-y-2 pt-2 border-t border-[var(--border-subtle)]">
-              <Label htmlFor="accessPassword">Exam Access Password / Secret Key</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="accessPassword">Exam Access Password / Secret Key</Label>
+                {exam.hasAccessPassword && (
+                  <span className="text-xs bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded font-medium">
+                    Password configured
+                  </span>
+                )}
+              </div>
               <Input
                 id="accessPassword"
-                type="text"
-                placeholder="e.g., SECRET-PASS-123"
+                type="password"
+                placeholder={
+                  exam.hasAccessPassword
+                    ? "Leave blank to keep existing password, or enter new password"
+                    : "e.g., SECRET-PASS-123"
+                }
                 value={exam.accessPassword || ""}
                 onChange={(e) => onChange({ accessPassword: e.target.value })}
                 className="font-mono tracking-wider"
               />
               <p className="text-xs text-[var(--text-muted)]">
-                Students must enter this password to begin the exam.
+                {exam.hasAccessPassword
+                  ? "A secret password is configured for this exam. To change it, enter a new password above."
+                  : "Students must enter this password to begin the exam."}
               </p>
             </div>
           )}

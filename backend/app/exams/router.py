@@ -245,6 +245,13 @@ async def release_exam_results(
 
     await require_exam_manager(current_user, exam)
 
+    # Business Invariant: Do not release results while subjective answers are pending grading
+    if await crud.has_pending_subjective_answers(exam_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot release results: subjective questions have answers pending manual or AI grading.",
+        )
+
     released = await crud.release_results(exam_id)
     if not released:
         raise HTTPException(status_code=404, detail="Exam not found")

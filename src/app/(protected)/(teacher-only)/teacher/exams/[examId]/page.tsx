@@ -360,7 +360,7 @@ export default function ExamViewPage() {
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-[var(--text-muted)]">Access Password</span>
                       <span className="font-mono text-xs bg-zinc-800 px-2 py-0.5 rounded text-rose-300 font-bold">
-                        {exam.accessPassword || "Not Set"}
+                        {exam.hasAccessPassword || exam.accessPassword ? "Configured (Protected)" : "Not Set"}
                       </span>
                     </div>
                   )}
