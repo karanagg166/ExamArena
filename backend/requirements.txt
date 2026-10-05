@@ -15,6 +15,7 @@ casbin>=1.35.0
 
 # AI Integration & Document Parsing
 openai
+cohere>=7.0.0
 PyPDF2
 pdfplumber
 

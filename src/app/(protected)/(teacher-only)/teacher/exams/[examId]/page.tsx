@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -8,6 +8,8 @@ import {
   Calendar,
   Clock,
   FileText,
+  FileUp,
+  Plus,
   AlertCircle,
   ChevronRight,
   Target,
@@ -19,6 +21,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
+import { QuestionImportModal } from "@/components/imports";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import type { Exam } from "@/types";
@@ -31,21 +34,23 @@ export default function ExamViewPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const fetchExam = useCallback(async () => {
+    try {
+      const response = await api.get(`/api/v1/exams/${examId}`);
+      setExam(response.data);
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { detail?: string } } }).response?.data?.detail || "Failed to load exam details.");
+    } finally {
+      setLoading(false);
+    }
+  }, [examId]);
 
   useEffect(() => {
-    const fetchExam = async () => {
-      try {
-        const response = await api.get(`/api/v1/exams/${examId}`);
-        setExam(response.data);
-      } catch (err: unknown) {
-        setError((err as { response?: { data?: { detail?: string } } }).response?.data?.detail || "Failed to load exam details.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (examId) fetchExam();
-  }, [examId]);
+  }, [examId, fetchExam]);
+
 
   const handleDeleteExam = async () => {
     if (!exam) return;
@@ -128,6 +133,14 @@ export default function ExamViewPage() {
                   <Target className="mr-2 h-4 w-4" /> View Results
                 </Button>
               </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsImportModalOpen(true)}
+                className="border-indigo-500/40 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+              >
+                <FileUp className="mr-2 h-4 w-4" /> Import Question Paper
+              </Button>
               <Link href={`/teacher/exams/${examId}/edit`}>
                 <Button variant="primary" size="sm" className="shadow-glow">
                   <Edit3 className="mr-2 h-4 w-4" /> Edit Exam
@@ -214,8 +227,23 @@ export default function ExamViewPage() {
 
             {/* Sections & Questions */}
             <div className="space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <h3 className="text-lg font-semibold text-white">Exam Sections & Questions ({(exam.questions ?? []).length} Questions)</h3>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="border-indigo-500/40 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                  >
+                    <FileUp className="mr-2 h-4 w-4" /> Import Paper
+                  </Button>
+                  <Link href={`/teacher/exams/${examId}/edit`}>
+                    <Button variant="outline" size="sm">
+                      <Plus className="mr-2 h-4 w-4" /> Add Question
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               {(() => {
@@ -231,8 +259,31 @@ export default function ExamViewPage() {
 
                 if (sortedSections.length === 0) {
                   return (
-                    <GlassCard padding="md" className="text-center p-8 text-[var(--text-muted)]">
-                      No questions in this exam.
+                    <GlassCard padding="md" className="text-center p-10 space-y-4">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                        <FileUp className="w-6 h-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-white font-medium">No questions in this exam yet</p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                          Upload a question paper (PDF or image) to automatically extract questions, or add them manually.
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-center gap-3 pt-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setIsImportModalOpen(true)}
+                          className="shadow-glow"
+                        >
+                          <FileUp className="mr-2 h-4 w-4" /> Import Question Paper
+                        </Button>
+                        <Link href={`/teacher/exams/${examId}/edit`}>
+                          <Button variant="outline" size="sm">
+                            <Plus className="mr-2 h-4 w-4" /> Add Manually
+                          </Button>
+                        </Link>
+                      </div>
                     </GlassCard>
                   );
                 }
@@ -410,6 +461,13 @@ export default function ExamViewPage() {
             </GlassCard>
           </div>
         </div>
+
+        <QuestionImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          examId={examId as string}
+          onSuccess={fetchExam}
+        />
       </div>
     </div>
   );

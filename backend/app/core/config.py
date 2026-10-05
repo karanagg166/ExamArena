@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     STREAM_APP_ID: str = ""
     STREAM_API_KEY: str = ""
     STREAM_API_SECRET: str = ""
+    COHERE_API_KEY: str | None = None
+    COHERE_MODEL: str = "command-r-plus"
+    QUESTION_IMPORT_MAX_FILE_MB: int = 15
+    QUESTION_IMPORT_STORAGE_PATH: str = "uploads/question_imports"
+    QUESTION_IMPORT_MAX_RETRIES: int = 3
+    QUESTION_IMPORT_TIMEOUT_SECONDS: float = 60.0
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )

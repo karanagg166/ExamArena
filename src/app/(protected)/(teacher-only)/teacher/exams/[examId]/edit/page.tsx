@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, FileUp } from "lucide-react";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/ui/page-header";
@@ -11,6 +11,7 @@ import { FormMessage } from "@/components/ui/form-message";
 import { GlassCard } from "@/components/ui/glass-card";
 import { ExamForm } from "@/components/exam/ExamForm";
 import { QuestionList } from "@/components/question/QuestionList";
+import { QuestionImportModal } from "@/components/imports";
 import { api } from "@/lib/axios";
 import { getErrorMessage } from "@/lib/error";
 import { validateExam, computeMaxMarks } from "@/lib/exam-validation";
@@ -22,6 +23,7 @@ export default function EditExamPage() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const [exam, setExam] = useState<ExamUpdate>({
     id: examId as string,
@@ -42,43 +44,43 @@ export default function EditExamPage() {
   });
 
   // ── Fetch Initial Data ───────────────────────────────────────────────────
-  useEffect(() => {
-    const fetchExam = async () => {
-      try {
-        const response = await api.get(`/api/v1/exams/${examId}`);
-        const data = response.data as Exam;
+  const fetchExam = useCallback(async () => {
+    try {
+      const response = await api.get(`/api/v1/exams/${examId}`);
+      const data = response.data as Exam;
 
-        setExam({
-          id: data.id,
-          name: data.name,
-          examCode: data.examCode || "",
-          accessPassword: "",
-          hasAccessPassword: data.hasAccessPassword || Boolean(data.accessPassword),
-          description: data.description,
-          scheduledAt: data.scheduledAt,
-          duration: data.duration,
-          type: data.type,
-          maxMarks: data.maxMarks,
-          isPublished: data.isPublished,
-          isPublic: data.isPublic !== false,
-          negativeMarking: Boolean(data.negativeMarking),
-          negativeMarks: data.negativeMarks || 0,
-          instructions: data.instructions,
-          subject: data.subject,
-          questions: (data.questions ?? []).map((q) => ({
-            ...q,
-            options: q.options?.map((o) => ({ ...o })),
-          })),
-        });
-      } catch (err: unknown) {
-        setErrorText(getErrorMessage(err));
-      } finally {
-        setFetching(false);
-      }
-    };
-
-    if (examId) fetchExam();
+      setExam({
+        id: data.id,
+        name: data.name,
+        examCode: data.examCode || "",
+        accessPassword: "",
+        hasAccessPassword: data.hasAccessPassword || Boolean(data.accessPassword),
+        description: data.description,
+        scheduledAt: data.scheduledAt,
+        duration: data.duration,
+        type: data.type,
+        maxMarks: data.maxMarks,
+        isPublished: data.isPublished,
+        isPublic: data.isPublic !== false,
+        negativeMarking: Boolean(data.negativeMarking),
+        negativeMarks: data.negativeMarks || 0,
+        instructions: data.instructions,
+        subject: data.subject,
+        questions: (data.questions ?? []).map((q) => ({
+          ...q,
+          options: q.options?.map((o) => ({ ...o })),
+        })),
+      });
+    } catch (err: unknown) {
+      setErrorText(getErrorMessage(err));
+    } finally {
+      setFetching(false);
+    }
   }, [examId]);
+
+  useEffect(() => {
+    if (examId) fetchExam();
+  }, [examId, fetchExam]);
 
   // ── Auto-compute maxMarks from questions ─────────────────────────────────
   const computedMaxMarks = useMemo(
@@ -135,7 +137,15 @@ export default function EditExamPage() {
           title="Edit Your Exam"
           subtitle="Modify your paper details, adjust marks, or add new questions."
           actions={
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setIsImportModalOpen(true)}
+                className="border-indigo-500/40 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+              >
+                <FileUp className="mr-2 h-4 w-4" /> Import Paper
+              </Button>
               <Link href={`/teacher/exams/${examId}`}>
                 <Button variant="ghost" className="hidden sm:flex">
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -190,6 +200,14 @@ export default function EditExamPage() {
             {loading ? "Saving..." : "Apply Final Changes"}
           </Button>
         </div>
+
+        {/* ── Question Import Modal ────────────────────────────────────── */}
+        <QuestionImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          examId={examId as string}
+          onSuccess={fetchExam}
+        />
 
       </div>
     </div>

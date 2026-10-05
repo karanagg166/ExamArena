@@ -4,6 +4,7 @@ from app.attempts.router import router as attempts_router
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
 from app.exams.router import router as exams_router
+from app.imports.router import router as imports_router
 from app.join_requests.router import router as join_requests_router
 from app.principals.router import router as principals_router
 from app.questions.router import router as questions_router
@@ -28,3 +29,4 @@ api_router.include_router(exams_router)
 api_router.include_router(sections_router)
 api_router.include_router(questions_router)
 api_router.include_router(attempts_router)
+api_router.include_router(imports_router)

@@ -106,6 +106,22 @@ class JoinRequestStatus(enum.StrEnum):
     REJECTED = "REJECTED"
 
 
+class QuestionImportStatus(enum.StrEnum):
+    UPLOADED = "UPLOADED"
+    PROCESSING = "PROCESSING"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class QuestionImportSourceType(enum.StrEnum):
+    PDF_TEXT = "PDF_TEXT"
+    PDF_SCANNED = "PDF_SCANNED"
+    IMAGE = "IMAGE"
+    UNKNOWN = "UNKNOWN"
+
+
 # ── MODELS ─────────────────────────────────────────────────────
 
 
@@ -574,6 +590,9 @@ class Exam(Base):
     sections: Mapped[list["ExamSection"]] = relationship(
         "ExamSection", back_populates="exam", cascade="all, delete-orphan"
     )
+    questionImports: Mapped[list["QuestionImport"]] = relationship(
+        "QuestionImport", back_populates="exam", cascade="all, delete-orphan"
+    )
 
 
 class ExamSection(Base):
@@ -869,3 +888,54 @@ class AuditLog(Base):
     ipAddress: Mapped[str | None] = mapped_column(String, nullable=True)
     userAgent: Mapped[str | None] = mapped_column(String, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+
+
+class QuestionImport(Base):
+    __tablename__ = "QuestionImport"
+    __table_args__ = (
+        Index("questionimport_examid_idx", "examId"),
+        Index("questionimport_teacherid_idx", "teacherId"),
+        Index("questionimport_status_idx", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
+    examId: Mapped[str] = mapped_column(
+        String, ForeignKey("Exam.id", ondelete="CASCADE"), nullable=False
+    )
+    teacherId: Mapped[str] = mapped_column(
+        String, ForeignKey("Teacher.id", ondelete="CASCADE"), nullable=False
+    )
+    originalFileName: Mapped[str] = mapped_column(String, nullable=False)
+    fileType: Mapped[str] = mapped_column(String, nullable=False)
+    fileSize: Mapped[int] = mapped_column(Integer, nullable=False)
+    filePath: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[QuestionImportStatus] = mapped_column(
+        SQLEnum(QuestionImportStatus, native_enum=False),
+        default=QuestionImportStatus.UPLOADED,
+        nullable=False,
+    )
+    sourceType: Mapped[QuestionImportSourceType] = mapped_column(
+        SQLEnum(QuestionImportSourceType, native_enum=False),
+        default=QuestionImportSourceType.UNKNOWN,
+        nullable=False,
+    )
+    extractedText: Mapped[str | None] = mapped_column(String, nullable=True)
+    rawExtraction: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    validatedExtraction: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    errorMessage: Mapped[str | None] = mapped_column(String, nullable=True)
+    errorCategory: Mapped[str | None] = mapped_column(String, nullable=True)
+    createdAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updatedAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
+    completedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    confirmedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    exam: Mapped["Exam"] = relationship("Exam", back_populates="questionImports")
+    teacher: Mapped["Teacher"] = relationship("Teacher")

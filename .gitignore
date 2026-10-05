@@ -82,3 +82,7 @@ implementationplan.md
 test-results/
 playwright-report/
 
+# Uploaded files
+uploads/
+
+
