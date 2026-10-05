@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, FileUp } from "lucide-react";
+import { ArrowLeft, Save, FileUp, FileCheck } from "lucide-react";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/ui/page-header";
@@ -11,11 +11,11 @@ import { FormMessage } from "@/components/ui/form-message";
 import { GlassCard } from "@/components/ui/glass-card";
 import { ExamForm } from "@/components/exam/ExamForm";
 import { QuestionList } from "@/components/question/QuestionList";
-import { QuestionImportModal } from "@/components/imports";
+import { AnswerKeyImportModal, QuestionImportModal } from "@/components/imports";
 import { api } from "@/lib/axios";
 import { getErrorMessage } from "@/lib/error";
 import { validateExam, computeMaxMarks } from "@/lib/exam-validation";
-import type { ExamUpdate, Exam } from "@/types";
+import type { ExamUpdate, Exam, Question } from "@/types";
 
 export default function EditExamPage() {
   const { examId } = useParams();
@@ -24,6 +24,7 @@ export default function EditExamPage() {
   const [fetching, setFetching] = useState(true);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isAnswerKeyModalOpen, setIsAnswerKeyModalOpen] = useState(false);
 
   const [exam, setExam] = useState<ExamUpdate>({
     id: examId as string,
@@ -146,6 +147,14 @@ export default function EditExamPage() {
               >
                 <FileUp className="mr-2 h-4 w-4" /> Import Paper
               </Button>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setIsAnswerKeyModalOpen(true)}
+                className="border-emerald-500/40 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+              >
+                <FileCheck className="mr-2 h-4 w-4" /> Import Answer Key
+              </Button>
               <Link href={`/teacher/exams/${examId}`}>
                 <Button variant="ghost" className="hidden sm:flex">
                   <ArrowLeft className="mr-2 h-4 w-4" />
@@ -206,6 +215,15 @@ export default function EditExamPage() {
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           examId={examId as string}
+          onSuccess={fetchExam}
+        />
+
+        {/* ── Answer Key Import Modal ──────────────────────────────────── */}
+        <AnswerKeyImportModal
+          isOpen={isAnswerKeyModalOpen}
+          onClose={() => setIsAnswerKeyModalOpen(false)}
+          examId={examId as string}
+          examQuestions={(exam.questions as unknown as Question[]) || []}
           onSuccess={fetchExam}
         />
 

@@ -17,10 +17,18 @@ class Settings(BaseSettings):
     STREAM_API_SECRET: str = ""
     COHERE_API_KEY: str | None = None
     COHERE_MODEL: str = "command-r-plus"
+    CLOUDINARY_APIKEY: str | None = None
+    CLOUDINARY_APISECRET: str | None = None
+    CLOUDINARY_CLOUDNAME: str | None = None
+    FILE_STORAGE_PROVIDER: str = "local"
     QUESTION_IMPORT_MAX_FILE_MB: int = 15
     QUESTION_IMPORT_STORAGE_PATH: str = "uploads/question_imports"
     QUESTION_IMPORT_MAX_RETRIES: int = 3
     QUESTION_IMPORT_TIMEOUT_SECONDS: float = 60.0
+    ANSWER_KEY_IMPORT_MAX_FILE_MB: int = 15
+    ANSWER_KEY_IMPORT_STORAGE_PATH: str = "uploads/answer_key_imports"
+    ANSWER_KEY_IMPORT_MAX_RETRIES: int = 3
+    ANSWER_KEY_IMPORT_TIMEOUT_SECONDS: float = 60.0
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )

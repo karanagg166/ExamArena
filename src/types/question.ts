@@ -32,6 +32,8 @@ export type Question = {
   imageUrl?: string;
   wordLimit?: number;
   explanation?: string;
+  referenceAnswer?: string;
+  gradingRubric?: Array<{ criterion: string; marks: number; description?: string }>;
   questionType: QuestionType; // Prisma field name is "questionType", not "type"
   examId: string;
   sectionId?: string;

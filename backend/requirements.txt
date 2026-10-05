@@ -30,6 +30,7 @@ reportlab
 
 # Storage & Background Tasks
 boto3
+cloudinary
 arq
 redis
 

@@ -3,17 +3,21 @@
 import asyncio
 import os
 import uuid
-from pathlib import Path
 
 from app.core.config import settings
-from app.storage.base import StorageProvider
+from app.storage.base import (
+    StorageDeleteError,
+    StorageReadError,
+    StorageProvider,
+    StorageUploadError,
+    StoredFile,
+)
 
 
 class LocalStorageProvider(StorageProvider):
-    def __init__(self, base_dir: str | None = None):
-        self.base_dir = os.path.abspath(
-            base_dir or settings.QUESTION_IMPORT_STORAGE_PATH
-        )
+    def __init__(self, base_dir: str | None = None, base_path: str | None = None):
+        target_dir = base_dir or base_path or settings.QUESTION_IMPORT_STORAGE_PATH
+        self.base_dir = os.path.abspath(target_dir)
         os.makedirs(self.base_dir, exist_ok=True)
 
     def _resolve_safe_path(self, key: str) -> str:
@@ -26,8 +30,12 @@ class LocalStorageProvider(StorageProvider):
         return full_path
 
     async def save_file(
-        self, content: bytes, extension: str, directory: str = ""
-    ) -> str:
+        self,
+        content: bytes,
+        extension: str,
+        directory: str = "",
+        resource_type: str = "auto",
+    ) -> StoredFile:
         # Sanitize extension
         ext = extension.lower().strip()
         if not ext.startswith("."):
@@ -41,42 +49,64 @@ class LocalStorageProvider(StorageProvider):
         unique_filename = f"{uuid.uuid4().hex}{clean_ext}"
         if directory:
             clean_dir = "".join(
-                c for c in directory if c.isalnum() or c in ("-", "_")
+                c for c in directory if c.isalnum() or c in ("-", "_", "/")
             )
             rel_path = os.path.join(clean_dir, unique_filename)
         else:
             rel_path = unique_filename
 
-        full_path = self._resolve_safe_path(rel_path)
-        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        try:
+            full_path = self._resolve_safe_path(rel_path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
 
-        def _write():
-            with open(full_path, "wb") as f:
-                f.write(content)
+            def _write():
+                with open(full_path, "wb") as f:
+                    f.write(content)
 
-        await asyncio.to_thread(_write)
-        return rel_path
+            await asyncio.to_thread(_write)
+        except Exception as e:
+            raise StorageUploadError(f"Failed to write local file: {str(e)}") from e
 
-    async def get_file(self, key: str) -> bytes:
-        full_path = self._resolve_safe_path(key)
-        if not os.path.isfile(full_path):
-            raise FileNotFoundError(f"Storage file not found: {key}")
+        if resource_type == "auto":
+            res_type = "image" if clean_ext in (".png", ".jpg", ".jpeg") else "raw"
+        else:
+            res_type = resource_type
 
-        def _read() -> bytes:
-            with open(full_path, "rb") as f:
-                return f.read()
+        return StoredFile(
+            key=rel_path,
+            provider="local",
+            url=None,
+            resource_type=res_type,
+        )
 
-        return await asyncio.to_thread(_read)
+    async def get_file(self, key: str, resource_type: str = "raw") -> bytes:
+        try:
+            full_path = self._resolve_safe_path(key)
+            if not os.path.isfile(full_path):
+                raise FileNotFoundError(f"Storage file not found: {key}")
 
-    async def delete_file(self, key: str) -> bool:
+            def _read() -> bytes:
+                with open(full_path, "rb") as f:
+                    return f.read()
+
+            return await asyncio.to_thread(_read)
+        except FileNotFoundError:
+            raise StorageReadError(f"Storage file not found: {key}")
+        except Exception as e:
+            raise StorageReadError(f"Failed to read local file {key}: {str(e)}") from e
+
+    async def delete_file(self, key: str, resource_type: str = "raw") -> bool:
         try:
             full_path = self._resolve_safe_path(key)
             if os.path.isfile(full_path):
                 await asyncio.to_thread(os.remove, full_path)
                 return True
             return False
-        except Exception:
-            return False
+        except Exception as e:
+            raise StorageDeleteError(f"Failed to delete local file {key}: {str(e)}") from e
+
+    def get_url(self, key: str, resource_type: str = "raw") -> str | None:
+        return None
 
     def get_local_path(self, key: str) -> str | None:
         try:

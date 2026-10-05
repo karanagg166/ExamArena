@@ -7,6 +7,7 @@ import {
   Edit3,
   Calendar,
   Clock,
+  FileCheck,
   FileText,
   FileUp,
   Plus,
@@ -21,7 +22,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
-import { QuestionImportModal } from "@/components/imports";
+import { AnswerKeyImportModal, QuestionImportModal } from "@/components/imports";
 import { api } from "@/lib/axios";
 import { toast } from "sonner";
 import type { Exam } from "@/types";
@@ -35,6 +36,7 @@ export default function ExamViewPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isAnswerKeyModalOpen, setIsAnswerKeyModalOpen] = useState(false);
 
   const fetchExam = useCallback(async () => {
     try {
@@ -140,6 +142,14 @@ export default function ExamViewPage() {
                 className="border-indigo-500/40 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
               >
                 <FileUp className="mr-2 h-4 w-4" /> Import Question Paper
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAnswerKeyModalOpen(true)}
+                className="border-emerald-500/40 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+              >
+                <FileCheck className="mr-2 h-4 w-4" /> Import Answer Key
               </Button>
               <Link href={`/teacher/exams/${examId}/edit`}>
                 <Button variant="primary" size="sm" className="shadow-glow">
@@ -466,6 +476,14 @@ export default function ExamViewPage() {
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           examId={examId as string}
+          onSuccess={fetchExam}
+        />
+
+        <AnswerKeyImportModal
+          isOpen={isAnswerKeyModalOpen}
+          onClose={() => setIsAnswerKeyModalOpen(false)}
+          examId={examId as string}
+          examQuestions={exam.questions || []}
           onSuccess={fetchExam}
         />
       </div>
