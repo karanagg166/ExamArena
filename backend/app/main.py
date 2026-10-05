@@ -2,11 +2,9 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from app.api.router import api_router
 from app.core import database as db
@@ -15,15 +13,6 @@ from app.core.middleware import RequestCorrelationAndLoggingMiddleware
 from app.core.redis import connect_redis, disconnect_redis
 
 logger = logging.getLogger(__name__)
-
-if settings.SENTRY_DSN:
-    sentry_sdk.init(
-        dsn=settings.SENTRY_DSN,
-        integrations=[FastApiIntegration()],
-        traces_sample_rate=1.0,
-        profiles_sample_rate=1.0,
-        send_default_pii=True,
-    )
 
 
 async def connect_with_retry(attempts: int = 5, base_delay: int = 2) -> None:
@@ -101,9 +90,3 @@ def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
-
-
-@app.get("/sentry-debug")
-async def trigger_error():
-    # This intentionally causes a ZeroDivisionError which Sentry will intercept
-    raise ZeroDivisionError("Sentry debug endpoint")

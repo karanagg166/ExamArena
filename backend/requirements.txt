@@ -34,7 +34,6 @@ arq
 redis
 
 # Monitoring & Logging
-sentry-sdk
 loguru
 
 # Database & Forms

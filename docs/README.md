@@ -58,7 +58,6 @@ Schema → Types → Backend (schemas → crud → router) → Frontend (stores 
 - **GitHub & GitHub Actions**: Hosts the repository and automatically runs CI/CD pipelines (like unit tests and linters) every time code is pushed, ensuring production readiness.
 
 **Monitoring & Logging**
-- **Sentry**: Tracks runtime errors and bugs in production so developers can fix them before students notice.
 - **Python logging / loguru**: Provides structured, easy-to-read server logs for tracking backend AI evaluation processes and API requests.
 
 ## Quick Start

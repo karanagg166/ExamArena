@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -20,9 +19,7 @@ export function ErrorUI({
   subtitle = "An unexpected error occurred while rendering this page.",
 }: ErrorUIProps) {
   useEffect(() => {
-    // Log error to Sentry automatically
     console.error("Captured boundary error:", error);
-    Sentry.captureException(error);
   }, [error]);
 
   return (

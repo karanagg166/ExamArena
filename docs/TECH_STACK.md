@@ -15,7 +15,6 @@ This document defines the complete technology stack for Exam Arena, covering:
 - Validation/forms: React Hook Form + Zod
 - Date handling: date-fns
 - Icons/animation/charts: lucide-react, framer-motion, recharts
-- Error monitoring: Sentry for Next.js
 
 ### Backend
 - API framework: FastAPI (Python 3.11)
@@ -24,7 +23,6 @@ This document defines the complete technology stack for Exam Arena, covering:
 - ORM/DB client: Prisma Client Python
 - Authentication: JWT-based flow with role-based authorization
 - Realtime: python-socketio (for websocket/event features)
-- Error monitoring: sentry-sdk (FastAPI integration)
 
 ### Database and Data Model
 - Database: PostgreSQL
@@ -65,7 +63,7 @@ These are already listed in dependencies or configuration and can be turned on w
 - Caching: introduce Redis caching for heavy list and analytics endpoints.
 
 ### Observability
-- Keep Sentry in FE/BE and add:
+- Add:
   - structured logs (loguru + request correlation ids),
   - basic metrics (latency, throughput, error rates),
   - health/readiness endpoints per service.

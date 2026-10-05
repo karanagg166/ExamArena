@@ -26,7 +26,6 @@ redis
 httpx
 
 # Monitoring & Logging
-sentry-sdk
 loguru
 
 # Database & Forms
