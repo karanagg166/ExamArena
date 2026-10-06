@@ -45,6 +45,8 @@ def redact_exam_solutions(
     if not reveal_solutions:
         for question in redacted.questions or []:
             question.explanation = None
+            question.referenceAnswer = None
+            question.gradingRubric = None
             for option in question.options or []:
                 option.isCorrect = False
     return redacted

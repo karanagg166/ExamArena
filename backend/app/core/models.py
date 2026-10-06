@@ -11,6 +11,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy import (
@@ -116,6 +117,22 @@ class QuestionImportStatus(enum.StrEnum):
 
 
 class QuestionImportSourceType(enum.StrEnum):
+    PDF_TEXT = "PDF_TEXT"
+    PDF_SCANNED = "PDF_SCANNED"
+    IMAGE = "IMAGE"
+    UNKNOWN = "UNKNOWN"
+
+
+class AnswerKeyImportStatus(enum.StrEnum):
+    UPLOADED = "UPLOADED"
+    PROCESSING = "PROCESSING"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class AnswerKeyImportSourceType(enum.StrEnum):
     PDF_TEXT = "PDF_TEXT"
     PDF_SCANNED = "PDF_SCANNED"
     IMAGE = "IMAGE"
@@ -593,6 +610,9 @@ class Exam(Base):
     questionImports: Mapped[list["QuestionImport"]] = relationship(
         "QuestionImport", back_populates="exam", cascade="all, delete-orphan"
     )
+    answerKeyImports: Mapped[list["AnswerKeyImport"]] = relationship(
+        "AnswerKeyImport", back_populates="exam", cascade="all, delete-orphan"
+    )
 
 
 class ExamSection(Base):
@@ -657,6 +677,8 @@ class Question(Base):
     imageUrl: Mapped[str | None] = mapped_column(String, nullable=True)
     wordLimit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     explanation: Mapped[str | None] = mapped_column(String, nullable=True)
+    referenceAnswer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gradingRubric: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     questionType: Mapped[QuestionType] = mapped_column(
         SQLEnum(QuestionType, native_enum=False),
         default=QuestionType.MULTIPLE_CHOICE,
@@ -909,6 +931,14 @@ class QuestionImport(Base):
     fileType: Mapped[str] = mapped_column(String, nullable=False)
     fileSize: Mapped[int] = mapped_column(Integer, nullable=False)
     filePath: Mapped[str] = mapped_column(String, nullable=False)
+    storageProvider: Mapped[str] = mapped_column(
+        String(50), default="LOCAL", nullable=False
+    )
+    storageKey: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    storageUrl: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    storageResourceType: Mapped[str | None] = mapped_column(
+        String(50), default="raw", nullable=True
+    )
     status: Mapped[QuestionImportStatus] = mapped_column(
         SQLEnum(QuestionImportStatus, native_enum=False),
         default=QuestionImportStatus.UPLOADED,
@@ -938,4 +968,64 @@ class QuestionImport(Base):
     )
 
     exam: Mapped["Exam"] = relationship("Exam", back_populates="questionImports")
+    teacher: Mapped["Teacher"] = relationship("Teacher")
+
+
+class AnswerKeyImport(Base):
+    __tablename__ = "AnswerKeyImport"
+    __table_args__ = (
+        Index("answerkeyimport_examid_idx", "examId"),
+        Index("answerkeyimport_teacherid_idx", "teacherId"),
+        Index("answerkeyimport_status_idx", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
+    examId: Mapped[str] = mapped_column(
+        String, ForeignKey("Exam.id", ondelete="CASCADE"), nullable=False
+    )
+    teacherId: Mapped[str] = mapped_column(
+        String, ForeignKey("Teacher.id", ondelete="CASCADE"), nullable=False
+    )
+    originalFileName: Mapped[str] = mapped_column(String, nullable=False)
+    fileType: Mapped[str] = mapped_column(String, nullable=False)
+    fileSize: Mapped[int] = mapped_column(Integer, nullable=False)
+    filePath: Mapped[str] = mapped_column(String, nullable=False)
+    storageProvider: Mapped[str] = mapped_column(
+        String(50), default="LOCAL", nullable=False
+    )
+    storageKey: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    storageUrl: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    storageResourceType: Mapped[str | None] = mapped_column(
+        String(50), default="raw", nullable=True
+    )
+    status: Mapped[AnswerKeyImportStatus] = mapped_column(
+        SQLEnum(AnswerKeyImportStatus, native_enum=False),
+        default=AnswerKeyImportStatus.UPLOADED,
+        nullable=False,
+    )
+    sourceType: Mapped[AnswerKeyImportSourceType] = mapped_column(
+        SQLEnum(AnswerKeyImportSourceType, native_enum=False),
+        default=AnswerKeyImportSourceType.UNKNOWN,
+        nullable=False,
+    )
+    extractedText: Mapped[str | None] = mapped_column(String, nullable=True)
+    rawExtraction: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    validatedExtraction: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    matchedExtraction: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
+    errorMessage: Mapped[str | None] = mapped_column(String, nullable=True)
+    errorCategory: Mapped[str | None] = mapped_column(String, nullable=True)
+    createdAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updatedAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
+    completedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    confirmedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    exam: Mapped["Exam"] = relationship("Exam", back_populates="answerKeyImports")
     teacher: Mapped["Teacher"] = relationship("Teacher")

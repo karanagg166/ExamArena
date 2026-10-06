@@ -45,7 +45,8 @@ from app.imports.schemas import (
     QuestionImportConfirmResponse,
     QuestionImportResponse,
 )
-from app.storage.service import get_storage_provider
+from app.storage.base import StorageReadError
+from app.storage.service import get_storage_provider, resolve_storage_resource_type
 from app.users.schemas import UserResponse
 
 logger = logging.getLogger(__name__)
@@ -131,7 +132,11 @@ async def process_question_import(
     try:
         # 1. Fetch file from storage
         storage = get_storage_provider()
-        file_bytes = await storage.get_file(record.filePath)
+        file_key = record.storageKey or record.filePath
+        resource_type = resolve_storage_resource_type(
+            record.storageResourceType, record.fileType
+        )
+        file_bytes = await storage.get_file(file_key, resource_type=resource_type)
 
         # 2. Extract document structure and text
         extracted_doc = extract_document_content(
@@ -172,6 +177,14 @@ async def process_question_import(
             "QuestionImport %s successfully extracted %d questions",
             import_id,
             len(extracted_paper.questions),
+        )
+
+    except StorageReadError as e:
+        logger.warning("Storage read failed for question import %s", import_id)
+        await crud.update_question_import_failure(
+            import_id,
+            error_category="STORAGE_READ",
+            error_message=str(e),
         )
 
     except DocumentExtractionError as e:

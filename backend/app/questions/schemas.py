@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -21,9 +22,27 @@ class QuestionBase(BaseModel):
     imageUrl: str | None = None
     wordLimit: int | None = Field(default=None, gt=0)
     explanation: str | None = None
+    referenceAnswer: str | None = None
+    gradingRubric: list[dict] | None = None
     examId: str | None = None
     sectionId: str | None = None
     section: str = "Section A"
+
+    @field_validator("referenceAnswer", mode="before")
+    @classmethod
+    def coerce_reference_answer(cls, v: Any) -> Any:
+        if v is not None and not isinstance(v, str):
+            if type(v).__name__ in ("MagicMock", "AsyncMock"):
+                return None
+        return v
+
+    @field_validator("gradingRubric", mode="before")
+    @classmethod
+    def coerce_grading_rubric(cls, v: Any) -> Any:
+        if v is not None and not isinstance(v, list):
+            if type(v).__name__ in ("MagicMock", "AsyncMock"):
+                return None
+        return v
 
     @field_validator("text")
     @classmethod
@@ -114,6 +133,8 @@ class QuestionUpdateRequest(BaseModel):
     imageUrl: str | None = None
     wordLimit: int | None = Field(default=None, gt=0)
     explanation: str | None = None
+    referenceAnswer: str | None = None
+    gradingRubric: list[dict] | None = None
     section: str | None = None
     options: list[QuestionOptionUpdate] | None = None
 

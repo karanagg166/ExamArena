@@ -131,6 +131,27 @@ async def init_db() -> None:
                 )
             )
 
+            # Phase 2 migrations: Question referenceAnswer and gradingRubric
+            await conn.execute(
+                text('ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "referenceAnswer" TEXT;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "gradingRubric" JSON;')
+            )
+            # Phase 2 migrations: QuestionImport storage metadata
+            await conn.execute(
+                text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageProvider" VARCHAR NOT NULL DEFAULT \'LOCAL\';')
+            )
+            await conn.execute(
+                text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageKey" VARCHAR;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageUrl" VARCHAR;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageResourceType" VARCHAR DEFAULT \'raw\';')
+            )
+
             # Convert unique index on examCode to non-unique index if needed
             await conn.execute(text("DROP INDEX IF EXISTS exam_examcode_key;"))
             await conn.execute(

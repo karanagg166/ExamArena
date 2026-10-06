@@ -80,7 +80,7 @@ async def upload_question_paper(
 
     # Save to storage provider
     storage = get_storage_provider()
-    storage_key = await storage.save_file(
+    storage_res = await storage.save_file(
         content=content,
         extension=clean_ext,
         directory=f"exam_{exam_id}",
@@ -100,8 +100,12 @@ async def upload_question_paper(
         original_file_name=file.filename or f"paper{clean_ext}",
         file_type=verified_mime,
         file_size=len(content),
-        file_path=storage_key,
+        file_path=storage_res.key,
         source_type=initial_source_type,
+        storage_provider=storage_res.provider,
+        storage_key=storage_res.key,
+        storage_url=storage_res.url,
+        storage_resource_type=storage_res.resource_type,
     )
 
     # Audit event

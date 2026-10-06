@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.answer_keys.router import router as answer_keys_router
 from app.attempts.router import router as attempts_router
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
@@ -30,3 +31,4 @@ api_router.include_router(sections_router)
 api_router.include_router(questions_router)
 api_router.include_router(attempts_router)
 api_router.include_router(imports_router)
+api_router.include_router(answer_keys_router)

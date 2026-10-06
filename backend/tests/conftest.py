@@ -136,6 +136,36 @@ async def init_test_db() -> None:
                     'ALTER TABLE "SchoolClass" ADD COLUMN IF NOT EXISTS "nextRollNo" INTEGER NOT NULL DEFAULT 1;'
                 )
             )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "referenceAnswer" TEXT;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "gradingRubric" JSONB;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageProvider" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageKey" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageUrl" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageResourceType" VARCHAR;'
+                )
+            )
         except Exception as e:
             print(f"Notice: column migration in test db: {e}")
 
@@ -178,6 +208,8 @@ async def truncate_all_tables():
             await conn.execute(text("""
                     TRUNCATE TABLE
                         "AuditLog",
+                        "AnswerKeyImport",
+                        "QuestionImport",
                         "SelectedOption",
                         "StudentExamAnswer",
                         "StudentExam",

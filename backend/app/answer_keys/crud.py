@@ -1,4 +1,4 @@
-"""Database CRUD operations for QuestionImport entities."""
+"""Database CRUD operations for AnswerKeyImport entities."""
 
 from datetime import datetime
 from typing import Any
@@ -8,29 +8,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.core.database as db
 from app.core.models import (
-    QuestionImport,
-    QuestionImportSourceType,
-    QuestionImportStatus,
+    AnswerKeyImport,
+    AnswerKeyImportSourceType,
+    AnswerKeyImportStatus,
     utc_now,
 )
 
 
-async def create_question_import(
+async def create_answer_key_import(
     exam_id: str,
     teacher_id: str,
     original_file_name: str,
     file_type: str,
     file_size: int,
     file_path: str,
-    source_type: QuestionImportSourceType = QuestionImportSourceType.UNKNOWN,
+    source_type: AnswerKeyImportSourceType = AnswerKeyImportSourceType.UNKNOWN,
     storage_provider: str | None = None,
     storage_key: str | None = None,
     storage_url: str | None = None,
     storage_resource_type: str | None = None,
     session: AsyncSession | None = None,
-) -> QuestionImport:
-    """Creates a new QuestionImport record with initial UPLOADED status."""
-    import_obj = QuestionImport(
+) -> AnswerKeyImport:
+    """Creates a new AnswerKeyImport record with initial UPLOADED status."""
+    import_obj = AnswerKeyImport(
         examId=exam_id,
         teacherId=teacher_id,
         originalFileName=original_file_name,
@@ -38,7 +38,7 @@ async def create_question_import(
         fileSize=file_size,
         filePath=file_path,
         sourceType=source_type,
-        status=QuestionImportStatus.UPLOADED,
+        status=AnswerKeyImportStatus.UPLOADED,
         storageProvider=storage_provider,
         storageKey=storage_key,
         storageUrl=storage_url,
@@ -57,13 +57,13 @@ async def create_question_import(
         return await _do(s)
 
 
-async def get_question_import_by_id(
+async def get_answer_key_import_by_id(
     import_id: str, session: AsyncSession | None = None
-) -> QuestionImport | None:
-    """Fetches a QuestionImport record by its UUID."""
+) -> AnswerKeyImport | None:
+    """Fetches an AnswerKeyImport record by its UUID."""
 
     async def _do(s: AsyncSession):
-        stmt = select(QuestionImport).where(QuestionImport.id == import_id)
+        stmt = select(AnswerKeyImport).where(AnswerKeyImport.id == import_id)
         res = await s.execute(stmt)
         return res.scalar_one_or_none()
 
@@ -73,16 +73,16 @@ async def get_question_import_by_id(
         return await _do(s)
 
 
-async def list_question_imports_by_exam_id(
+async def list_answer_key_imports_by_exam_id(
     exam_id: str, session: AsyncSession | None = None
-) -> list[QuestionImport]:
-    """Lists all imports associated with a specific exam, newest first."""
+) -> list[AnswerKeyImport]:
+    """Lists all answer key imports associated with a specific exam, newest first."""
 
     async def _do(s: AsyncSession):
         stmt = (
-            select(QuestionImport)
-            .where(QuestionImport.examId == exam_id)
-            .order_by(desc(QuestionImport.createdAt))
+            select(AnswerKeyImport)
+            .where(AnswerKeyImport.examId == exam_id)
+            .order_by(desc(AnswerKeyImport.createdAt))
         )
         res = await s.execute(stmt)
         return list(res.scalars().all())
@@ -93,17 +93,17 @@ async def list_question_imports_by_exam_id(
         return await _do(s)
 
 
-async def update_question_import_processing_start(
+async def update_answer_key_import_processing_start(
     import_id: str, session: AsyncSession | None = None
-) -> QuestionImport | None:
+) -> AnswerKeyImport | None:
     """Transition state to PROCESSING."""
 
     async def _do(s: AsyncSession):
-        stmt = select(QuestionImport).where(QuestionImport.id == import_id)
+        stmt = select(AnswerKeyImport).where(AnswerKeyImport.id == import_id)
         res = await s.execute(stmt)
         record = res.scalar_one_or_none()
         if record:
-            record.status = QuestionImportStatus.PROCESSING
+            record.status = AnswerKeyImportStatus.PROCESSING
             record.updatedAt = utc_now()
             await s.commit()
             await s.refresh(record)
@@ -115,30 +115,30 @@ async def update_question_import_processing_start(
         return await _do(s)
 
 
-async def update_question_import_success(
+async def update_answer_key_import_success(
     import_id: str,
-    source_type: QuestionImportSourceType,
-    extracted_text: str,
-    raw_extraction: dict[str, Any] | list[Any],
+    source_type: AnswerKeyImportSourceType,
+    extracted_text: str | None,
+    raw_extraction: dict[str, Any],
     validated_extraction: dict[str, Any],
     session: AsyncSession | None = None,
-) -> QuestionImport | None:
-    """Persists successful extraction draft and transitions state to NEEDS_REVIEW."""
+) -> AnswerKeyImport | None:
+    """Transition state to NEEDS_REVIEW with extracted payload."""
 
     async def _do(s: AsyncSession):
-        stmt = select(QuestionImport).where(QuestionImport.id == import_id)
+        stmt = select(AnswerKeyImport).where(AnswerKeyImport.id == import_id)
         res = await s.execute(stmt)
         record = res.scalar_one_or_none()
         if record:
+            record.status = AnswerKeyImportStatus.NEEDS_REVIEW
             record.sourceType = source_type
             record.extractedText = extracted_text
             record.rawExtraction = raw_extraction
             record.validatedExtraction = validated_extraction
-            record.status = QuestionImportStatus.NEEDS_REVIEW
-            record.completedAt = utc_now()
-            record.updatedAt = utc_now()
             record.errorMessage = None
             record.errorCategory = None
+            record.completedAt = utc_now()
+            record.updatedAt = utc_now()
             await s.commit()
             await s.refresh(record)
         return record
@@ -149,22 +149,23 @@ async def update_question_import_success(
         return await _do(s)
 
 
-async def update_question_import_failure(
+async def update_answer_key_import_failure(
     import_id: str,
     error_category: str,
     error_message: str,
     session: AsyncSession | None = None,
-) -> QuestionImport | None:
-    """Marks an import as FAILED with a safe error category and sanitized message."""
+) -> AnswerKeyImport | None:
+    """Transition state to FAILED with descriptive error information."""
 
     async def _do(s: AsyncSession):
-        stmt = select(QuestionImport).where(QuestionImport.id == import_id)
+        stmt = select(AnswerKeyImport).where(AnswerKeyImport.id == import_id)
         res = await s.execute(stmt)
         record = res.scalar_one_or_none()
         if record:
-            record.status = QuestionImportStatus.FAILED
+            record.status = AnswerKeyImportStatus.FAILED
             record.errorCategory = error_category
             record.errorMessage = error_message
+            record.completedAt = utc_now()
             record.updatedAt = utc_now()
             await s.commit()
             await s.refresh(record)
@@ -176,15 +177,15 @@ async def update_question_import_failure(
         return await _do(s)
 
 
-async def update_question_import_draft(
+async def update_answer_key_import_draft(
     import_id: str,
     validated_extraction: dict[str, Any],
     session: AsyncSession | None = None,
-) -> QuestionImport | None:
-    """Updates the editable draft while still in NEEDS_REVIEW."""
+) -> AnswerKeyImport | None:
+    """Allows teacher to edit/refine the matched answers before final confirmation."""
 
     async def _do(s: AsyncSession):
-        stmt = select(QuestionImport).where(QuestionImport.id == import_id)
+        stmt = select(AnswerKeyImport).where(AnswerKeyImport.id == import_id)
         res = await s.execute(stmt)
         record = res.scalar_one_or_none()
         if record:
@@ -200,18 +201,18 @@ async def update_question_import_draft(
         return await _do(s)
 
 
-async def mark_question_import_completed(
+async def update_answer_key_import_confirmed(
     import_id: str,
     session: AsyncSession | None = None,
-) -> QuestionImport | None:
-    """Marks an import as COMPLETED upon successful confirmation."""
+) -> AnswerKeyImport | None:
+    """Transition state to COMPLETED upon confirmation."""
 
     async def _do(s: AsyncSession):
-        stmt = select(QuestionImport).where(QuestionImport.id == import_id)
+        stmt = select(AnswerKeyImport).where(AnswerKeyImport.id == import_id)
         res = await s.execute(stmt)
         record = res.scalar_one_or_none()
         if record:
-            record.status = QuestionImportStatus.COMPLETED
+            record.status = AnswerKeyImportStatus.COMPLETED
             record.confirmedAt = utc_now()
             record.updatedAt = utc_now()
             await s.commit()
