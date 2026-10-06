@@ -17,7 +17,7 @@ from app.ai.extraction.document import (
     DocumentValidationError,
     validate_uploaded_file,
 )
-from app.ai.schemas.answer_key import MatchedAnswerKey, MatchStatus
+from app.ai.schemas.answer_key import MatchedAnswer, MatchedAnswerKey, MatchStatus
 from app.answer_keys import crud
 from app.answer_keys.permissions import require_exam_answer_key_access
 from app.answer_keys.schemas import (
@@ -206,26 +206,39 @@ async def update_answer_key_import_draft(
         )
 
     current_val = record.validatedExtraction or {}
-    updated_answers = payload.answers if payload.answers is not None else [
-        a for a in current_val.get("answers", [])
-    ]
+    updated_answers = (
+        payload.answers
+        if payload.answers is not None
+        else [MatchedAnswer.model_validate(a) for a in current_val.get("answers", [])]
+    )
 
     matched_cnt = sum(
-        1 for a in updated_answers
-        if (a.status == MatchStatus.MATCHED or getattr(a, "status", None) == MatchStatus.MATCHED)
+        1
+        for a in updated_answers
+        if (
+            a.status == MatchStatus.MATCHED
+            or getattr(a, "status", None) == MatchStatus.MATCHED
+        )
     )
     ambiguous_cnt = sum(
-        1 for a in updated_answers
-        if (a.status == MatchStatus.AMBIGUOUS or getattr(a, "status", None) == MatchStatus.AMBIGUOUS)
+        1
+        for a in updated_answers
+        if (
+            a.status == MatchStatus.AMBIGUOUS
+            or getattr(a, "status", None) == MatchStatus.AMBIGUOUS
+        )
     )
     unmatched_cnt = sum(
-        1 for a in updated_answers
-        if (a.status == MatchStatus.UNMATCHED or getattr(a, "status", None) == MatchStatus.UNMATCHED)
+        1
+        for a in updated_answers
+        if (
+            a.status == MatchStatus.UNMATCHED
+            or getattr(a, "status", None) == MatchStatus.UNMATCHED
+        )
     )
 
     answers_dump = [
-        (a.model_dump() if hasattr(a, "model_dump") else a)
-        for a in updated_answers
+        (a.model_dump() if hasattr(a, "model_dump") else a) for a in updated_answers
     ]
 
     new_extraction = dict(current_val)

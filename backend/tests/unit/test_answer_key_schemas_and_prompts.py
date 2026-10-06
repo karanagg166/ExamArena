@@ -49,7 +49,7 @@ def test_extracted_answer_schema():
         warnings=[],
     )
     assert ans.question_reference == "Q1"
-    assert ans.selected_option == "B"
+    assert ans.selected_options == ["B"]
     assert len(ans.rubric) == 2
     assert ans.marks == 3.0
 
@@ -119,4 +119,77 @@ def test_answer_key_prompt_security_boundaries():
     # System prompt assertions
     assert "UNTRUSTED DATA BOUNDARY" in SYSTEM_ANSWER_KEY_EXTRACTION_PROMPT
     assert "DO NOT SOLVE OR GUESS" in SYSTEM_ANSWER_KEY_EXTRACTION_PROMPT
-    assert "PRESERVE ORIGINAL QUESTION REFERENCES" in SYSTEM_ANSWER_KEY_EXTRACTION_PROMPT
+    assert (
+        "PRESERVE ORIGINAL QUESTION REFERENCES" in SYSTEM_ANSWER_KEY_EXTRACTION_PROMPT
+    )
+
+
+@pytest.mark.parametrize("values", [["B"], ["A", "C"], ["True"], []])
+def test_plural_extraction_schema(values):
+    answer = ExtractedAnswer.model_validate(
+        dict(question_reference="1", selected_options=values)
+    )
+    assert answer.model_dump()["selected_options"] == values
+    assert "selected_option" not in answer.model_dump()
+
+
+def test_legacy_drafts_parse_to_plural_fields():
+    answer = MatchedAnswer.model_validate(
+        dict(question_reference="1", selected_option="A,C", matched_option_id="a")
+    )
+    assert answer.selected_options == ["A,C"]
+    assert answer.matched_option_ids == ["a"]
+    assert ExtractedAnswer(
+        question_reference="1", selected_option_text="Earth"
+    ).selected_options == ["Earth"]
+    # Explicit new fields take precedence, including an intentional empty list.
+    answer = MatchedAnswer.model_validate(
+        dict(
+            question_reference="1",
+            selected_options=[],
+            selected_option="A",
+            matched_option_ids=[],
+            matched_option_id="a",
+        )
+    )
+    assert answer.selected_options == answer.matched_option_ids == []
+
+
+@pytest.mark.asyncio
+async def test_cohere_receives_plural_schema_and_preserves_selections():
+    import json
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.ai.extraction.answer_key import extract_answer_key_from_document
+
+    client = SimpleNamespace(
+        extract_structured_json=AsyncMock(
+            return_value=(
+                json.dumps(
+                    {
+                        "answers": [
+                            {
+                                "question_reference": "1",
+                                "selected_options": ["A", "C", "D"],
+                            }
+                        ]
+                    }
+                ),
+                {},
+            )
+        )
+    )
+    doc = SimpleNamespace(
+        pages=[SimpleNamespace(page_number=1, text="1. A,C,D")], page_count=1
+    )
+    key, _ = await extract_answer_key_from_document(doc, client)
+    assert key.answers[0].selected_options == ["A", "C", "D"]
+    args = client.extract_structured_json.call_args.kwargs
+    props = args["schema"]["$defs"]["ExtractedAnswer"]["properties"]
+    assert props["selected_options"]["type"] == "array"
+    assert props["selected_options"]["items"]["type"] == "string"
+    assert "selected_option" not in props and "selected_option_text" not in props
+    prompt = args["messages"][0]["content"]
+    assert "Do not merge multiple correct options into one string" in prompt
+    assert "Never solve questions" in prompt

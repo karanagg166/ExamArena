@@ -69,56 +69,75 @@ def map_selected_option(
     if not options:
         return None, "No options found on target exam question."
 
-    # 1. Try matching by option text if provided
-    if selected_option_text and selected_option_text.strip():
-        norm_text = selected_option_text.strip().lower()
-        for opt in options:
-            opt_text = (_get_attr(opt, "text") or "").strip().lower()
-            if opt_text == norm_text or (len(norm_text) > 4 and norm_text in opt_text):
-                return str(_get_attr(opt, "id")), None
+    value = selected_option or selected_option_text
+    if not value or not value.strip():
+        return None, "No selected option supplied."
+    sel = value.strip().casefold()
 
-    if not selected_option or not selected_option.strip():
-        return None, None
+    # Match complete text, never a substring or a letter inside arbitrary text.
+    text_matches = [
+        str(_get_attr(opt, "id"))
+        for opt in options
+        if (_get_attr(opt, "text") or "").strip().casefold() == sel
+    ]
+    if len(text_matches) == 1:
+        return text_matches[0], None
+    if len(text_matches) > 1:
+        return None, f"Option '{value}' matches multiple option texts."
 
-    sel = selected_option.strip().upper()
+    sel = sel.strip("()[] .")
+    if sel in ("true", "t", "false", "f"):
+        aliases = ("true", "t", "yes") if sel in ("true", "t") else ("false", "f", "no")
+        matches = [
+            str(_get_attr(opt, "id"))
+            for opt in options
+            if (_get_attr(opt, "text") or "").strip().casefold() in aliases
+        ]
+        if len(matches) == 1:
+            return matches[0], None
+        return None, f"Could not uniquely resolve logical option '{value}'."
 
-    # 2. True / False normalization
-    if sel in ("TRUE", "T"):
-        for opt in options:
-            t = (_get_attr(opt, "text") or "").strip().lower()
-            if t in ("true", "t", "yes"):
-                return str(_get_attr(opt, "id")), None
-    elif sel in ("FALSE", "F"):
-        for opt in options:
-            t = (_get_attr(opt, "text") or "").strip().lower()
-            if t in ("false", "f", "no"):
-                return str(_get_attr(opt, "id")), None
-
-    # 3. Letter matching (A -> 1, B -> 2, C -> 3, D -> 4, etc.)
-    # Strip parentheses, brackets, or dots: '(A)' -> 'A', 'A.' -> 'A'
-    letter_match = re.search(r"([A-Z])", sel)
-    target_num: int | None = None
-    if letter_match:
-        target_num = ord(letter_match.group(1)) - ord("A") + 1
-
-    # 4. Numeric matching ('1', '2', '3')
-    if target_num is None:
-        num_match = re.search(r"(\d+)", sel)
-        if num_match:
-            target_num = int(num_match.group(1))
-
+    target_num = None
+    if re.fullmatch(r"[a-z]", sel):
+        target_num = ord(sel) - ord("a") + 1
+    elif re.fullmatch(r"\d+", sel):
+        target_num = int(sel)
     if target_num is not None:
-        # Match by optionNumber or 1-based index
-        for idx, opt in enumerate(options, start=1):
-            opt_num = _get_attr(opt, "optionNumber", idx)
-            if opt_num == target_num:
-                return str(_get_attr(opt, "id")), None
-        if 1 <= target_num <= len(options):
+        matches = [
+            str(_get_attr(opt, "id"))
+            for idx, opt in enumerate(options, start=1)
+            if _get_attr(opt, "optionNumber", idx) == target_num
+        ]
+        if len(matches) == 1:
+            return matches[0], None
+        if not matches and 1 <= target_num <= len(options):
             return str(_get_attr(options[target_num - 1], "id")), None
+        return (
+            None,
+            f"Option '{value}' does not correspond uniquely to any of the {len(options)} options.",
+        )
+    return None, f"Could not resolve option label '{value}'."
 
-        return None, f"Option '{selected_option}' does not correspond to any of the {len(options)} options."
 
-    return None, f"Could not resolve option label '{selected_option}'."
+def normalize_selected_options(values: list[str]) -> list[str]:
+    """Split combined labels while preserving full option texts and selection order."""
+    normalized: list[str] = []
+    label = r"(?:[a-z]|\d+|true|false)"
+    for value in values:
+        parts = re.split(r"\s*(?:,|/|\band\b)\s*", value.strip(), flags=re.IGNORECASE)
+        if not all(
+            re.fullmatch(label, p.strip("()[] ."), re.IGNORECASE) for p in parts
+        ):
+            parts = [value]
+        for part in parts:
+            token = part.strip().casefold()
+            label_token = token.strip("()[] .")
+            if re.fullmatch(label, label_token, re.IGNORECASE):
+                token = label_token
+            token = {"t": "true", "f": "false"}.get(token, token)
+            if token not in normalized:
+                normalized.append(token)
+    return normalized
 
 
 def match_extracted_answer_key(
@@ -214,7 +233,7 @@ def match_extracted_answer_key(
             reason = f"No exam question matched reference '{ans.question_reference}'"
 
         # Prepare matched answer record
-        matched_option_id: str | None = None
+        matched_option_ids: list[str] = []
         matched_q_id: str | None = None
         matched_q_num: int | None = None
         matched_q_text: str | None = None
@@ -230,14 +249,34 @@ def match_extracted_answer_key(
             # Option matching for objective questions
             q_options = _get_attr(matched_q, "options") or []
             if matched_q_type in ("MULTIPLE_CHOICE", "MULTIPLE_SELECT", "TRUE_FALSE"):
-                opt_id, opt_warning = map_selected_option(
-                    q_options, ans.selected_option, ans.selected_option_text
-                )
-                matched_option_id = opt_id
-                if opt_warning:
-                    warnings.append(opt_warning)
-                elif not opt_id and ans.selected_option:
-                    warnings.append(f"Could not map option '{ans.selected_option}' to question options.")
+                selections = normalize_selected_options(ans.selected_options)
+                option_warnings = []
+                for selection in selections:
+                    opt_id, opt_warning = map_selected_option(
+                        q_options, selection, None
+                    )
+                    if opt_warning:
+                        option_warnings.append(opt_warning)
+                    elif opt_id and opt_id not in matched_option_ids:
+                        matched_option_ids.append(opt_id)
+                if not selections:
+                    option_warnings.append(
+                        "No selected options supplied for objective answer."
+                    )
+                if (
+                    matched_q_type in ("MULTIPLE_CHOICE", "TRUE_FALSE")
+                    and len(selections) != 1
+                ):
+                    option_warnings.append(
+                        "This question requires exactly one selected option."
+                    )
+                if option_warnings:
+                    warnings.extend(option_warnings)
+                    status = MatchStatus.AMBIGUOUS
+                    reason = "Objective answer requires review: " + " ".join(
+                        option_warnings
+                    )
+                    matched_option_ids = []
 
             # Validate rubric totals against question marks
             if ans.rubric:
@@ -252,8 +291,7 @@ def match_extracted_answer_key(
             MatchedAnswer(
                 question_reference=ans.question_reference,
                 question_text_snippet=ans.question_text_snippet,
-                selected_option=ans.selected_option,
-                selected_option_text=ans.selected_option_text,
+                selected_options=ans.selected_options,
                 reference_answer=ans.reference_answer,
                 explanation=ans.explanation,
                 rubric=ans.rubric,
@@ -265,7 +303,7 @@ def match_extracted_answer_key(
                 matched_question_number=matched_q_num,
                 matched_question_text=matched_q_text,
                 matched_question_type=matched_q_type,
-                matched_option_id=matched_option_id,
+                matched_option_ids=matched_option_ids,
                 match_confidence=confidence,
                 match_reason=reason,
                 candidate_question_ids=candidates,
@@ -286,11 +324,17 @@ def match_extracted_answer_key(
                 item.warnings.append(
                     f"Multiple answer key items matched question #{item.matched_question_number}."
                 )
-                item.match_reason = f"Duplicate match on question #{item.matched_question_number}"
+                item.match_reason = (
+                    f"Duplicate match on question #{item.matched_question_number}"
+                )
 
     matched_count = sum(1 for a in matched_answers if a.status == MatchStatus.MATCHED)
-    ambiguous_count = sum(1 for a in matched_answers if a.status == MatchStatus.AMBIGUOUS)
-    unmatched_count = sum(1 for a in matched_answers if a.status == MatchStatus.UNMATCHED)
+    ambiguous_count = sum(
+        1 for a in matched_answers if a.status == MatchStatus.AMBIGUOUS
+    )
+    unmatched_count = sum(
+        1 for a in matched_answers if a.status == MatchStatus.UNMATCHED
+    )
 
     return MatchedAnswerKey(
         import_id=import_id,
