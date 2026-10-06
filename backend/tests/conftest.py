@@ -166,6 +166,47 @@ async def init_test_db() -> None:
                     'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageResourceType" VARCHAR;'
                 )
             )
+            # Phase 3 migrations: StudentExamAnswer AI proposal and grading columns
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiSuggestedMarks" DOUBLE PRECISION;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiConfidence" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiFeedback" TEXT;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiGradingBreakdown" JSONB;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiWarnings" JSONB;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiGradedAt" TIMESTAMPTZ;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedBy" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedAt" TIMESTAMPTZ;'
+                )
+            )
         except Exception as e:
             print(f"Notice: column migration in test db: {e}")
 

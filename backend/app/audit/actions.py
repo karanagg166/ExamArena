@@ -72,6 +72,9 @@ class AuditAction(enum.StrEnum):
 
     # Grading & Scores
     MANUAL_GRADE_UPDATED = "MANUAL_GRADE_UPDATED"
+    AI_GRADE_PROPOSED = "AI_GRADE_PROPOSED"
+    AI_GRADE_ACCEPTED = "AI_GRADE_ACCEPTED"
+    AI_GRADE_REJECTED = "AI_GRADE_REJECTED"
 
 
 class AuditResourceType(enum.StrEnum):
