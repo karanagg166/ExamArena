@@ -73,7 +73,11 @@ def format_answer_key_response(record: AnswerKeyImport) -> AnswerKeyImportRespon
             unmatched_count = matched_key.unmatched_count
             total_answers = matched_key.total_answers
         except Exception as e:
-            logger.warning("Failed to parse validatedExtraction in answer key import %s: %s", record.id, e)
+            logger.warning(
+                "Failed to parse validatedExtraction in answer key import %s: %s",
+                record.id,
+                e,
+            )
 
     if record.rawExtraction and isinstance(record.rawExtraction, dict):
         title = record.rawExtraction.get("title")
@@ -119,8 +123,15 @@ async def process_answer_key_import(
         return
 
     # Check status
-    if record.status in (AnswerKeyImportStatus.COMPLETED, AnswerKeyImportStatus.CANCELLED):
-        logger.info("AnswerKeyImport %s is in terminal state '%s', aborting", import_id, record.status)
+    if record.status in (
+        AnswerKeyImportStatus.COMPLETED,
+        AnswerKeyImportStatus.CANCELLED,
+    ):
+        logger.info(
+            "AnswerKeyImport %s is in terminal state '%s', aborting",
+            import_id,
+            record.status,
+        )
         return
 
     await crud.update_answer_key_import_processing_start(import_id)
@@ -160,7 +171,9 @@ async def process_answer_key_import(
             )
             exam = (await session.execute(exam_stmt)).scalar_one_or_none()
             if not exam:
-                raise DocumentExtractionError(f"Exam {record.examId} not found for answer key matching.")
+                raise DocumentExtractionError(
+                    f"Exam {record.examId} not found for answer key matching."
+                )
             exam_questions = list(exam.questions or [])
             exam_title = exam.title
 
@@ -172,7 +185,9 @@ async def process_answer_key_import(
         )
 
         if not extracted_key.answers:
-            raise DocumentExtractionError("No answers could be detected or extracted from the uploaded document.")
+            raise DocumentExtractionError(
+                "No answers could be detected or extracted from the uploaded document."
+            )
 
         # 5. Deterministic matching
         matched_key = match_extracted_answer_key(
@@ -307,8 +322,9 @@ async def confirm_answer_key_import(
         )
 
     matched_items = [
-        a for a in answers_to_apply
-        if (a.status == MatchStatus.MATCHED or a.matched_question_id) and a.matched_question_id
+        a
+        for a in answers_to_apply
+        if a.status == MatchStatus.MATCHED and a.matched_question_id
     ]
 
     if not matched_items:
@@ -329,7 +345,9 @@ async def confirm_answer_key_import(
                 raise HTTPException(status_code=404, detail="Associated exam not found")
 
             # Load target questions
-            target_q_ids = [a.matched_question_id for a in matched_items if a.matched_question_id]
+            target_q_ids = [
+                a.matched_question_id for a in matched_items if a.matched_question_id
+            ]
             q_stmt = (
                 select(Question)
                 .where(Question.id.in_(target_q_ids), Question.examId == record.examId)
@@ -340,28 +358,42 @@ async def confirm_answer_key_import(
             }
 
             for item in matched_items:
-                if not item.matched_question_id or item.matched_question_id not in questions_by_id:
+                if (
+                    not item.matched_question_id
+                    or item.matched_question_id not in questions_by_id
+                ):
                     continue
 
                 q = questions_by_id[item.matched_question_id]
                 changed = False
 
                 # 1. Update objective options
-                if q.questionType in ("MULTIPLE_CHOICE", "TRUE_FALSE", "MULTIPLE_SELECT"):
+                if q.questionType in (
+                    "MULTIPLE_CHOICE",
+                    "TRUE_FALSE",
+                    "MULTIPLE_SELECT",
+                ):
+                    correct_ids = set(item.matched_option_ids)
+                    valid_ids = {opt.id for opt in q.options}
+                    if (
+                        not correct_ids
+                        or not correct_ids <= valid_ids
+                        or (
+                            q.questionType in ("MULTIPLE_CHOICE", "TRUE_FALSE")
+                            and len(correct_ids) != 1
+                        )
+                    ):
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Objective answer must contain valid options and the required selection count.",
+                        )
                     already_has_correct = any(opt.isCorrect for opt in q.options)
                     if not already_has_correct or overwrite_existing:
-                        if item.matched_option_id:
-                            if q.questionType in ("MULTIPLE_CHOICE", "TRUE_FALSE"):
-                                for opt in q.options:
-                                    should_be_correct = (opt.id == item.matched_option_id)
-                                    if opt.isCorrect != should_be_correct:
-                                        opt.isCorrect = should_be_correct
-                                        changed = True
-                            elif q.questionType == "MULTIPLE_SELECT":
-                                for opt in q.options:
-                                    if opt.id == item.matched_option_id and not opt.isCorrect:
-                                        opt.isCorrect = True
-                                        changed = True
+                        for opt in q.options:
+                            should_be_correct = opt.id in correct_ids
+                            if opt.isCorrect != should_be_correct:
+                                opt.isCorrect = should_be_correct
+                                changed = True
 
                 # 2. Update reference answer for subjective questions
                 if q.questionType in ("SHORT_ANSWER", "ESSAY"):

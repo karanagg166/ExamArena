@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.ai.schemas.question_paper import ExtractedConfidence
 
@@ -32,14 +32,11 @@ class ExtractedAnswer(BaseModel):
         default=None,
         description="Brief snippet of the question text if included in the answer key document",
     )
-    selected_option: str | None = Field(
-        default=None,
-        description="Option letter or label indicated as correct (e.g. 'A', 'B', 'C', 'D', 'True', 'False', '(i)')",
+    selected_options: list[str] = Field(
+        default_factory=list,
+        description="Each explicitly declared correct label or option text as a separate element. MCQ and True/False: one element; Multiple Select: all correct options; subjective: empty list.",
     )
-    selected_option_text: str | None = Field(
-        default=None,
-        description="Text of the correct option if explicitly stated in the answer key",
-    )
+
     reference_answer: str | None = Field(
         default=None,
         description="Model answer, solution text, or key points for descriptive/essay/short answer questions",
@@ -67,6 +64,15 @@ class ExtractedAnswer(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
+    @model_validator(mode="before")
+    @classmethod
+    def read_legacy_selection(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "selected_options" not in data:
+            data = dict(data)
+            value = data.get("selected_option") or data.get("selected_option_text")
+            data["selected_options"] = [value] if value else []
+        return data
+
 
 class ExtractedAnswerKey(BaseModel):
     title: str | None = Field(
@@ -92,31 +98,29 @@ class ExtractedAnswerKey(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
-class MatchedAnswer(BaseModel):
-    # Original extracted values
-    question_reference: str
-    question_text_snippet: str | None = None
-    selected_option: str | None = None
-    selected_option_text: str | None = None
-    reference_answer: str | None = None
-    explanation: str | None = None
-    rubric: list[RubricCriterion] = Field(default_factory=list)
-    marks: float | None = None
-    confidence: ExtractedConfidence = ExtractedConfidence.HIGH
-    warnings: list[str] = Field(default_factory=list)
-
+class MatchedAnswer(ExtractedAnswer):
     # Matching resolution fields
     status: MatchStatus = MatchStatus.UNMATCHED
     matched_question_id: str | None = None
     matched_question_number: int | None = None
     matched_question_text: str | None = None
     matched_question_type: str | None = None
-    matched_option_id: str | None = None
+    matched_option_ids: list[str] = Field(default_factory=list)
+
     match_confidence: float = 0.0
     match_reason: str | None = None
     candidate_question_ids: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def read_legacy_matched_option(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "matched_option_ids" not in data:
+            data = dict(data)
+            value = data.get("matched_option_id")
+            data["matched_option_ids"] = [value] if value else []
+        return data
 
 
 class MatchedAnswerKey(BaseModel):

@@ -2,6 +2,7 @@
 
 import io
 from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from app.core.models import (
@@ -39,9 +40,15 @@ async def test_student_cannot_import_answer_key(client, override_auth):
 
 @pytest.mark.asyncio
 async def test_answer_key_upload_missing_file_422(auth_client_factory, db_session):
-    principal = await create_user_factory(db_session, role=Role.PRINCIPAL, email="p_ak1@dev.local")
-    school = await create_school_factory(db_session, creator_user=principal, school_code="SCH-AK-1")
-    teacher_user = await create_user_factory(db_session, role=Role.TEACHER, email="t_ak1@dev.local")
+    principal = await create_user_factory(
+        db_session, role=Role.PRINCIPAL, email="p_ak1@dev.local"
+    )
+    school = await create_school_factory(
+        db_session, creator_user=principal, school_code="SCH-AK-1"
+    )
+    teacher_user = await create_user_factory(
+        db_session, role=Role.TEACHER, email="t_ak1@dev.local"
+    )
     teacher = await create_teacher_factory(db_session, user=teacher_user, school=school)
     exam = await create_exam_factory(db_session, teacher=teacher)
     await db_session.commit()
@@ -53,9 +60,15 @@ async def test_answer_key_upload_missing_file_422(auth_client_factory, db_sessio
 
 @pytest.mark.asyncio
 async def test_answer_key_upload_invalid_mime_rejected(auth_client_factory, db_session):
-    principal = await create_user_factory(db_session, role=Role.PRINCIPAL, email="p_ak2@dev.local")
-    school = await create_school_factory(db_session, creator_user=principal, school_code="SCH-AK-2")
-    teacher_user = await create_user_factory(db_session, role=Role.TEACHER, email="t_ak2@dev.local")
+    principal = await create_user_factory(
+        db_session, role=Role.PRINCIPAL, email="p_ak2@dev.local"
+    )
+    school = await create_school_factory(
+        db_session, creator_user=principal, school_code="SCH-AK-2"
+    )
+    teacher_user = await create_user_factory(
+        db_session, role=Role.TEACHER, email="t_ak2@dev.local"
+    )
     teacher = await create_teacher_factory(db_session, user=teacher_user, school=school)
     exam = await create_exam_factory(db_session, teacher=teacher)
     await db_session.commit()
@@ -71,9 +84,15 @@ async def test_answer_key_upload_invalid_mime_rejected(auth_client_factory, db_s
 
 @pytest.mark.asyncio
 async def test_answer_key_upload_success_202(auth_client_factory, db_session):
-    principal = await create_user_factory(db_session, role=Role.PRINCIPAL, email="p_ak3@dev.local")
-    school = await create_school_factory(db_session, creator_user=principal, school_code="SCH-AK-3")
-    teacher_user = await create_user_factory(db_session, role=Role.TEACHER, email="t_ak3@dev.local")
+    principal = await create_user_factory(
+        db_session, role=Role.PRINCIPAL, email="p_ak3@dev.local"
+    )
+    school = await create_school_factory(
+        db_session, creator_user=principal, school_code="SCH-AK-3"
+    )
+    teacher_user = await create_user_factory(
+        db_session, role=Role.TEACHER, email="t_ak3@dev.local"
+    )
     teacher = await create_teacher_factory(db_session, user=teacher_user, school=school)
     exam = await create_exam_factory(db_session, teacher=teacher)
     await db_session.commit()
@@ -81,7 +100,9 @@ async def test_answer_key_upload_success_202(auth_client_factory, db_session):
     client = await auth_client_factory(teacher_user)
     valid_pdf = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"
 
-    with patch("app.answer_keys.service.process_answer_key_import", new_callable=AsyncMock) as mock_worker:
+    with patch(
+        "app.answer_keys.service.process_answer_key_import", new_callable=AsyncMock
+    ) as mock_worker:
         res = await client.post(
             f"/api/v1/exams/{exam.id}/answer-key-imports",
             files={"file": ("valid_key.pdf", io.BytesIO(valid_pdf), "application/pdf")},
@@ -96,9 +117,15 @@ async def test_answer_key_upload_success_202(auth_client_factory, db_session):
 
 @pytest.mark.asyncio
 async def test_answer_key_draft_edit_and_confirmation(auth_client_factory, db_session):
-    principal = await create_user_factory(db_session, role=Role.PRINCIPAL, email="p_ak4@dev.local")
-    school = await create_school_factory(db_session, creator_user=principal, school_code="SCH-AK-4")
-    teacher_user = await create_user_factory(db_session, role=Role.TEACHER, email="t_ak4@dev.local")
+    principal = await create_user_factory(
+        db_session, role=Role.PRINCIPAL, email="p_ak4@dev.local"
+    )
+    school = await create_school_factory(
+        db_session, creator_user=principal, school_code="SCH-AK-4"
+    )
+    teacher_user = await create_user_factory(
+        db_session, role=Role.TEACHER, email="t_ak4@dev.local"
+    )
     teacher = await create_teacher_factory(db_session, user=teacher_user, school=school)
     exam = await create_exam_factory(db_session, teacher=teacher)
 
@@ -131,17 +158,23 @@ async def test_answer_key_draft_edit_and_confirmation(auth_client_factory, db_se
     q2_id = q2.id
 
     from sqlalchemy import select
+
     from app.core.models import Question, QuestionOption
 
     opts_res = await db_session.execute(
-        select(QuestionOption).where(QuestionOption.questionId == q1_id).order_by(QuestionOption.optionNumber)
+        select(QuestionOption)
+        .where(QuestionOption.questionId == q1_id)
+        .order_by(QuestionOption.optionNumber)
     )
     opts = list(opts_res.scalars().all())
     opt1_a = opts[0]
     opt1_b = opts[1]
 
     # Create AnswerKeyImport directly in NEEDS_REVIEW
-    from app.answer_keys.crud import create_answer_key_import, update_answer_key_import_success
+    from app.answer_keys.crud import (
+        create_answer_key_import,
+        update_answer_key_import_success,
+    )
     from app.core.models import AnswerKeyImportSourceType
 
     import_rec = await create_answer_key_import(
@@ -213,6 +246,14 @@ async def test_answer_key_draft_edit_and_confirmation(auth_client_factory, db_se
     assert get_res.json()["status"] == "NEEDS_REVIEW"
     assert len(get_res.json()["answers"]) == 2
 
+    # A metadata-only edit must parse and retain legacy persisted answer mappings.
+    edit_res = await client.patch(
+        f"/api/v1/answer-key-imports/{import_rec.id}", json={"title": "Reviewed key"}
+    )
+    assert edit_res.status_code == 200
+    assert edit_res.json()["answers"][0]["matched_option_ids"] == [opt1_b.id]
+    assert edit_res.json()["answers"][0]["selected_options"] == ["B"]
+
     # 2. Confirm import
     confirm_res = await client.post(
         f"/api/v1/answer-key-imports/{import_rec.id}/confirm",
@@ -239,6 +280,9 @@ async def test_answer_key_draft_edit_and_confirmation(auth_client_factory, db_se
         .execution_options(populate_existing=True)
     )
     q2_updated = q2_res.scalar_one()
-    assert q2_updated.referenceAnswer == "Energy possessed by a body due to its motion: KE = 1/2 mv^2"
+    assert (
+        q2_updated.referenceAnswer
+        == "Energy possessed by a body due to its motion: KE = 1/2 mv^2"
+    )
     assert len(q2_updated.gradingRubric) == 2
     assert q2_updated.explanation == "Standard physics textbook definition"

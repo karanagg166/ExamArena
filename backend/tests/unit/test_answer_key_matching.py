@@ -1,5 +1,7 @@
 """Unit tests for Answer Key deterministic matching engine."""
 
+import pytest
+
 from app.ai.matching.answer_key import (
     calculate_text_similarity,
     map_selected_option,
@@ -33,7 +35,9 @@ def test_calculate_text_similarity():
     )
     assert sim > 0.35
 
-    zero_sim = calculate_text_similarity("Calculate force and mass", "Shakespeare hamlet poetry")
+    zero_sim = calculate_text_similarity(
+        "Calculate force and mass", "Shakespeare hamlet poetry"
+    )
     assert zero_sim == 0.0
 
 
@@ -145,7 +149,7 @@ def test_match_extracted_answer_key_full_flow():
     ans1 = matched.answers[0]
     assert ans1.status == MatchStatus.MATCHED
     assert ans1.matched_question_id == "q1"
-    assert ans1.matched_option_id == "opt1_b"
+    assert ans1.matched_option_ids == ["opt1_b"]
     assert ans1.explanation == "Mitochondria produces ATP"
 
     ans2 = matched.answers[1]
@@ -186,3 +190,86 @@ def test_rubric_total_exceeding_question_marks_warning():
     matched = match_extracted_answer_key(extracted, exam_questions, "exam_1")
     assert matched.answers[0].status == MatchStatus.MATCHED
     assert any("exceeds question marks" in w for w in matched.answers[0].warnings)
+
+
+@pytest.mark.parametrize(
+    "kind,values,expected",
+    [
+        ("MULTIPLE_SELECT", ["A,C"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["A, C, D"], ["a", "c", "d"]),
+        ("MULTIPLE_SELECT", ["A / C"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["A and C"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["a", "c"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["A.", "(C)"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["1", "3"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["Mercury", "Earth"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["A", "A", "C"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["A,A,C"], ["a", "c"]),
+        ("MULTIPLE_SELECT", ["A", "X"], None),
+        ("MULTIPLE_SELECT", ["A", "unknown text"], None),
+        ("MULTIPLE_SELECT", [], None),
+        ("MULTIPLE_SELECT", ["A", ""], None),
+        ("MULTIPLE_CHOICE", ["A", "C"], None),
+        ("MULTIPLE_CHOICE", ["B"], ["b"]),
+        ("TRUE_FALSE", ["T"], ["a"]),
+        ("TRUE_FALSE", ["F"], ["b"]),
+        ("TRUE_FALSE", ["TRUE"], ["a"]),
+        ("TRUE_FALSE", ["false"], ["b"]),
+        ("TRUE_FALSE", ["T", "F"], None),
+        ("SHORT_ANSWER", [], []),
+        ("ESSAY", [], []),
+    ],
+)
+def test_plural_option_matching(kind, values, expected):
+    texts = (
+        ["True", "False"]
+        if kind == "TRUE_FALSE"
+        else ["Mercury", "Venus", "Earth", "Mars"]
+    )
+    question = dict(
+        id="q",
+        questionNumber=1,
+        questionType=kind,
+        marks=5,
+        options=[
+            dict(id=chr(97 + i), optionNumber=i + 1, text=t)
+            for i, t in enumerate(texts)
+        ],
+    )
+    result = match_extracted_answer_key(
+        ExtractedAnswerKey(
+            answers=[ExtractedAnswer(question_reference="1", selected_options=values)]
+        ),
+        [question],
+        "exam",
+    )
+    answer = result.answers[0]
+    assert answer.status == (
+        MatchStatus.AMBIGUOUS if expected is None else MatchStatus.MATCHED
+    )
+    assert answer.matched_option_ids == (expected or [])
+    assert result.ambiguous_count == int(expected is None)
+
+
+@pytest.mark.parametrize(
+    "value", ["Water (H2O)", "An explanation.", "(Full option text)", "Salt and pepper"]
+)
+def test_option_text_punctuation_is_preserved(value):
+    question = dict(
+        id="q",
+        questionNumber=1,
+        questionType="MULTIPLE_SELECT",
+        options=[
+            dict(id="text-option", optionNumber=1, text=value),
+            dict(id="other-option", optionNumber=2, text="Other"),
+        ],
+    )
+    result = match_extracted_answer_key(
+        ExtractedAnswerKey(
+            answers=[ExtractedAnswer(question_reference="1", selected_options=[value])]
+        ),
+        [question],
+        "exam",
+    )
+    assert result.answers[0].status == MatchStatus.MATCHED
+    assert result.answers[0].matched_option_ids == ["text-option"]
