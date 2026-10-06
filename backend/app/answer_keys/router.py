@@ -70,7 +70,7 @@ async def upload_answer_key(
             filename=file.filename or "answer_key",
             declared_content_type=file.content_type or "application/octet-stream",
             file_bytes=content,
-            max_mb=settings.QUESTION_IMPORT_MAX_FILE_MB,
+            max_mb=settings.ANSWER_KEY_IMPORT_MAX_FILE_MB,
         )
     except DocumentValidationError as e:
         raise HTTPException(status_code=e.status_code, detail=str(e))
