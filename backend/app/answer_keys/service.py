@@ -17,12 +17,12 @@ from app.ai.clients.cohere_client import (
     CohereRateLimitError,
     CohereTimeoutError,
 )
-from app.ai.extraction.answer_key import extract_answer_key_from_document
 from app.ai.extraction import (
     DocumentExtractionError,
     DocumentSourceType,
     extract_document_content,
 )
+from app.ai.extraction.answer_key import extract_answer_key_from_document
 from app.ai.matching.answer_key import match_extracted_answer_key
 from app.ai.schemas.answer_key import (
     ExtractedAnswerKey,
@@ -46,7 +46,8 @@ from app.core.models import (
     QuestionOption,
     utc_now,
 )
-from app.storage.service import get_storage_provider
+from app.storage.base import StorageReadError
+from app.storage.service import get_storage_provider, resolve_storage_resource_type
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +129,10 @@ async def process_answer_key_import(
         # 1. Fetch file from storage
         storage = get_storage_provider()
         file_key = record.storageKey or record.filePath
-        file_bytes = await storage.get_file(file_key)
+        resource_type = resolve_storage_resource_type(
+            record.storageResourceType, record.fileType
+        )
+        file_bytes = await storage.get_file(file_key, resource_type=resource_type)
 
         # 2. Extract document text
         extracted_doc = extract_document_content(
@@ -195,6 +199,14 @@ async def process_answer_key_import(
             matched_key.matched_count,
             matched_key.ambiguous_count,
             matched_key.unmatched_count,
+        )
+
+    except StorageReadError as e:
+        logger.warning("Storage read failed for answer key %s", import_id)
+        await crud.update_answer_key_import_failure(
+            import_id,
+            error_category="STORAGE_READ",
+            error_message=str(e),
         )
 
     except DocumentExtractionError as e:
