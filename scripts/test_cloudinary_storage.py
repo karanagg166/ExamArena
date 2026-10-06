@@ -1,79 +1,153 @@
 #!/usr/bin/env python3
-"""Optional manual smoke test script for Cloudinary storage provider.
+"""Manual-only Cloudinary smoke test using synthetic files.
 
-Usage:
-    export CLOUDINARY_CLOUDNAME="your-cloud-name"
-    export CLOUDINARY_APIKEY="your-api-key"
-    export CLOUDINARY_APISECRET="your-api-secret"
-    python scripts/test_cloudinary_storage.py
-
-DO NOT run during automated CI or pytest without credentials.
-Never commit secrets into source control.
+Run: python scripts/test_cloudinary_storage.py
+Loads the repository .env through application settings; never run in CI.
+No network operations or application imports occur during pytest collection.
 """
 
 import asyncio
+import io
+import logging
 import os
+import struct
 import sys
-
-# Ensure backend is on PYTHONPATH
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
-
-from app.storage.cloudinary import CloudinaryStorageProvider
-from app.storage.base import StorageConfigurationError, StoredFile
+import zlib
+from contextlib import redirect_stderr, redirect_stdout
+from pathlib import Path
 
 
-async def main():
-    cloud_name = os.getenv("CLOUDINARY_CLOUDNAME")
-    api_key = os.getenv("CLOUDINARY_APIKEY")
-    api_secret = os.getenv("CLOUDINARY_APISECRET")
-
-    if not cloud_name or not api_key or not api_secret:
-        print("ERROR: Cloudinary credentials missing from environment.")
-        print("Please set CLOUDINARY_CLOUDNAME, CLOUDINARY_APIKEY, and CLOUDINARY_APISECRET.")
-        sys.exit(1)
-
-    print(f"Connecting to Cloudinary (cloud: {cloud_name})...")
-    try:
-        provider = CloudinaryStorageProvider(
-            cloud_name=cloud_name,
-            api_key=api_key,
-            api_secret=api_secret,
-        )
-    except StorageConfigurationError as e:
-        print(f"Configuration failed: {e}")
-        sys.exit(1)
-
-    # 1. Test PDF upload (raw resource_type)
-    test_pdf_content = b"%PDF-1.4\n% Smoke test PDF for CloudinaryStorageProvider\n%%EOF"
-    print("\n1. Testing raw PDF upload...")
-    stored_pdf = await provider.save_file(
-        content=test_pdf_content,
-        extension=".pdf",
-        directory="smoke-tests/test-exam",
+def synthetic_pdf() -> bytes:
+    objects = (
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 72 72] "
+        b"/Resources << >> /Contents 4 0 R >>",
+        b"<< /Length 0 >>\nstream\nendstream",
     )
-    print(f"   Upload successful!")
-    print(f"   Key: {stored_pdf.key}")
-    print(f"   URL: {stored_pdf.url}")
-    print(f"   Resource Type: {stored_pdf.resource_type}")
+    content = b"%PDF-1.4\n"
+    offsets = [0]
+    for number, obj in enumerate(objects, 1):
+        offsets.append(len(content))
+        content += f"{number} 0 obj\n".encode() + obj + b"\nendobj\n"
+    xref_offset = len(content)
+    content += b"xref\n0 5\n0000000000 65535 f \n"
+    for offset in offsets[1:]:
+        content += f"{offset:010d} 00000 n \n".encode()
+    content += (
+        f"trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n"
+    ).encode()
+    return content
 
-    # 2. Test download
-    print("\n2. Testing asset download...")
-    downloaded_bytes = await provider.get_file(stored_pdf.key, resource_type=stored_pdf.resource_type)
-    if downloaded_bytes == test_pdf_content:
-        print(f"   Download verified! Bytes matched ({len(downloaded_bytes)} bytes).")
-    else:
-        print(f"   WARNING: Downloaded content differs! Got {len(downloaded_bytes)} bytes, expected {len(test_pdf_content)}.")
 
-    # 3. Test cleanup (delete)
-    print("\n3. Testing asset cleanup (destroy)...")
-    deleted = await provider.delete_file(stored_pdf.key, resource_type=stored_pdf.resource_type)
-    if deleted:
-        print("   Asset successfully deleted from Cloudinary.")
-    else:
-        print("   WARNING: Asset deletion returned False.")
+def synthetic_png() -> bytes:
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data))
+            + kind
+            + data
+            + struct.pack(">I", zlib.crc32(kind + data))
+        )
 
-    print("\nAll Cloudinary smoke tests passed successfully!")
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(b"\x00\xff\x00\x00"))
+        + chunk(b"IEND", b"")
+    )
+
+
+async def check_asset(provider, content, extension, resource_type):
+    results = dict.fromkeys(("upload", "download", "byte comparison", "delete"), "FAIL")
+    stored = None
+    try:
+        stored = await provider.save_file(content, extension, directory="smoke-tests")
+        if (
+            stored.provider == "cloudinary"
+            and stored.key.startswith("examarena/smoke-tests/")
+            and stored.url
+            and stored.resource_type == resource_type
+        ):
+            results["upload"] = "PASS"
+        downloaded = await provider.get_file(
+            stored.key, resource_type=stored.resource_type
+        )
+        results["download"] = "PASS"
+        results["byte comparison"] = "PASS" if downloaded == content else "FAIL"
+    except Exception:
+        # Provider exceptions may contain credentials or URLs; report status only.
+        pass
+    finally:
+        if stored is not None:
+            for _ in range(3):
+                try:
+                    if await provider.delete_file(
+                        stored.key, resource_type=stored.resource_type
+                    ):
+                        results["delete"] = "PASS"
+                        break
+                except Exception:
+                    pass
+    cleanup_key = stored.key if stored and results["delete"] == "FAIL" else None
+    return results, cleanup_key
+
+
+async def main() -> int:
+    configured = False
+    results = {
+        label: dict.fromkeys(
+            ("upload", "download", "byte comparison", "delete"),
+            "NOT RUN" if label == "Image" else "FAIL",
+        )
+        for label in ("PDF", "Image")
+    }
+    cleanup_keys = []
+    # Suppress SDK/provider diagnostics, including exception text and HTTP URLs.
+    logging.disable(logging.CRITICAL)
+    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+        try:
+            root = Path(__file__).resolve().parents[1]
+            os.chdir(
+                root
+            )  # Settings resolves env_file relative to the working directory.
+            sys.path.insert(0, str(root / "backend"))
+            from app.core.config import settings
+            from app.storage.cloudinary import CloudinaryStorageProvider
+
+            configured = bool(
+                settings.CLOUDINARY_CLOUDNAME
+                and settings.CLOUDINARY_APIKEY
+                and settings.CLOUDINARY_APISECRET
+            )
+            if configured:
+                provider = CloudinaryStorageProvider()
+                for label, content, extension, resource_type in (
+                    ("PDF", synthetic_pdf(), ".pdf", "raw"),
+                    ("Image", synthetic_png(), ".png", "image"),
+                ):
+                    results[label], cleanup_key = await check_asset(
+                        provider, content, extension, resource_type
+                    )
+                    if cleanup_key:
+                        cleanup_keys.append(cleanup_key)
+        except Exception:
+            pass
+
+    print(f"Cloudinary configuration detected: {'yes' if configured else 'no'}")
+    for label, checks in results.items():
+        print()
+        for operation, result in checks.items():
+            print(f"{label} {operation}: {result}")
+    for key in cleanup_keys:
+        print(f"Cleanup required: {key}")
+    return int(
+        any(
+            result != "PASS"
+            for checks in results.values()
+            for result in checks.values()
+        )
+    )
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()))
