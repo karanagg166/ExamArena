@@ -164,6 +164,7 @@ class ExamScoreboardItem(BaseModel):
     """Row in an exam's results scoreboard leaderboard."""
 
     rank: int
+    attemptId: str
     studentId: str
     studentName: str
     rollNo: str

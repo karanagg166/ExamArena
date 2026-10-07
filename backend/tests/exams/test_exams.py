@@ -402,6 +402,7 @@ class TestExamsApi:
         mock_scoreboard = [
             {
                 "rank": 1,
+                "attemptId": "attempt_1",
                 "studentId": "std_1",
                 "studentName": "Alice Wonder",
                 "rollNo": "01",
@@ -417,6 +418,7 @@ class TestExamsApi:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
+        assert data[0]["attemptId"] == "attempt_1"
         assert data[0]["studentName"] == "Alice Wonder"
         assert data[0]["marksObtained"] == 95
 

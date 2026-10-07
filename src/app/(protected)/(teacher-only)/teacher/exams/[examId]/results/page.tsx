@@ -24,6 +24,7 @@ import type { Exam } from "@/types";
 
 interface StudentScoreboardResult {
   rank: number;
+  attemptId: string;
   studentId: string;
   studentName: string;
   rollNo: string;
@@ -332,7 +333,7 @@ export default function ExamResultsLeaderboardPage() {
                     <th className="py-3.5 px-4 text-center">Score</th>
                     <th className="py-3.5 px-4 text-center">Percentage</th>
                     <th className="py-3.5 px-4 text-center">Status</th>
-                    <th className="py-3.5 px-4 text-right">Student Record</th>
+                    <th className="py-3.5 px-4 text-right">Submission</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -389,10 +390,10 @@ export default function ExamResultsLeaderboardPage() {
                         </Badge>
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        {row.studentId ? (
-                          <Link href={`/students/${row.studentId}`}>
+                        {row.attemptId && ["SUBMITTED", "GRADED", "EXPIRED"].includes(row.status) ? (
+                          <Link href={`/teacher/exams/${examId}/results/${row.attemptId}`}>
                             <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-800">
-                              View Profile <ChevronRight size={14} className="ml-1" />
+                              Review answers <ChevronRight size={14} className="ml-1" />
                             </Button>
                           </Link>
                         ) : (
