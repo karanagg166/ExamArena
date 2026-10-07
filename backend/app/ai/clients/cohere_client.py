@@ -46,6 +46,28 @@ class CohereAPIError(CohereClientError):
         self.status_code = status_code
 
 
+def _sanitize_schema_for_cohere(schema: dict[str, Any]) -> dict[str, Any]:
+    """Recursively removes schema constraints unsupported by Cohere ClientV2 JSON schema validator."""
+    if not isinstance(schema, dict):
+        return schema
+    import copy
+
+    clean = copy.deepcopy(schema)
+
+    def _strip(d: Any) -> None:
+        if isinstance(d, dict):
+            for k in ("minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"):
+                d.pop(k, None)
+            for v in d.values():
+                _strip(v)
+        elif isinstance(d, list):
+            for item in d:
+                _strip(item)
+
+    _strip(clean)
+    return clean
+
+
 class CohereClient:
     """Wrapper client for Cohere ClientV2 with structured JSON outputs and retry resiliency."""
 
@@ -97,7 +119,7 @@ class CohereClient:
 
         response_format = {
             "type": "json_object",
-            "schema": schema,
+            "schema": _sanitize_schema_for_cohere(schema),
         }
 
         retry_count = 0

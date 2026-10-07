@@ -65,3 +65,52 @@ class TeacherStudentAnswerDetailResponse(BaseModel):
     finalGrade: TeacherGradeResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ExamGradingSummaryResponse(BaseModel):
+    examId: str
+    totalSubjectiveAnswers: int
+    pending: int
+    aiSuggestionsReady: int
+    teacherGraded: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BulkAIEvaluateRequest(BaseModel):
+    limit: int = Field(
+        default=20,
+        ge=1,
+        le=25,
+        description="Maximum number of subjective answers to evaluate in this batch (max 25)",
+    )
+    regenerateExisting: bool = Field(
+        default=False,
+        description="Whether to re-evaluate answers that already have an existing AI proposal",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class BulkAIEvaluationItemResult(BaseModel):
+    answerId: str
+    studentExamId: str
+    status: str  # "AI_PROPOSAL_CREATED", "FAILED", "SKIPPED"
+    message: str | None = None
+    suggestedMarks: float | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BulkAIEvaluateResponse(BaseModel):
+    examId: str
+    eligibleCount: int
+    requestedCount: int
+    processedCount: int
+    failedCount: int
+    skippedCount: int
+    remainingCount: int
+    results: list[BulkAIEvaluationItemResult] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
+

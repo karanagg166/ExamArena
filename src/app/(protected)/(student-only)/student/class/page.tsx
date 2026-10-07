@@ -5,6 +5,7 @@ import type { AxiosError } from "axios";
 import type { SchoolClass, StudentProfileResponse } from "@/types/index";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/loading";
+import { CourseMaterialsQA } from "@/components/course-materials/CourseMaterialsQA";
 
 export default function StudentClassPage() {
   const [schoolClass, setSchoolClass] = useState<SchoolClass | null>(null);
@@ -120,6 +121,14 @@ export default function StudentClassPage() {
           )}
         </CardContent>
       </Card>
+
+      <div className="max-w-3xl mt-6">
+        <CourseMaterialsQA
+          classId={schoolClass.id}
+          defaultSubject="SCIENCE"
+          allowSubjectSelect={true}
+        />
+      </div>
     </div>
   );
 }

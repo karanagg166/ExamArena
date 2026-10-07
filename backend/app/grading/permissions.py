@@ -75,3 +75,36 @@ async def require_answer_grading_access(
         )
 
     return answer, teacher
+
+
+async def require_exam_grading_access(
+    current_user: UserResponse,
+    exam_id: str,
+    session: AsyncSession,
+) -> tuple[Exam, Teacher | None]:
+    """Verifies that the current user has permission to manage and grade the specified exam."""
+    teacher = await require_grading_manager(current_user)
+
+    stmt = (
+        select(Exam)
+        .where(Exam.id == exam_id)
+        .options(
+            selectinload(Exam.teacher),
+        )
+    )
+    exam = (await session.execute(stmt)).scalar_one_or_none()
+
+    if not exam:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Exam not found",
+        )
+
+    if not can_manage_exam(current_user, teacher, exam):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to grade answers for this exam",
+        )
+
+    return exam, teacher
+

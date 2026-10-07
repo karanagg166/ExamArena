@@ -76,3 +76,10 @@ async def test_results_release_and_student_score_visibility(
     stud_data = stud_resp.json()
     assert stud_data["isResultsReleased"] is True
     assert stud_data["questions"][0]["explanation"] == "10 x 10 is 100"
+
+    # Teacher results link to the exact attempt; student access remains forbidden.
+    scoreboard = await teacher_client.get(f"/api/v1/exams/{exam.id}/results")
+    assert scoreboard.status_code == 200
+    assert scoreboard.json()[0]["attemptId"] == attempt.id
+    denied = await student_client.get(f"/api/v1/exams/{exam.id}/results")
+    assert denied.status_code == 403

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -19,11 +19,13 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/loading";
+import { BulkGradingCard } from "@/components/teacher/grading/BulkGradingCard";
 import { api } from "@/lib/axios";
 import type { Exam } from "@/types";
 
 interface StudentScoreboardResult {
   rank: number;
+  attemptId: string;
   studentId: string;
   studentName: string;
   rollNo: string;
@@ -47,29 +49,30 @@ export default function ExamResultsLeaderboardPage() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PASSED" | "FAILED" | "DISTINCTION">("ALL");
   const [sortBy, setSortBy] = useState<"RANK_ASC" | "SCORE_DESC" | "SCORE_ASC" | "NAME_ASC" | "ROLL_ASC">("RANK_ASC");
 
-  useEffect(() => {
-    const fetchExamAndResults = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [examRes, resultsRes] = await Promise.all([
-          api.get<Exam>(`/api/v1/exams/${examId}`),
-          api.get<StudentScoreboardResult[]>(`/api/v1/exams/${examId}/results`),
-        ]);
-        setExam(examRes.data);
-        setResults(resultsRes.data);
-      } catch (err: unknown) {
-        const detail =
-          (err as { response?: { data?: { detail?: string } } })?.response
-            ?.data?.detail;
-        setError(detail ?? "Failed to load exam results.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (examId) fetchExamAndResults();
+  const fetchExamAndResults = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [examRes, resultsRes] = await Promise.all([
+        api.get<Exam>(`/api/v1/exams/${examId}`),
+        api.get<StudentScoreboardResult[]>(`/api/v1/exams/${examId}/results`),
+      ]);
+      setExam(examRes.data);
+      setResults(resultsRes.data);
+    } catch (err: unknown) {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response
+          ?.data?.detail;
+      setError(detail ?? "Failed to load exam results.");
+    } finally {
+      setLoading(false);
+    }
   }, [examId]);
+
+  useEffect(() => {
+    if (examId) fetchExamAndResults();
+  }, [examId, fetchExamAndResults]);
+
 
   const filteredResults = useMemo(() => {
     let list = [...results];
@@ -225,6 +228,9 @@ export default function ExamResultsLeaderboardPage() {
           </GlassCard>
         </div>
 
+        {/* Subjective Grading Summary & Bulk Evaluation */}
+        <BulkGradingCard examId={examId} onGradingEvaluated={fetchExamAndResults} />
+
         {/* Search & Filter Bar */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
@@ -332,7 +338,7 @@ export default function ExamResultsLeaderboardPage() {
                     <th className="py-3.5 px-4 text-center">Score</th>
                     <th className="py-3.5 px-4 text-center">Percentage</th>
                     <th className="py-3.5 px-4 text-center">Status</th>
-                    <th className="py-3.5 px-4 text-right">Student Record</th>
+                    <th className="py-3.5 px-4 text-right">Submission</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -389,10 +395,10 @@ export default function ExamResultsLeaderboardPage() {
                         </Badge>
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        {row.studentId ? (
-                          <Link href={`/students/${row.studentId}`}>
+                        {row.attemptId && ["SUBMITTED", "GRADED", "EXPIRED"].includes(row.status) ? (
+                          <Link href={`/teacher/exams/${examId}/results/${row.attemptId}`}>
                             <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-800">
-                              View Profile <ChevronRight size={14} className="ml-1" />
+                              Review answers <ChevronRight size={14} className="ml-1" />
                             </Button>
                           </Link>
                         ) : (

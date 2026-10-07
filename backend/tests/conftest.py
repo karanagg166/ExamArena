@@ -207,6 +207,46 @@ async def init_test_db() -> None:
                     'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedAt" TIMESTAMPTZ;'
                 )
             )
+            # Phase 4 CourseMaterial table
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS "CourseMaterial" (
+                    "id" VARCHAR PRIMARY KEY,
+                    "schoolId" VARCHAR NOT NULL REFERENCES "School"("id") ON DELETE CASCADE,
+                    "subject" VARCHAR NOT NULL,
+                    "classId" VARCHAR REFERENCES "SchoolClass"("id") ON DELETE SET NULL,
+                    "uploadedBy" VARCHAR NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+                    "title" VARCHAR NOT NULL,
+                    "description" TEXT,
+                    "originalFileName" VARCHAR NOT NULL,
+                    "fileSize" INTEGER NOT NULL,
+                    "mimeType" VARCHAR NOT NULL,
+                    "documentType" VARCHAR NOT NULL DEFAULT 'OTHER',
+                    "searchSphereDocumentId" VARCHAR,
+                    "searchSphereCollectionId" VARCHAR NOT NULL,
+                    "status" VARCHAR NOT NULL DEFAULT 'UPLOADED',
+                    "processingError" TEXT,
+                    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_schoolid_idx" ON "CourseMaterial" ("schoolId");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_subject_idx" ON "CourseMaterial" ("subject");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_classid_idx" ON "CourseMaterial" ("classId");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_uploadedby_idx" ON "CourseMaterial" ("uploadedBy");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_status_idx" ON "CourseMaterial" ("status");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_spheredocid_idx" ON "CourseMaterial" ("searchSphereDocumentId");')
+            )
         except Exception as e:
             print(f"Notice: column migration in test db: {e}")
 

@@ -11,4 +11,5 @@ export * from "./attempt";
 export * from "./join-request";
 export * from "./question-import";
 export * from "./answer-key-import";
+export * from "./course-materials";
 

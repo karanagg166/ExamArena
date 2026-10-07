@@ -518,6 +518,7 @@ async def get_exam_results(
             items.append(
                 {
                     "rank": i + 1,
+                    "attemptId": se.id,
                     "studentId": student.id if student else "",
                     "studentName": user.name if user else "Unknown",
                     "rollNo": student.rollNo if student else "",

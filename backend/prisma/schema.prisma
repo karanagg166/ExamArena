@@ -28,6 +28,7 @@ model User {
   student       Student?
   teacher       Teacher?
   joinRequests  ClassJoinRequest[]
+  courseMaterials CourseMaterial[]
 }
 
 model Student {
@@ -111,6 +112,7 @@ model SchoolClass {
   teachers  TeacherClass[]
   joinRequests ClassJoinRequest[]
   teacherJoinRequests TeacherClassJoinRequest[]
+  courseMaterials CourseMaterial[]
 
   @@unique([schoolId, year, section])
   @@index([schoolId])
@@ -205,6 +207,7 @@ model School {
   Student    Student[]
   teachers   Teacher[]
   teacherSchoolJoinRequests TeacherSchoolJoinRequest[]
+  courseMaterials CourseMaterial[]
 }
 
 model Exam {
@@ -466,5 +469,52 @@ model AuditLog {
   @@index([resourceType])
   @@index([resourceId])
   @@index([requestId])
+}
+
+enum CourseMaterialDocumentType {
+  TEXTBOOK
+  TEACHER_NOTES
+  SYLLABUS
+  QUESTION_BANK
+  PAST_PAPER
+  OTHER
+}
+
+enum CourseMaterialStatus {
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+}
+
+model CourseMaterial {
+  id                       String                     @id @default(cuid())
+  schoolId                 String
+  subject                  Subject
+  classId                  String?
+  uploadedBy               String
+  title                    String
+  description              String?
+  originalFileName         String
+  fileSize                 Int
+  mimeType                 String
+  documentType             CourseMaterialDocumentType @default(OTHER)
+  searchSphereDocumentId   String?
+  searchSphereCollectionId String
+  status                   CourseMaterialStatus       @default(UPLOADED)
+  processingError          String?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolClass SchoolClass? @relation(fields: [classId], references: [id], onDelete: SetNull)
+  uploader    User         @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([subject])
+  @@index([classId])
+  @@index([uploadedBy])
+  @@index([status])
+  @@index([searchSphereDocumentId])
 }
 
