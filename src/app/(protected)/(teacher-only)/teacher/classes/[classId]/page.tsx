@@ -26,6 +26,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import { getErrorMessage } from "@/lib/error";
+import { CourseMaterialsQA } from "@/components/course-materials/CourseMaterialsQA";
 
 interface ClassExamResultData {
   classId: string;
@@ -73,7 +74,7 @@ export default function ClassPage() {
   const user = useAuthStore((s) => s.user);
   const { classes, loading, error, fetchClass } = useSchoolClassStore();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "results">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "results" | "materials">("overview");
   const [resultsData, setResultsData] = useState<ClassExamResultData | null>(null);
   const [loadingResults, setLoadingResults] = useState(false);
   const [currentTeacherId, setCurrentTeacherId] = useState<string>("");
@@ -227,6 +228,15 @@ export default function ClassPage() {
               <Award className="w-4 h-4 mr-1.5 text-amber-400" />
               Exam Results & Performance
             </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activeTab === "materials" ? "secondary" : "ghost"}
+              onClick={() => setActiveTab("materials")}
+            >
+              <BookOpen className="w-4 h-4 mr-1.5 text-indigo-400" />
+              Course Materials Q&A
+            </Button>
           </div>
         </div>
 
@@ -342,7 +352,7 @@ export default function ClassPage() {
               )}
             </CardContent>
           </Card>
-        ) : (
+        ) : activeTab === "results" ? (
           <div className="space-y-6">
             {loadingResults ? (
               <GlassCard padding="lg" className="text-center p-12 text-zinc-400">
@@ -513,6 +523,14 @@ export default function ClassPage() {
                 No exam records found for this class yet.
               </GlassCard>
             )}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <CourseMaterialsQA
+              classId={classId}
+              defaultSubject={selectedSubject || "SCIENCE"}
+              allowSubjectSelect={true}
+            />
           </div>
         )}
       </div>

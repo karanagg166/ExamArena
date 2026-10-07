@@ -223,6 +223,29 @@ class SearchSphereClient:
                 "Unable to connect to Search-Sphere microservice."
             ) from exc
 
+    async def delete_collection(
+        self,
+        collection_id: str,
+        tenant_id: str = "default",
+    ) -> bool:
+        """Delete collection from Search-Sphere within tenant boundary."""
+        url = f"{self._base_url}/api/v1/collections/{collection_id}"
+        headers = self._get_headers(tenant_id=tenant_id)
+
+        try:
+            async with httpx.AsyncClient(timeout=self._get_timeout()) as client:
+                resp = await client.delete(url, headers=headers)
+                data = self._handle_response(resp)
+                return data.get("success", True)
+        except httpx.TimeoutException as exc:
+            raise SearchSphereTimeoutError(
+                "Timed out while deleting collection in Search-Sphere."
+            ) from exc
+        except httpx.RequestError as exc:
+            raise SearchSphereUnavailableError(
+                "Unable to connect to Search-Sphere microservice during collection deletion."
+            ) from exc
+
     # ─────────────────────────────────────────────────────────────
     # Documents API
     # ─────────────────────────────────────────────────────────────
@@ -392,6 +415,55 @@ class SearchSphereClient:
         except httpx.RequestError as exc:
             raise SearchSphereUnavailableError(
                 "Unable to connect to Search-Sphere microservice during search."
+            ) from exc
+
+    # ─────────────────────────────────────────────────────────────
+    # Grounded Answer Generation API
+    # ─────────────────────────────────────────────────────────────
+
+    async def generate_answer(
+        self,
+        query: str,
+        tenant_id: str,
+        collection_id: str,
+        owner_subject_id: str | None = None,
+        limit: int = 5,
+        document_type: str | None = None,
+        system_prompt: str | None = None,
+        metadata_filters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Generate grounded answer with citations from Search-Sphere within tenant and collection boundaries."""
+        url = f"{self._base_url}/api/v1/answers"
+        headers = self._get_headers(
+            tenant_id=tenant_id,
+            subject_id=owner_subject_id,
+            collection_id=collection_id,
+        )
+        payload: dict[str, Any] = {
+            "query": query,
+            "collection_id": collection_id,
+            "limit": limit,
+        }
+        if owner_subject_id:
+            payload["owner_subject_id"] = owner_subject_id
+        if document_type:
+            payload["document_type"] = document_type
+        if system_prompt:
+            payload["system_prompt"] = system_prompt
+        if metadata_filters:
+            payload["metadata_filters"] = metadata_filters
+
+        try:
+            async with httpx.AsyncClient(timeout=self._get_timeout()) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                return self._handle_response(resp)
+        except httpx.TimeoutException as exc:
+            raise SearchSphereTimeoutError(
+                "Timed out while generating grounded answer in Search-Sphere."
+            ) from exc
+        except httpx.RequestError as exc:
+            raise SearchSphereUnavailableError(
+                "Unable to connect to Search-Sphere microservice during answer generation."
             ) from exc
 
 

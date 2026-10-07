@@ -29,6 +29,8 @@ from app.course_materials.permissions import (
     resolve_user_search_school_id,
 )
 from app.course_materials.schemas import (
+    CourseMaterialAnswerRequest,
+    CourseMaterialAnswerResponse,
     CourseMaterialListResponse,
     CourseMaterialResponse,
     CourseMaterialSearchRequest,
@@ -207,3 +209,34 @@ async def search_course_materials(
         document_type=body.document_type,
         limit=body.limit,
     )
+
+
+@router.post(
+    "/answer",
+    response_model=CourseMaterialAnswerResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate grounded question answer from course materials",
+)
+async def answer_course_materials(
+    body: CourseMaterialAnswerRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
+    db: AsyncSession = Depends(get_db),
+    service: CourseMaterialService = Depends(get_course_material_service),
+) -> CourseMaterialAnswerResponse:
+    """
+    Generate grounded answer for a question over uploaded course materials using Search-Sphere.
+    Enforces tenant isolation for teachers, principals, and students.
+    """
+    school_id = await resolve_user_search_school_id(
+        current_user, requested_class_id=body.class_id, session=db
+    )
+    return await service.answer_question(
+        session=db,
+        school_id=school_id,
+        query=body.query,
+        subject=body.subject,
+        class_id=body.class_id,
+        document_type=body.document_type,
+        limit=body.limit,
+    )
+

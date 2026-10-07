@@ -135,3 +135,15 @@ async def delete_course_material(
     await session.delete(material)
     await session.commit()
     return True
+
+
+async def get_course_materials_by_ids(
+    session: AsyncSession,
+    material_ids: Sequence[str],
+) -> Sequence[CourseMaterial]:
+    """Fetch multiple CourseMaterials by their IDs."""
+    if not material_ids:
+        return []
+    stmt = select(CourseMaterial).where(CourseMaterial.id.in_(material_ids))
+    res = await session.execute(stmt)
+    return res.scalars().all()

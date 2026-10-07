@@ -115,37 +115,100 @@ async def test_live_search_sphere_synthetic_smoke():
         max_retries = 15
         poll_interval = 2.0
         final_status = "QUEUED"
+        last_info: dict = {}
         for _ in range(max_retries):
-            info = await client.get_document(document_id=doc_id, tenant_id=tenant_id)
-            final_status = info.get("status", "QUEUED")
+            last_info = await client.get_document(document_id=doc_id, tenant_id=tenant_id)
+            final_status = last_info.get("status", "QUEUED")
             if final_status in ("READY", "FAILED"):
                 break
             await asyncio.sleep(poll_interval)
 
-        # 5. Execute semantic search if READY
-        if final_status == "READY":
-            search_res = await client.search(
-                query="Quantum Dynamics",
-                collection_id=collection_id,
-                limit=3,
-                tenant_id=tenant_id,
+        if final_status == "FAILED":
+            error_detail = last_info.get("processing_error") or "indexing failure"
+            pytest.fail(
+                f"Search-Sphere document indexing failed for document_id={doc_id} "
+                f"in collection={collection_id}: {error_detail}"
             )
-            assert search_res["total"] >= 1
-            assert any(
-                "Quantum" in r.get("text", "") or "Synthetic" in r.get("text", "")
-                for r in search_res.get("results", [])
+        elif final_status != "READY":
+            pytest.fail(
+                f"Search-Sphere indexing timed out before reaching READY status. "
+                f"Final status for document_id={doc_id}: {final_status}"
             )
 
-        # 6. Delete document
+        assert final_status == "READY"
+
+        # 5. Execute semantic search (MUST execute after READY)
+        search_res = await client.search(
+            query="Quantum Dynamics",
+            collection_id=collection_id,
+            limit=3,
+            tenant_id=tenant_id,
+        )
+        assert search_res["total"] >= 1
+        results = search_res.get("results", [])
+        assert len(results) >= 1
+
+        # Verify the uploaded synthetic document is returned
+        matching_results = [
+            r for r in results
+            if r.get("document_id") in (external_doc_id, doc_id)
+        ]
+        assert len(matching_results) >= 1, (
+            f"Expected synthetic document {external_doc_id} in search results, got: {results}"
+        )
+
+        # Expected synthetic text is present
+        assert any(
+            "Quantum Dynamics" in r.get("text", "") or "Synthetic Integration" in r.get("text", "")
+            for r in matching_results
+        ), f"Expected synthetic text not found in matching document chunks: {matching_results}"
+
+        # Collection scope matches
+        for r in results:
+            if r.get("collection_id"):
+                assert r.get("collection_id") == collection_id
+
+        # 6. Call grounded answer endpoint (Phase 5 live verification)
+        # Ask question answerable only from synthetic text
+        grounded_res = await client.generate_answer(
+            query="What quantum concept is discussed in the synthetic material?",
+            tenant_id=tenant_id,
+            collection_id=collection_id,
+            limit=3,
+        )
+        assert grounded_res.get("answer") is not None
+        assert len(grounded_res.get("answer", "").strip()) > 0
+        assert grounded_res.get("citations") is not None
+        citations = grounded_res.get("citations", [])
+        assert len(citations) >= 1, f"Expected at least one citation, got: {grounded_res}"
+        assert any(
+            c.get("document_id") in (external_doc_id, doc_id)
+            for c in citations
+        ), f"Expected citation pointing to synthetic document {external_doc_id}, got: {citations}"
+
+        # Ask unrelated question and verify no-evidence behavior
+        unrelated_res = await client.generate_answer(
+            query="What is the authentic recipe for Italian tiramisu with mascarpone?",
+            tenant_id=tenant_id,
+            collection_id=collection_id,
+            limit=3,
+        )
+        unrelated_answer = unrelated_res.get("answer", "")
+        unrelated_citations = unrelated_res.get("citations", [])
+        assert (
+            len(unrelated_citations) == 0
+            or "couldn't find" in unrelated_answer.lower()
+            or "not contain enough information" in unrelated_answer.lower()
+            or "insufficient" in unrelated_answer.lower()
+        ), f"Expected no-evidence behavior for unrelated query, got answer: {unrelated_answer}, citations: {unrelated_citations}"
+
+        # 7. Delete document
         deleted = await client.delete_document(document_id=doc_id, tenant_id=tenant_id)
         assert deleted is True
 
     finally:
-        # 7. Cleanup collection
+        # 8. Cleanup collection using public client method
         try:
-            url = f"{client._base_url}/api/v1/collections/{collection_id}"
-            import httpx
-            async with httpx.AsyncClient(timeout=client._get_timeout()) as h_client:
-                await h_client.delete(url, headers=client._get_headers(tenant_id=tenant_id))
+            await client.delete_collection(collection_id=collection_id, tenant_id=tenant_id)
         except Exception:
             pass

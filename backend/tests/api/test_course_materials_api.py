@@ -347,3 +347,204 @@ async def test_refresh_and_delete_endpoints(auth_client_factory, setup_schools, 
     # 4. Verify no longer exists
     res_get = await teacher_client.get(f"/api/v1/course-materials/{mat_id}")
     assert res_get.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_cannot_ask_answer(client):
+    res = await client.post(
+        "/api/v1/course-materials/answer",
+        json={"query": "Explain Ohm's law", "subject": "SCIENCE"},
+    )
+    assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_teacher_answer_question_valid_request(auth_client_factory, setup_schools, monkeypatch):
+    captured_headers: list[httpx.Headers] = []
+    captured_payloads: list[dict] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        captured_headers.append(request.headers)
+        payload = json.loads(request.content.decode("utf-8"))
+        captured_payloads.append(payload)
+        return httpx.Response(
+            200,
+            json={
+                "answer": "Ohm's law states that current is directly proportional to voltage. [1]",
+                "citations": [
+                    {
+                        "citation_number": 1,
+                        "chunk_id": "chk_ohm_1",
+                        "document_id": "doc_ohm",
+                        "file_name": "ohms_law.pdf",
+                        "page_number": 5,
+                        "text_snippet": "V = IR where R is resistance...",
+                        "collection_id": "subject_science",
+                        "owner_subject_id": "user_teach_1",
+                    }
+                ],
+                "retrieved_chunk_count": 1,
+                "duration_ms": 32.1,
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _orig_async_client(transport=transport, **kwargs))
+
+    teacher_client = await auth_client_factory(setup_schools["teacher_a_user"])
+    school_a = setup_schools["school_a"]
+
+    res = await teacher_client.post(
+        "/api/v1/course-materials/answer",
+        json={"query": "Explain Ohm's law", "subject": "SCIENCE"},
+    )
+
+    assert res.status_code == 200
+    data = res.json()
+    assert "Ohm's law states" in data["answer"]
+    assert len(data["citations"]) == 1
+    assert data["citations"][0]["citationNumber"] == 1
+    assert data["citations"][0]["fileName"] == "ohms_law.pdf"
+    assert data["citations"][0]["pageNumber"] == 5
+    assert data["citations"][0]["textSnippet"] == "V = IR where R is resistance..."
+    assert data["retrievedChunkCount"] == 1
+
+    # Verify tenant isolation and collection derivation
+    assert captured_headers[0]["x-tenant-id"] == f"school_{school_a.id}"
+    assert captured_payloads[0]["collection_id"] == "subject_science"
+    assert captured_payloads[0]["query"] == "Explain Ohm's law"
+
+
+@pytest.mark.asyncio
+async def test_student_answer_question_authorization(auth_client_factory, setup_schools, monkeypatch):
+    captured_headers: list[httpx.Headers] = []
+    captured_payloads: list[dict] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        captured_headers.append(request.headers)
+        captured_payloads.append(json.loads(request.content.decode("utf-8")))
+        return httpx.Response(
+            200,
+            json={
+                "answer": "Photosynthesis produces glucose from sunlight. [1]",
+                "citations": [
+                    {
+                        "citation_number": 1,
+                        "chunk_id": "chk_photo",
+                        "document_id": "doc_photo",
+                        "file_name": "bio.pdf",
+                        "page_number": 12,
+                        "text_snippet": "Plants make food...",
+                    }
+                ],
+                "retrieved_chunk_count": 1,
+                "duration_ms": 15.0,
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _orig_async_client(transport=transport, **kwargs))
+
+    student_a_client = await auth_client_factory(setup_schools["student_a_user"])
+    school_a = setup_schools["school_a"]
+    class_a = setup_schools["class_a"]
+    class_b = setup_schools["class_b"]
+
+    # 1. Student in class_a queries class_a -> 200 OK
+    res = await student_a_client.post(
+        "/api/v1/course-materials/answer",
+        json={"query": "What is photosynthesis?", "subject": "SCIENCE", "class_id": class_a.id},
+    )
+    assert res.status_code == 200
+    assert captured_headers[-1]["x-tenant-id"] == f"school_{school_a.id}"
+    assert captured_payloads[-1]["collection_id"] == f"class_{class_a.id}_subject_science"
+
+    # 2. Student queries class_b (different class) -> 403 Forbidden
+    res_forbidden = await student_a_client.post(
+        "/api/v1/course-materials/answer",
+        json={"query": "What is photosynthesis?", "subject": "SCIENCE", "class_id": class_b.id},
+    )
+    assert res_forbidden.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_cross_school_answer_isolation(auth_client_factory, setup_schools, monkeypatch):
+    captured_tenants: list[str] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        captured_tenants.append(request.headers.get("x-tenant-id", ""))
+        return httpx.Response(200, json={"answer": "Safe answer", "citations": [], "duration_ms": 10.0})
+
+    transport = httpx.MockTransport(mock_handler)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _orig_async_client(transport=transport, **kwargs))
+
+    teacher_b_client = await auth_client_factory(setup_schools["teacher_b_user"])
+    school_b = setup_schools["school_b"]
+
+    res = await teacher_b_client.post(
+        "/api/v1/course-materials/answer",
+        json={"query": "Explain chemistry", "subject": "SCIENCE"},
+    )
+    assert res.status_code == 200
+    assert captured_tenants[-1] == f"school_{school_b.id}"
+
+
+@pytest.mark.asyncio
+async def test_answer_no_evidence_preserved(auth_client_factory, setup_schools, monkeypatch):
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "answer": "I couldn't find relevant information in your documents to answer that question.",
+                "citations": [],
+                "retrieved_chunk_count": 0,
+                "duration_ms": 8.5,
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _orig_async_client(transport=transport, **kwargs))
+
+    teacher_client = await auth_client_factory(setup_schools["teacher_a_user"])
+    res = await teacher_client.post(
+        "/api/v1/course-materials/answer",
+        json={"query": "Irrelevant query about Mars exploration", "subject": "SCIENCE"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert "couldn't find" in data["answer"].lower()
+    assert data["citations"] == []
+    assert data["retrievedChunkCount"] == 0
+
+
+@pytest.mark.asyncio
+async def test_answer_upstream_error_and_timeout(auth_client_factory, setup_schools, monkeypatch):
+    # 1. 500 upstream
+    def mock_500(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, json={"detail": "Upstream Cohere service crashed"})
+
+    transport_500 = httpx.MockTransport(mock_500)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _orig_async_client(transport=transport_500, **kwargs))
+
+    teacher_client = await auth_client_factory(setup_schools["teacher_a_user"])
+    res_500 = await teacher_client.post(
+        "/api/v1/course-materials/answer",
+        json={"query": "Explain gravity", "subject": "SCIENCE"},
+    )
+    assert res_500.status_code == 502
+    assert "Grounded answer generation service error" in res_500.json()["detail"]
+
+    # 2. Timeout upstream
+    def mock_timeout(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("Timeout reading stream")
+
+    transport_timeout = httpx.MockTransport(mock_timeout)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _orig_async_client(transport=transport_timeout, **kwargs))
+
+    res_timeout = await teacher_client.post(
+        "/api/v1/course-materials/answer",
+        json={"query": "Explain gravity", "subject": "SCIENCE"},
+    )
+    assert res_timeout.status_code == 502
+    assert "Timed out while generating grounded answer" in res_timeout.json()["detail"]
+

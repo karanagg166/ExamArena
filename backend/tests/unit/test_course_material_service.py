@@ -274,3 +274,115 @@ async def test_search_course_materials(mocker):
         document_type=None,
         tenant_id="school_sch_alpha",
     )
+
+
+@pytest.mark.asyncio
+async def test_answer_question_success():
+    mock_ss = AsyncMock()
+    mock_ss.generate_answer = AsyncMock(
+        return_value={
+            "answer": "Photosynthesis is the process by which green plants make food using sunlight. [1]",
+            "citations": [
+                {
+                    "citation_number": 1,
+                    "chunk_id": "chk_bio_1",
+                    "document_id": "mat_doc_1",
+                    "file_name": "biology_ch1.pdf",
+                    "page_number": 14,
+                    "text_snippet": "Plants use chlorophyll to absorb light...",
+                    "collection_id": "class_cls_9_subject_science",
+                    "owner_subject_id": "user_teach_1",
+                }
+            ],
+            "retrieved_chunk_count": 1,
+            "duration_ms": 35.8,
+        }
+    )
+
+    # Mock DB session to return material info
+    mock_session = AsyncMock()
+    mock_material = MagicMock()
+    mock_material.id = "mat_doc_1"
+    mock_material.schoolId = "sch_alpha"
+    mock_material.title = "Class 9 Biology Textbook"
+    mock_material.originalFileName = "biology_ch1.pdf"
+    mock_material.documentType = CourseMaterialDocumentType.TEXTBOOK
+
+    mock_db_res = MagicMock()
+    mock_db_res.scalars.return_value.all.return_value = [mock_material]
+    mock_session.execute.return_value = mock_db_res
+
+    service = CourseMaterialService(search_sphere_client=mock_ss)
+    res = await service.answer_question(
+        session=mock_session,
+        school_id="sch_alpha",
+        query="What is photosynthesis?",
+        subject=Subject.SCIENCE,
+        class_id="cls_9",
+        limit=3,
+    )
+
+    assert "Photosynthesis is the process" in res.answer
+    assert len(res.citations) == 1
+    assert res.citations[0].citation_number == 1
+    assert res.citations[0].title == "Class 9 Biology Textbook"
+    assert res.citations[0].file_name == "biology_ch1.pdf"
+    assert res.citations[0].page_number == 14
+    assert res.citations[0].material_id == "mat_doc_1"
+    assert res.retrieved_chunk_count == 1
+
+    mock_ss.generate_answer.assert_awaited_once_with(
+        query="What is photosynthesis?",
+        collection_id="class_cls_9_subject_science",
+        limit=3,
+        document_type=None,
+        tenant_id="school_sch_alpha",
+    )
+
+
+@pytest.mark.asyncio
+async def test_answer_question_no_evidence():
+    mock_ss = AsyncMock()
+    mock_ss.generate_answer = AsyncMock(
+        return_value={
+            "answer": "I couldn't find relevant information in your documents to answer that question.",
+            "citations": [],
+            "retrieved_chunk_count": 0,
+            "duration_ms": 12.0,
+        }
+    )
+
+    mock_session = AsyncMock()
+
+    service = CourseMaterialService(search_sphere_client=mock_ss)
+    res = await service.answer_question(
+        session=mock_session,
+        school_id="sch_alpha",
+        query="Who won the 2026 World Cup?",
+        subject=Subject.SCIENCE,
+    )
+
+    assert "couldn't find" in res.answer.lower()
+    assert len(res.citations) == 0
+    assert res.retrieved_chunk_count == 0
+
+
+@pytest.mark.asyncio
+async def test_answer_question_upstream_error():
+    mock_ss = AsyncMock()
+    mock_ss.generate_answer = AsyncMock(
+        side_effect=SearchSphereError("Search-Sphere connection timed out")
+    )
+    mock_session = AsyncMock()
+
+    service = CourseMaterialService(search_sphere_client=mock_ss)
+    with pytest.raises(HTTPException) as exc_info:
+        await service.answer_question(
+            session=mock_session,
+            school_id="sch_alpha",
+            query="Explain gravity",
+            subject=Subject.SCIENCE,
+        )
+
+    assert exc_info.value.status_code == 502
+    assert "Grounded answer generation service error" in exc_info.value.detail

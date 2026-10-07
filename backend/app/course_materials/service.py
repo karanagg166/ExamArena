@@ -15,6 +15,8 @@ from app.core.models import (
 )
 from app.course_materials import crud
 from app.course_materials.schemas import (
+    CourseMaterialAnswerCitation,
+    CourseMaterialAnswerResponse,
     CourseMaterialResponse,
     CourseMaterialSearchResponse,
     CourseMaterialSearchResultItem,
@@ -359,3 +361,69 @@ class CourseMaterialService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Semantic search service error: {exc.message}",
             ) from exc
+
+    async def answer_question(
+        self,
+        session: AsyncSession,
+        school_id: str,
+        query: str,
+        subject: Subject,
+        class_id: str | None = None,
+        document_type: CourseMaterialDocumentType | None = None,
+        limit: int = 5,
+    ) -> CourseMaterialAnswerResponse:
+        """
+        Generate grounded answer with source citations against Search-Sphere.
+        Enforces tenant isolation by school_id and collection scope by subject/class.
+        """
+        tenant_id = build_tenant_id(school_id)
+        collection_id = build_collection_id(subject=subject, class_id=class_id)
+
+        try:
+            raw_res = await self._ss_client.generate_answer(
+                query=query,
+                tenant_id=tenant_id,
+                collection_id=collection_id,
+                limit=limit,
+                document_type=document_type.value if document_type else None,
+            )
+
+            raw_citations = raw_res.get("citations", [])
+            doc_ids = [c.get("document_id") for c in raw_citations if c.get("document_id")]
+            material_map = {}
+            if doc_ids:
+                materials = await crud.get_course_materials_by_ids(session, doc_ids)
+                material_map = {m.id: m for m in materials if m.schoolId == school_id}
+
+            citations: list[CourseMaterialAnswerCitation] = []
+            for c in raw_citations:
+                doc_id = c.get("document_id")
+                mat = material_map.get(doc_id)
+                citations.append(
+                    CourseMaterialAnswerCitation(
+                        citation_number=int(c.get("citation_number", len(citations) + 1)),
+                        file_name=mat.originalFileName if mat else c.get("file_name"),
+                        title=mat.title if mat else None,
+                        page_number=c.get("page_number"),
+                        text_snippet=c.get("text_snippet", ""),
+                        material_id=mat.id if mat else doc_id,
+                        document_type=mat.documentType.value if mat else c.get("document_type"),
+                    )
+                )
+
+            answer_text = raw_res.get("answer") or "I couldn't find enough information in the uploaded course materials to answer this reliably."
+
+            return CourseMaterialAnswerResponse(
+                answer=answer_text,
+                citations=citations,
+                retrieved_chunk_count=int(raw_res.get("retrieved_chunk_count", len(raw_citations))),
+                warnings=raw_res.get("warnings", []),
+                duration_ms=float(raw_res.get("duration_ms", 0.0)),
+            )
+        except SearchSphereError as exc:
+            logger.error("Search-Sphere answer generation failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Grounded answer generation service error: {exc.message}",
+            ) from exc
+

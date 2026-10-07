@@ -292,3 +292,156 @@ async def test_client_search_forwarding(monkeypatch):
     assert captured_payloads[0]["query"] == "What is refraction?"
     assert captured_payloads[0]["collection_id"] == "subject_science"
     assert captured_payloads[0]["limit"] == 5
+
+
+@pytest.mark.asyncio
+async def test_client_delete_collection(monkeypatch):
+    captured_requests: list[httpx.Request] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        captured_requests.append(request)
+        return httpx.Response(200, json={"success": True, "message": "Collection deleted"})
+
+    transport = httpx.MockTransport(mock_handler)
+    mock_async_client(monkeypatch, transport)
+
+    client = SearchSphereClient(
+        base_url="http://mock-ss:8000",
+        api_key="ss_live_secret_key",
+    )
+
+    deleted = await client.delete_collection(
+        collection_id="subject_maths",
+        tenant_id="school_sch_1",
+    )
+    assert deleted is True
+    assert len(captured_requests) == 1
+    req = captured_requests[0]
+    assert req.method == "DELETE"
+    assert req.url.path == "/api/v1/collections/subject_maths"
+    assert req.headers["x-tenant-id"] == "school_sch_1"
+    assert req.headers["authorization"] == "Bearer ss_live_secret_key"
+    assert req.headers["x-client-id"] == "exam_arena"
+
+
+@pytest.mark.asyncio
+async def test_client_generate_answer_forwarding(monkeypatch):
+    captured_payloads: list[dict] = []
+    captured_headers: list[httpx.Headers] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        captured_headers.append(request.headers)
+        payload = json.loads(request.content.decode("utf-8"))
+        captured_payloads.append(payload)
+        return httpx.Response(
+            200,
+            json={
+                "answer": "Total internal reflection occurs when angle of incidence exceeds critical angle. [1]",
+                "citations": [
+                    {
+                        "citation_number": 1,
+                        "chunk_id": "chk_42",
+                        "document_id": "doc_physics_1",
+                        "file_name": "ch10_light.pdf",
+                        "page_number": 12,
+                        "text_snippet": "When light travels from denser to rarer medium...",
+                        "collection_id": "subject_physics",
+                        "owner_subject_id": "user_teach_1",
+                    }
+                ],
+                "retrieved_chunk_count": 1,
+                "duration_ms": 42.5,
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    mock_async_client(monkeypatch, transport)
+
+    client = SearchSphereClient(
+        base_url="http://mock-ss:8000",
+        api_key="ss_live_secret_key",
+    )
+
+    res = await client.generate_answer(
+        query="Explain total internal reflection",
+        tenant_id="school_sch_1",
+        collection_id="subject_physics",
+        owner_subject_id="user_teach_1",
+        limit=3,
+        document_type="TEXTBOOK",
+        system_prompt="Be concise",
+    )
+
+    assert "Total internal reflection" in res["answer"]
+    assert len(res["citations"]) == 1
+    assert res["citations"][0]["citation_number"] == 1
+    assert res["citations"][0]["document_id"] == "doc_physics_1"
+
+    # Verify headers
+    headers = captured_headers[0]
+    assert headers["authorization"] == "Bearer ss_live_secret_key"
+    assert headers["x-client-id"] == "exam_arena"
+    assert headers["x-tenant-id"] == "school_sch_1"
+    assert headers["x-collection-id"] == "subject_physics"
+    assert headers["x-subject-id"] == "user_teach_1"
+
+    # Verify payload
+    payload = captured_payloads[0]
+    assert payload["query"] == "Explain total internal reflection"
+    assert payload["collection_id"] == "subject_physics"
+    assert payload["limit"] == 3
+    assert payload["document_type"] == "TEXTBOOK"
+    assert payload["system_prompt"] == "Be concise"
+
+
+@pytest.mark.asyncio
+async def test_client_generate_answer_timeout(monkeypatch):
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("Timeout reading stream")
+
+    transport = httpx.MockTransport(mock_handler)
+    mock_async_client(monkeypatch, transport)
+
+    client = SearchSphereClient(
+        base_url="http://mock-ss:8000",
+        api_key="ss_live_secret_key",
+    )
+
+    with pytest.raises(SearchSphereTimeoutError) as exc_info:
+        await client.generate_answer(
+            query="Explain gravity",
+            tenant_id="school_sch_1",
+            collection_id="subject_physics",
+        )
+    assert "Timed out while generating grounded answer" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_client_generate_answer_error_mappings(monkeypatch):
+    status_to_test = [
+        (401, SearchSphereAuthenticationError),
+        (403, SearchSphereAuthorizationError),
+        (404, SearchSphereNotFoundError),
+        (500, SearchSphereUnavailableError),
+        (503, SearchSphereUnavailableError),
+    ]
+
+    for status_code, expected_exc in status_to_test:
+        def mock_handler(request: httpx.Request, sc=status_code) -> httpx.Response:
+            return httpx.Response(sc, json={"detail": f"Upstream error {sc}"})
+
+        transport = httpx.MockTransport(mock_handler)
+        mock_async_client(monkeypatch, transport)
+
+        client = SearchSphereClient(
+            base_url="http://mock-ss:8000",
+            api_key="ss_live_secret_key",
+        )
+
+        with pytest.raises(expected_exc):
+            await client.generate_answer(
+                query="Query",
+                tenant_id="school_sch_1",
+                collection_id="subject_physics",
+            )
+
