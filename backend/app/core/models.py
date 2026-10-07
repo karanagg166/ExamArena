@@ -139,6 +139,22 @@ class AnswerKeyImportSourceType(enum.StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class CourseMaterialDocumentType(enum.StrEnum):
+    TEXTBOOK = "TEXTBOOK"
+    TEACHER_NOTES = "TEACHER_NOTES"
+    SYLLABUS = "SYLLABUS"
+    QUESTION_BANK = "QUESTION_BANK"
+    PAST_PAPER = "PAST_PAPER"
+    OTHER = "OTHER"
+
+
+class CourseMaterialStatus(enum.StrEnum):
+    UPLOADED = "UPLOADED"
+    PROCESSING = "PROCESSING"
+    READY = "READY"
+    FAILED = "FAILED"
+
+
 # ── MODELS ─────────────────────────────────────────────────────
 
 
@@ -1041,3 +1057,61 @@ class AnswerKeyImport(Base):
 
     exam: Mapped["Exam"] = relationship("Exam", back_populates="answerKeyImports")
     teacher: Mapped["Teacher"] = relationship("Teacher")
+
+
+class CourseMaterial(Base):
+    __tablename__ = "CourseMaterial"
+    __table_args__ = (
+        Index("coursematerial_schoolid_idx", "schoolId"),
+        Index("coursematerial_subject_idx", "subject"),
+        Index("coursematerial_classid_idx", "classId"),
+        Index("coursematerial_uploadedby_idx", "uploadedBy"),
+        Index("coursematerial_status_idx", "status"),
+        Index("coursematerial_spheredocid_idx", "searchSphereDocumentId"),
+    )
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=generate_uuid)
+    schoolId: Mapped[str] = mapped_column(
+        String, ForeignKey("School.id", ondelete="CASCADE"), nullable=False
+    )
+    subject: Mapped[Subject] = mapped_column(
+        SQLEnum(Subject, native_enum=False), nullable=False
+    )
+    classId: Mapped[str | None] = mapped_column(
+        String, ForeignKey("SchoolClass.id", ondelete="SET NULL"), nullable=True
+    )
+    uploadedBy: Mapped[str] = mapped_column(
+        String, ForeignKey("User.id", ondelete="CASCADE"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    originalFileName: Mapped[str] = mapped_column(String, nullable=False)
+    fileSize: Mapped[int] = mapped_column(Integer, nullable=False)
+    mimeType: Mapped[str] = mapped_column(String, nullable=False)
+    documentType: Mapped[CourseMaterialDocumentType] = mapped_column(
+        SQLEnum(CourseMaterialDocumentType, native_enum=False),
+        default=CourseMaterialDocumentType.OTHER,
+        nullable=False,
+    )
+    searchSphereDocumentId: Mapped[str | None] = mapped_column(
+        String, nullable=True
+    )
+    searchSphereCollectionId: Mapped[str] = mapped_column(
+        String, nullable=False
+    )
+    status: Mapped[CourseMaterialStatus] = mapped_column(
+        SQLEnum(CourseMaterialStatus, native_enum=False),
+        default=CourseMaterialStatus.UPLOADED,
+        nullable=False,
+    )
+    processingError: Mapped[str | None] = mapped_column(Text, nullable=True)
+    createdAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updatedAt: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
+
+    school: Mapped["School"] = relationship("School")
+    schoolClass: Mapped["SchoolClass | None"] = relationship("SchoolClass")
+    uploader: Mapped["User"] = relationship("User")

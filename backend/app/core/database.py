@@ -178,6 +178,47 @@ async def init_db() -> None:
                 text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedAt" TIMESTAMPTZ;')
             )
 
+            # Phase 4 migrations: CourseMaterial table for Search-Sphere RAG integration
+            await conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS "CourseMaterial" (
+                    "id" VARCHAR PRIMARY KEY,
+                    "schoolId" VARCHAR NOT NULL REFERENCES "School"("id") ON DELETE CASCADE,
+                    "subject" VARCHAR NOT NULL,
+                    "classId" VARCHAR REFERENCES "SchoolClass"("id") ON DELETE SET NULL,
+                    "uploadedBy" VARCHAR NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+                    "title" VARCHAR NOT NULL,
+                    "description" TEXT,
+                    "originalFileName" VARCHAR NOT NULL,
+                    "fileSize" INTEGER NOT NULL,
+                    "mimeType" VARCHAR NOT NULL,
+                    "documentType" VARCHAR NOT NULL DEFAULT 'OTHER',
+                    "searchSphereDocumentId" VARCHAR,
+                    "searchSphereCollectionId" VARCHAR NOT NULL,
+                    "status" VARCHAR NOT NULL DEFAULT 'UPLOADED',
+                    "processingError" TEXT,
+                    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """))
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_schoolid_idx" ON "CourseMaterial" ("schoolId");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_subject_idx" ON "CourseMaterial" ("subject");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_classid_idx" ON "CourseMaterial" ("classId");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_uploadedby_idx" ON "CourseMaterial" ("uploadedBy");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_status_idx" ON "CourseMaterial" ("status");')
+            )
+            await conn.execute(
+                text('CREATE INDEX IF NOT EXISTS "coursematerial_spheredocid_idx" ON "CourseMaterial" ("searchSphereDocumentId");')
+            )
+
             # Convert unique index on examCode to non-unique index if needed
             await conn.execute(text("DROP INDEX IF EXISTS exam_examcode_key;"))
             await conn.execute(

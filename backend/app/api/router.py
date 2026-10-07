@@ -4,6 +4,7 @@ from app.answer_keys.router import router as answer_keys_router
 from app.attempts.router import router as attempts_router
 from app.audit.router import router as audit_router
 from app.auth.router import router as auth_router
+from app.course_materials.router import router as course_materials_router
 from app.exams.router import router as exams_router
 from app.grading.router import router as grading_router
 from app.imports.router import router as imports_router
@@ -34,3 +35,4 @@ api_router.include_router(attempts_router)
 api_router.include_router(imports_router)
 api_router.include_router(answer_keys_router)
 api_router.include_router(grading_router)
+api_router.include_router(course_materials_router)
