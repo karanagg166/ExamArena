@@ -152,6 +152,32 @@ async def init_db() -> None:
                 text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageResourceType" VARCHAR DEFAULT \'raw\';')
             )
 
+            # Phase 3 migrations: StudentExamAnswer AI grading proposal and teacher review metadata
+            await conn.execute(
+                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiSuggestedMarks" DOUBLE PRECISION;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiConfidence" VARCHAR;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiFeedback" TEXT;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiGradingBreakdown" JSONB;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiWarnings" JSONB;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiGradedAt" TIMESTAMPTZ;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedBy" VARCHAR;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedAt" TIMESTAMPTZ;')
+            )
+
             # Convert unique index on examCode to non-unique index if needed
             await conn.execute(text("DROP INDEX IF EXISTS exam_examcode_key;"))
             await conn.execute(

@@ -267,6 +267,8 @@ model Question {
   imageUrl       String?
   wordLimit      Int?
   explanation    String?
+  referenceAnswer String?
+  gradingRubric  Json?
   questionType   QuestionType        @default(MULTIPLE_CHOICE)
   examId         String
   sectionId      String?
@@ -321,11 +323,19 @@ model StudentExamAnswer {
   questionId      String
   questionType    QuestionType
   textAnswer      String?
-  marksAwarded    Int?             @default(0)
-  feedback        String?
-  isCorrect       Correctness?
-  gradingStatus   GradingStatus    @default(PENDING)
-  createdAt       DateTime         @default(now())
+  marksAwarded       Float?           @default(0)
+  feedback           String?
+  isCorrect          Correctness?
+  gradingStatus      GradingStatus    @default(PENDING)
+  aiSuggestedMarks   Float?
+  aiConfidence       String?
+  aiFeedback         String?
+  aiGradingBreakdown Json?
+  aiWarnings         Json?
+  aiGradedAt         DateTime?
+  gradedBy           String?
+  gradedAt           DateTime?
+  createdAt          DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   selectedOptions SelectedOption[]
   question        Question         @relation(fields: [questionId], references: [id], onDelete: Cascade)

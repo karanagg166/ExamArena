@@ -56,6 +56,7 @@ DEFAULT_RBAC_POLICIES: list[tuple[str, str, str]] = [
     ("PRINCIPAL", "attempts", "read"),
     ("PRINCIPAL", "profile", "*"),
     ("PRINCIPAL", "chat", "*"),
+    ("PRINCIPAL", "grading", "*"),
     # TEACHER: Authoring exams/questions, managing assigned classes, student grading
     ("TEACHER", "dashboard", "*"),
     ("TEACHER", "exams", "*"),
@@ -63,6 +64,7 @@ DEFAULT_RBAC_POLICIES: list[tuple[str, str, str]] = [
     ("TEACHER", "sections", "*"),
     ("TEACHER", "question_imports", "*"),
     ("TEACHER", "answer_key_imports", "*"),
+    ("TEACHER", "grading", "*"),
     ("TEACHER", "school_classes", "read"),
     ("TEACHER", "school_classes", "manage"),
     ("TEACHER", "students", "read"),

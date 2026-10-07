@@ -813,6 +813,18 @@ class StudentExamAnswer(Base):
         default=GradingStatus.PENDING,
         nullable=False,
     )
+    aiSuggestedMarks: Mapped[float | None] = mapped_column(Float, nullable=True)
+    aiConfidence: Mapped[str | None] = mapped_column(String, nullable=True)
+    aiFeedback: Mapped[str | None] = mapped_column(Text, nullable=True)
+    aiGradingBreakdown: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
+    aiWarnings: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    aiGradedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    gradedBy: Mapped[str | None] = mapped_column(String, nullable=True)
+    gradedAt: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     createdAt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )

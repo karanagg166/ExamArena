@@ -1,5 +1,8 @@
-"""AI schemas exports."""
-
+from app.ai.schemas.grading import (
+    AIGradingResult,
+    GradingConfidence,
+    RubricGrade,
+)
 from app.ai.schemas.question_paper import (
     ExtractedConfidence,
     ExtractedOption,
@@ -14,4 +17,7 @@ __all__ = [
     "ExtractedOption",
     "ExtractedQuestion",
     "ExtractedQuestionPaper",
+    "AIGradingResult",
+    "RubricGrade",
+    "GradingConfidence",
 ]
