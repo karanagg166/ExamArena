@@ -2,13 +2,15 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.ai.schemas.grading import AIGradingResult
 from app.core.models import (
     Correctness,
     GradingStatus,
+    QuestionType,
     StudentExam,
     StudentExamAnswer,
     StudentExamStatus,
@@ -137,3 +139,147 @@ async def reject_ai_grading_proposal(
     await session.commit()
     await session.refresh(answer)
     return answer
+
+
+async def get_exam_grading_summary(
+    exam_id: str,
+    session: AsyncSession,
+) -> dict[str, int]:
+    """Computes exam-level subjective grading counts: total, pending, aiSuggestionsReady, teacherGraded."""
+    gradable_statuses = (
+        StudentExamStatus.SUBMITTED,
+        StudentExamStatus.GRADED,
+        StudentExamStatus.EXPIRED,
+    )
+    subjective_types = (
+        QuestionType.SHORT_ANSWER,
+        QuestionType.ESSAY,
+    )
+
+    stmt = (
+        select(
+            func.count(StudentExamAnswer.id).label("total_subjective"),
+            func.count(
+                case(
+                    (
+                        (StudentExamAnswer.gradingStatus != GradingStatus.MANUALLY_GRADED)
+                        & (StudentExamAnswer.aiSuggestedMarks.is_(None)),
+                        StudentExamAnswer.id,
+                    ),
+                    else_=None,
+                )
+            ).label("pending"),
+            func.count(
+                case(
+                    (
+                        (StudentExamAnswer.gradingStatus != GradingStatus.MANUALLY_GRADED)
+                        & (StudentExamAnswer.aiSuggestedMarks.is_not(None)),
+                        StudentExamAnswer.id,
+                    ),
+                    else_=None,
+                )
+            ).label("ai_suggestions_ready"),
+            func.count(
+                case(
+                    (
+                        StudentExamAnswer.gradingStatus == GradingStatus.MANUALLY_GRADED,
+                        StudentExamAnswer.id,
+                    ),
+                    else_=None,
+                )
+            ).label("teacher_graded"),
+        )
+        .join(StudentExam, StudentExamAnswer.studentExamId == StudentExam.id)
+        .where(
+            StudentExam.examId == exam_id,
+            StudentExam.status.in_(gradable_statuses),
+            StudentExamAnswer.questionType.in_(subjective_types),
+        )
+    )
+
+    row = (await session.execute(stmt)).one()
+    return {
+        "totalSubjectiveAnswers": int(row.total_subjective or 0),
+        "pending": int(row.pending or 0),
+        "aiSuggestionsReady": int(row.ai_suggestions_ready or 0),
+        "teacherGraded": int(row.teacher_graded or 0),
+    }
+
+
+async def count_eligible_subjective_answers(
+    exam_id: str,
+    regenerate_existing: bool,
+    session: AsyncSession,
+) -> int:
+    """Counts pending subjective answers eligible for bulk AI evaluation."""
+    gradable_statuses = (
+        StudentExamStatus.SUBMITTED,
+        StudentExamStatus.GRADED,
+        StudentExamStatus.EXPIRED,
+    )
+    subjective_types = (
+        QuestionType.SHORT_ANSWER,
+        QuestionType.ESSAY,
+    )
+
+    conditions = [
+        StudentExam.examId == exam_id,
+        StudentExam.status.in_(gradable_statuses),
+        StudentExamAnswer.questionType.in_(subjective_types),
+        StudentExamAnswer.gradingStatus != GradingStatus.MANUALLY_GRADED,
+    ]
+
+    if not regenerate_existing:
+        conditions.append(StudentExamAnswer.aiSuggestedMarks.is_(None))
+
+    stmt = (
+        select(func.count(StudentExamAnswer.id))
+        .join(StudentExam, StudentExamAnswer.studentExamId == StudentExam.id)
+        .where(*conditions)
+    )
+
+    count = (await session.execute(stmt)).scalar_one()
+    return int(count or 0)
+
+
+async def get_pending_subjective_answers_for_exam(
+    exam_id: str,
+    regenerate_existing: bool,
+    limit: int,
+    session: AsyncSession,
+) -> list[StudentExamAnswer]:
+    """Retrieves a bounded batch of eligible pending subjective answers with questions eagerly loaded."""
+    gradable_statuses = (
+        StudentExamStatus.SUBMITTED,
+        StudentExamStatus.GRADED,
+        StudentExamStatus.EXPIRED,
+    )
+    subjective_types = (
+        QuestionType.SHORT_ANSWER,
+        QuestionType.ESSAY,
+    )
+
+    conditions = [
+        StudentExam.examId == exam_id,
+        StudentExam.status.in_(gradable_statuses),
+        StudentExamAnswer.questionType.in_(subjective_types),
+        StudentExamAnswer.gradingStatus != GradingStatus.MANUALLY_GRADED,
+    ]
+
+    if not regenerate_existing:
+        conditions.append(StudentExamAnswer.aiSuggestedMarks.is_(None))
+
+    stmt = (
+        select(StudentExamAnswer)
+        .join(StudentExam, StudentExamAnswer.studentExamId == StudentExam.id)
+        .where(*conditions)
+        .order_by(StudentExamAnswer.createdAt.asc(), StudentExamAnswer.id.asc())
+        .limit(limit)
+        .options(
+            selectinload(StudentExamAnswer.question),
+            selectinload(StudentExamAnswer.studentExam).selectinload(StudentExam.exam),
+        )
+    )
+
+    return list((await session.execute(stmt)).scalars().all())
+

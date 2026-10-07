@@ -86,3 +86,36 @@ export type TeacherAttempt = Omit<
   marksObtained: number | null;
   submittedAt: string | null;
 };
+
+export interface ExamGradingSummary {
+  examId: string;
+  totalSubjectiveAnswers: number;
+  pending: number;
+  aiSuggestionsReady: number;
+  teacherGraded: number;
+}
+
+export interface BulkAIEvaluatePayload {
+  limit?: number;
+  regenerateExisting?: boolean;
+}
+
+export interface BulkAIEvaluationItemResult {
+  answerId: string;
+  studentExamId: string;
+  status: "AI_PROPOSAL_CREATED" | "FAILED" | "SKIPPED";
+  message?: string | null;
+  suggestedMarks?: number | null;
+}
+
+export interface BulkAIEvaluateResponse {
+  examId: string;
+  eligibleCount: number;
+  requestedCount: number;
+  processedCount: number;
+  failedCount: number;
+  skippedCount: number;
+  remainingCount: number;
+  results: BulkAIEvaluationItemResult[];
+}
+

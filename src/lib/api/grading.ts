@@ -1,6 +1,9 @@
 import { api } from "@/lib/axios";
 import type {
   AIGradingProposal,
+  BulkAIEvaluatePayload,
+  BulkAIEvaluateResponse,
+  ExamGradingSummary,
   ManualGradePayload,
   TeacherAnswerDetail,
   TeacherAttempt,
@@ -9,6 +12,9 @@ import type {
 
 const answerPath = (id: string) =>
   `/api/v1/student-answers/${encodeURIComponent(id)}`;
+const examGradingPath = (examId: string) =>
+  `/api/v1/exams/${encodeURIComponent(examId)}/grading`;
+
 export const gradingApi = {
   async getAttempt(id: string) {
     return (
@@ -39,4 +45,21 @@ export const gradingApi = {
       )
     ).data;
   },
+  async getExamGradingSummary(examId: string) {
+    return (
+      await api.get<ExamGradingSummary>(`${examGradingPath(examId)}/summary`)
+    ).data;
+  },
+  async bulkEvaluatePendingAnswers(
+    examId: string,
+    payload?: BulkAIEvaluatePayload,
+  ) {
+    return (
+      await api.post<BulkAIEvaluateResponse>(
+        `${examGradingPath(examId)}/ai-evaluate-pending`,
+        payload ?? {},
+      )
+    ).data;
+  },
 };
+

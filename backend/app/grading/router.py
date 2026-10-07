@@ -17,11 +17,18 @@ from app.api.deps import get_current_user
 from app.audit.actions import AuditAction, AuditResourceType
 from app.audit.service import record_audit_event
 from app.core.database import get_db
-from app.core.models import QuestionType
+from app.core.models import GradingStatus, QuestionType
 from app.grading import crud
-from app.grading.permissions import require_answer_grading_access
+from app.grading.permissions import (
+    require_answer_grading_access,
+    require_exam_grading_access,
+)
 from app.grading.schemas import (
     AIGradingProposalResponse,
+    BulkAIEvaluateRequest,
+    BulkAIEvaluateResponse,
+    BulkAIEvaluationItemResult,
+    ExamGradingSummaryResponse,
     RubricGradeResponse,
     TeacherGradeResponse,
     TeacherGradeUpdateRequest,
@@ -32,6 +39,8 @@ from app.users.schemas import UserResponse
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/student-answers", tags=["grading"])
+exam_grading_router = APIRouter(prefix="/api/v1/exams", tags=["grading"])
+
 
 
 @router.post(
@@ -348,3 +357,276 @@ async def get_answer_details_for_grading(
         aiProposal=ai_proposal,
         finalGrade=final_grade,
     )
+
+
+@exam_grading_router.get(
+    "/{exam_id}/grading/summary",
+    response_model=ExamGradingSummaryResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_exam_grading_summary(
+    exam_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Retrieves exam-level subjective grading counts: total, pending, aiSuggestionsReady, teacherGraded."""
+    exam, _ = await require_exam_grading_access(current_user, exam_id, session)
+    summary = await crud.get_exam_grading_summary(exam_id, session)
+    return ExamGradingSummaryResponse(
+        examId=exam.id,
+        totalSubjectiveAnswers=summary["totalSubjectiveAnswers"],
+        pending=summary["pending"],
+        aiSuggestionsReady=summary["aiSuggestionsReady"],
+        teacherGraded=summary["teacherGraded"],
+    )
+
+
+@exam_grading_router.post(
+    "/{exam_id}/grading/ai-evaluate-pending",
+    response_model=BulkAIEvaluateResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def evaluate_pending_subjective_answers(
+    exam_id: str,
+    payload: BulkAIEvaluateRequest,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Generates draft AI grading suggestions in bulk for pending subjective answers in an exam.
+
+    Strict invariants:
+    - Only SHORT_ANSWER and ESSAY questions from gradable attempts are eligible.
+    - Final teacher grades are NEVER overwritten or modified.
+    - Existing AI proposals are skipped by default unless regenerateExisting is explicitly True.
+    - Suggestions are persisted as drafts and NEVER automatically finalize student marks.
+    - Individual answer failures (e.g. missing reference answer) do not abort the entire batch.
+    - Provider rate limits safely halt the remaining batch to avoid hammering the provider.
+    """
+    exam, _ = await require_exam_grading_access(current_user, exam_id, session)
+
+    initial_eligible_count = await crud.count_eligible_subjective_answers(
+        exam_id=exam.id,
+        regenerate_existing=payload.regenerateExisting,
+        session=session,
+    )
+
+    if initial_eligible_count == 0:
+        return BulkAIEvaluateResponse(
+            examId=exam.id,
+            eligibleCount=0,
+            requestedCount=payload.limit,
+            processedCount=0,
+            failedCount=0,
+            skippedCount=0,
+            remainingCount=0,
+            results=[],
+        )
+
+    answers = await crud.get_pending_subjective_answers_for_exam(
+        exam_id=exam.id,
+        regenerate_existing=payload.regenerateExisting,
+        limit=payload.limit,
+        session=session,
+    )
+
+    await record_audit_event(
+        action=AuditAction.AI_BULK_GRADING_STARTED,
+        resource_type=AuditResourceType.EXAM,
+        resource_id=exam.id,
+        metadata={
+            "requestedLimit": payload.limit,
+            "regenerateExisting": payload.regenerateExisting,
+            "eligibleCount": initial_eligible_count,
+        },
+        session=session,
+    )
+
+    results: list[BulkAIEvaluationItemResult] = []
+    processed_count = 0
+    failed_count = 0
+    skipped_count = 0
+    rate_limited = False
+
+    ai_service = AIGradingService()
+
+    for answer in answers:
+        if rate_limited:
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="SKIPPED",
+                    message="Skipped due to AI provider rate limit. Retry later.",
+                )
+            )
+            skipped_count += 1
+            continue
+
+        # Invariant safety: final teacher grades must NEVER be overwritten
+        if answer.gradingStatus == GradingStatus.MANUALLY_GRADED:
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="SKIPPED",
+                    message="Answer already has final teacher grade.",
+                )
+            )
+            skipped_count += 1
+            continue
+
+        if not payload.regenerateExisting and answer.aiSuggestedMarks is not None:
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="SKIPPED",
+                    message="AI proposal already exists.",
+                    suggestedMarks=float(answer.aiSuggestedMarks),
+                )
+            )
+            skipped_count += 1
+            continue
+
+        question = answer.question
+        if not question:
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="FAILED",
+                    message="Associated question not found.",
+                )
+            )
+            failed_count += 1
+            continue
+
+        exam_obj = (
+            answer.studentExam.exam
+            if (answer.studentExam and answer.studentExam.exam)
+            else exam
+        )
+
+        try:
+            proposal = await ai_service.grade_subjective_answer(
+                question_text=question.text,
+                question_type=answer.questionType,
+                max_marks=float(question.marks),
+                student_answer=answer.textAnswer,
+                reference_answer=question.referenceAnswer,
+                grading_rubric=question.gradingRubric,
+                explanation=question.explanation,
+                subject=exam_obj.subject.value
+                if (exam_obj and exam_obj.subject)
+                else None,
+                exam_title=exam_obj.name if exam_obj else None,
+            )
+            await crud.save_ai_grading_proposal(answer, proposal, session)
+            processed_count += 1
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="AI_PROPOSAL_CREATED",
+                    suggestedMarks=proposal.suggested_marks,
+                )
+            )
+        except GradingEligibilityError as exc:
+            failed_count += 1
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="FAILED",
+                    message=str(exc),
+                )
+            )
+        except GradingContextMissingError as exc:
+            failed_count += 1
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="FAILED",
+                    message=str(exc),
+                )
+            )
+        except AIGradingValidationError as exc:
+            logger.warning("AI grading proposal rejected by invariant check: %s", exc)
+            failed_count += 1
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="FAILED",
+                    message=f"Validation failed: {exc}",
+                )
+            )
+        except AIGradingProviderError as exc:
+            logger.error("AI grading provider error: %s", exc)
+            failed_count += 1
+            error_msg = str(exc)
+            if "rate limit" in error_msg.lower():
+                rate_limited = True
+                results.append(
+                    BulkAIEvaluationItemResult(
+                        answerId=answer.id,
+                        studentExamId=answer.studentExamId,
+                        status="FAILED",
+                        message="AI provider rate limit reached. Halting batch.",
+                    )
+                )
+            else:
+                results.append(
+                    BulkAIEvaluationItemResult(
+                        answerId=answer.id,
+                        studentExamId=answer.studentExamId,
+                        status="FAILED",
+                        message="AI grading unavailable for this answer.",
+                    )
+                )
+        except Exception as exc:
+            logger.exception("Unexpected error grading answer %s: %s", answer.id, exc)
+            failed_count += 1
+            results.append(
+                BulkAIEvaluationItemResult(
+                    answerId=answer.id,
+                    studentExamId=answer.studentExamId,
+                    status="FAILED",
+                    message="An unexpected error occurred during AI evaluation.",
+                )
+            )
+
+    await record_audit_event(
+        action=AuditAction.AI_BULK_GRADING_COMPLETED,
+        resource_type=AuditResourceType.EXAM,
+        resource_id=exam.id,
+        metadata={
+            "examId": exam.id,
+            "eligibleCount": initial_eligible_count,
+            "requestedCount": payload.limit,
+            "processedCount": processed_count,
+            "failedCount": failed_count,
+            "skippedCount": skipped_count,
+        },
+        session=session,
+    )
+    await session.commit()
+
+    remaining_count = await crud.count_eligible_subjective_answers(
+        exam_id=exam.id,
+        regenerate_existing=payload.regenerateExisting,
+        session=session,
+    )
+
+    return BulkAIEvaluateResponse(
+        examId=exam.id,
+        eligibleCount=initial_eligible_count,
+        requestedCount=payload.limit,
+        processedCount=processed_count,
+        failedCount=failed_count,
+        skippedCount=skipped_count,
+        remainingCount=remaining_count,
+        results=results,
+    )
+

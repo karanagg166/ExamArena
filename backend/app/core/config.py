@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     STREAM_API_KEY: str = ""
     STREAM_API_SECRET: str = ""
     COHERE_API_KEY: str | None = None
-    COHERE_MODEL: str = "command-r-plus"
+    COHERE_MODEL: str = "command-r-08-2024"
     CLOUDINARY_APIKEY: str | None = None
     CLOUDINARY_APISECRET: str | None = None
     CLOUDINARY_CLOUDNAME: str | None = None
@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     SEARCH_SPHERE_TIMEOUT_SECONDS: float = 30.0
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore"
     )
 
 

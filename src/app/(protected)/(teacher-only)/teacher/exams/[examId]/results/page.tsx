@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/loading";
+import { BulkGradingCard } from "@/components/teacher/grading/BulkGradingCard";
 import { api } from "@/lib/axios";
 import type { Exam } from "@/types";
 
@@ -48,29 +49,30 @@ export default function ExamResultsLeaderboardPage() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PASSED" | "FAILED" | "DISTINCTION">("ALL");
   const [sortBy, setSortBy] = useState<"RANK_ASC" | "SCORE_DESC" | "SCORE_ASC" | "NAME_ASC" | "ROLL_ASC">("RANK_ASC");
 
-  useEffect(() => {
-    const fetchExamAndResults = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [examRes, resultsRes] = await Promise.all([
-          api.get<Exam>(`/api/v1/exams/${examId}`),
-          api.get<StudentScoreboardResult[]>(`/api/v1/exams/${examId}/results`),
-        ]);
-        setExam(examRes.data);
-        setResults(resultsRes.data);
-      } catch (err: unknown) {
-        const detail =
-          (err as { response?: { data?: { detail?: string } } })?.response
-            ?.data?.detail;
-        setError(detail ?? "Failed to load exam results.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (examId) fetchExamAndResults();
+  const fetchExamAndResults = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [examRes, resultsRes] = await Promise.all([
+        api.get<Exam>(`/api/v1/exams/${examId}`),
+        api.get<StudentScoreboardResult[]>(`/api/v1/exams/${examId}/results`),
+      ]);
+      setExam(examRes.data);
+      setResults(resultsRes.data);
+    } catch (err: unknown) {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response
+          ?.data?.detail;
+      setError(detail ?? "Failed to load exam results.");
+    } finally {
+      setLoading(false);
+    }
   }, [examId]);
+
+  useEffect(() => {
+    if (examId) fetchExamAndResults();
+  }, [examId, fetchExamAndResults]);
+
 
   const filteredResults = useMemo(() => {
     let list = [...results];
@@ -225,6 +227,9 @@ export default function ExamResultsLeaderboardPage() {
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.passRate}%</p>
           </GlassCard>
         </div>
+
+        {/* Subjective Grading Summary & Bulk Evaluation */}
+        <BulkGradingCard examId={examId} onGradingEvaluated={fetchExamAndResults} />
 
         {/* Search & Filter Bar */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">

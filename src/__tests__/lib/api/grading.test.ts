@@ -40,4 +40,38 @@ it("uses the authenticated client and actual grading routes without recasing res
   );
   await gradingApi.getAttempt("at1");
   expect(api.get).toHaveBeenCalledWith("/api/v1/attempts/at1");
+
+  const summary = {
+    examId: "e1",
+    totalSubjectiveAnswers: 10,
+    pending: 5,
+    aiSuggestionsReady: 2,
+    teacherGraded: 3,
+  };
+  vi.mocked(api.get).mockResolvedValue({ data: summary });
+  expect(await gradingApi.getExamGradingSummary("e1")).toBe(summary);
+  expect(api.get).toHaveBeenCalledWith("/api/v1/exams/e1/grading/summary");
+
+  const bulkResp = {
+    examId: "e1",
+    eligibleCount: 5,
+    requestedCount: 20,
+    processedCount: 5,
+    failedCount: 0,
+    skippedCount: 0,
+    remainingCount: 0,
+    results: [],
+  };
+  vi.mocked(api.post).mockResolvedValue({ data: bulkResp });
+  expect(
+    await gradingApi.bulkEvaluatePendingAnswers("e1", {
+      limit: 20,
+      regenerateExisting: false,
+    }),
+  ).toBe(bulkResp);
+  expect(api.post).toHaveBeenCalledWith(
+    "/api/v1/exams/e1/grading/ai-evaluate-pending",
+    { limit: 20, regenerateExisting: false },
+  );
 });
+
