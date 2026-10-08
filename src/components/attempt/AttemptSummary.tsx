@@ -56,10 +56,11 @@ export const AttemptSummary = ({ questions }: { questions: Question[] }) => {
     }
   };
 
-  const answered = Object.values(answers).filter(a => a.status === 'ANSWERED').length;
-  const marked = Object.values(answers).filter(a => a.status === 'MARKED_FOR_REVIEW').length;
-  const notAnswered = Object.values(answers).filter(a => a.status === 'VISITED_NOT_ANSWERED').length;
-  const notVisited = Object.values(answers).filter(a => a.status === 'NOT_VISITED').length;
+  const getQuestionStatus = (qId: string) => answers[qId]?.status || 'NOT_VISITED';
+  const answered = questions.filter(q => getQuestionStatus(q.id) === 'ANSWERED').length;
+  const marked = questions.filter(q => getQuestionStatus(q.id) === 'MARKED_FOR_REVIEW').length;
+  const notAnswered = questions.filter(q => getQuestionStatus(q.id) === 'VISITED_NOT_ANSWERED').length;
+  const notVisited = questions.filter(q => getQuestionStatus(q.id) === 'NOT_VISITED').length;
 
   const currentSectionQuestions = sections.find(s => s.name === activeTab)?.questions || questions;
 

@@ -16,9 +16,10 @@ from app.ai.clients.cohere_client import (
 
 
 def test_cohere_missing_api_key_raises_configuration_error():
-    client = CohereClient(api_key=None)
-    with pytest.raises(CohereConfigurationError):
-        client._get_client()
+    with patch("app.ai.clients.cohere_client.settings.COHERE_API_KEY", None):
+        client = CohereClient(api_key=None)
+        with pytest.raises(CohereConfigurationError):
+            client._get_client()
 
 
 @pytest.mark.asyncio

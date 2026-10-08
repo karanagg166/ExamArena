@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.analytics.router import router as analytics_router
 from app.answer_keys.router import router as answer_keys_router
 from app.attempts.router import router as attempts_router
 from app.audit.router import router as audit_router
@@ -37,3 +38,5 @@ api_router.include_router(answer_keys_router)
 api_router.include_router(grading_router)
 api_router.include_router(exam_grading_router)
 api_router.include_router(course_materials_router)
+api_router.include_router(analytics_router)
+

@@ -4,22 +4,27 @@ import { SelectedOptionCreate } from '@/types/attempt';
 
 export function useQuestionPalette() {
   const store = useAttemptStore();
-  const answers = store.answers;
 
   const setActiveQuestion = useCallback((questionId: string) => {
-    // When setting active, if it's NOT_VISITED, it becomes VISITED_NOT_ANSWERED
-    if (answers[questionId] && answers[questionId].status === "NOT_VISITED") {
+    const currentAnswers = useAttemptStore.getState().answers;
+    const currentQ = currentAnswers[questionId];
+    // When setting active, if it's NOT_VISITED or uninitialized, it becomes VISITED_NOT_ANSWERED
+    if (!currentQ || currentQ.status === "NOT_VISITED") {
       store.setAnswerState(questionId, { status: "VISITED_NOT_ANSWERED" });
     }
     store.setAllState({ activeQuestionId: questionId });
-  }, [answers, store]);
+  }, [store]);
 
   const updateAnswer = useCallback((questionId: string, textAnswer?: string, selectedOptions?: SelectedOptionCreate[]) => {
-    const q = answers[questionId];
+    const currentAnswers = useAttemptStore.getState().answers;
+    const q = currentAnswers[questionId];
     if (!q) return;
 
-    const hasAnswer = (textAnswer != null && textAnswer.trim() !== '') || 
-                      (selectedOptions != null && selectedOptions.length > 0);
+    const currentText = textAnswer !== undefined ? textAnswer : q.textAnswer;
+    const currentOptions = selectedOptions !== undefined ? selectedOptions : q.selectedOptions;
+
+    const hasAnswer = (currentText != null && currentText.trim() !== '') || 
+                      (currentOptions != null && currentOptions.length > 0);
 
     // Keep 'MARKED_FOR_REVIEW' if it was marked. Only change to ANSWERED if it was not marked.
     let newStatus = q.status;
@@ -34,18 +39,19 @@ export function useQuestionPalette() {
     }
 
     store.setAnswerState(questionId, {
-      textAnswer: textAnswer !== undefined ? textAnswer : q.textAnswer,
-      selectedOptions: selectedOptions !== undefined ? selectedOptions : q.selectedOptions,
+      textAnswer: currentText,
+      selectedOptions: currentOptions,
       status: newStatus,
     });
-  }, [answers, store]);
+  }, [store]);
 
   const markQuestionForReview = useCallback((questionId: string) => {
     store.setAnswerState(questionId, { status: "MARKED_FOR_REVIEW" });
   }, [store]);
 
   const unmarkQuestionForReview = useCallback((questionId: string) => {
-    const q = answers[questionId];
+    const currentAnswers = useAttemptStore.getState().answers;
+    const q = currentAnswers[questionId];
     if (q) {
       const hasAnswer = (q.textAnswer != null && q.textAnswer.trim() !== '') || 
                         (q.selectedOptions != null && q.selectedOptions.length > 0);
@@ -53,7 +59,7 @@ export function useQuestionPalette() {
         status: hasAnswer ? "ANSWERED" : "VISITED_NOT_ANSWERED"
       });
     }
-  }, [answers, store]);
+  }, [store]);
 
   return {
     setActiveQuestion,
