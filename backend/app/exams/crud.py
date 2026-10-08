@@ -508,7 +508,7 @@ async def get_exam_results(
             .options(
                 selectinload(StudentExam.student).selectinload(Student.user),
             )
-            .order_by(StudentExam.marksObtained.desc())
+            .order_by(StudentExam.marksObtained.desc(), StudentExam.id.asc())
         )
         results = (await s.execute(stmt)).scalars().all()
         items = []

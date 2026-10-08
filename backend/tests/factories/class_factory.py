@@ -6,7 +6,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models import School, SchoolClass
+from app.core.models import School, SchoolClass, Teacher
 from tests.factories.school_factory import create_school_factory
 
 
@@ -14,15 +14,19 @@ async def create_class_factory(
     session: AsyncSession,
     *,
     school: School | None = None,
+    teacher: Teacher | None = None,
     name: str = "Class 10-A",
     year: str = "2026",
-    section: str = "A",
+    section: str | None = None,
     join_code: str | None = None,
     next_roll_no: int = 1,
 ) -> SchoolClass:
     """Create and persist a SchoolClass in the test database."""
     if not school:
         school = await create_school_factory(session)
+
+    if not section:
+        section = uuid.uuid4().hex[:2].upper()
 
     if not join_code:
         alphabet = string.ascii_uppercase + string.digits
@@ -33,6 +37,7 @@ async def create_class_factory(
         year=year,
         section=section,
         schoolId=school.id,
+        teacherId=teacher.id if teacher else None,
         joinCode=join_code,
         nextRollNo=next_roll_no,
     )
