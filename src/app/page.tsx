@@ -40,7 +40,7 @@ const roles = [
     icon: School,
     title: "For Principals",
     description:
-      "Register your school, manage teacher approvals, and oversee the entire academic ecosystem from a unified dashboard.",
+      "Register your school, manage teacher and student admissions, and oversee academic assessments from a unified dashboard.",
     features: ["Centralized management", "Role-based access control"],
     accent: "bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400",
     iconBg: "bg-violet-100 dark:bg-violet-900/40",
@@ -50,8 +50,8 @@ const roles = [
     icon: GraduationCap,
     title: "For Teachers",
     description:
-      "Craft rich assessments, organize classes, and grade instantly. Say goodbye to manual paper grading.",
-    features: ["Advanced exam builder", "Automated grading"],
+      "Craft rich assessments, organize classes, and streamline evaluation with automated objective scoring and AI-assisted subjective review.",
+    features: ["Advanced exam builder", "Automated & AI-assisted grading"],
     accent: "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400",
     iconBg: "bg-emerald-100 dark:bg-emerald-900/40",
     border: "hover:border-emerald-200 dark:hover:border-emerald-800",
@@ -61,8 +61,8 @@ const roles = [
     icon: UserPlus,
     title: "For Students",
     description:
-      "Take exams in a distraction-free, high-performance environment. Track progress and view results instantly.",
-    features: ["Distraction-free testing", "Instant performance insights"],
+      "Take exams in a distraction-free, proctored environment. Track submission status and access published results and scorecards upon release.",
+    features: ["Distraction-free testing", "Detailed scorecards upon release"],
     accent: "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400",
     iconBg: "bg-blue-100 dark:bg-blue-900/40",
     border: "hover:border-blue-200 dark:hover:border-blue-800",

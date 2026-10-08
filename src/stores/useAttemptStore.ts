@@ -49,6 +49,14 @@ export const useAttemptStore = create<AttemptStoreState>()(
         const answers = { ...state.answers };
         if (answers[questionId]) {
           answers[questionId] = { ...answers[questionId], ...newQState };
+        } else {
+          answers[questionId] = {
+            id: '',
+            questionId,
+            questionType: 'MULTIPLE_CHOICE',
+            status: 'NOT_VISITED',
+            ...newQState,
+          } as QuestionAttemptState;
         }
         return { answers };
       }),
