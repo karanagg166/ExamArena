@@ -61,7 +61,9 @@ async def save_ai_grading_proposal(
         else str(proposal.confidence)
     )
     answer.aiFeedback = proposal.feedback
-    answer.aiGradingBreakdown = [item.model_dump() for item in proposal.rubric_breakdown]
+    answer.aiGradingBreakdown = [
+        item.model_dump() for item in proposal.rubric_breakdown
+    ]
     answer.aiWarnings = list(proposal.warnings)
     answer.aiGradedAt = datetime.now(UTC)
     answer.updatedAt = datetime.now(UTC)
@@ -162,7 +164,10 @@ async def get_exam_grading_summary(
             func.count(
                 case(
                     (
-                        (StudentExamAnswer.gradingStatus != GradingStatus.MANUALLY_GRADED)
+                        (
+                            StudentExamAnswer.gradingStatus
+                            != GradingStatus.MANUALLY_GRADED
+                        )
                         & (StudentExamAnswer.aiSuggestedMarks.is_(None)),
                         StudentExamAnswer.id,
                     ),
@@ -172,7 +177,10 @@ async def get_exam_grading_summary(
             func.count(
                 case(
                     (
-                        (StudentExamAnswer.gradingStatus != GradingStatus.MANUALLY_GRADED)
+                        (
+                            StudentExamAnswer.gradingStatus
+                            != GradingStatus.MANUALLY_GRADED
+                        )
                         & (StudentExamAnswer.aiSuggestedMarks.is_not(None)),
                         StudentExamAnswer.id,
                     ),
@@ -182,7 +190,8 @@ async def get_exam_grading_summary(
             func.count(
                 case(
                     (
-                        StudentExamAnswer.gradingStatus == GradingStatus.MANUALLY_GRADED,
+                        StudentExamAnswer.gradingStatus
+                        == GradingStatus.MANUALLY_GRADED,
                         StudentExamAnswer.id,
                     ),
                     else_=None,
@@ -282,4 +291,3 @@ async def get_pending_subjective_answers_for_exam(
     )
 
     return list((await session.execute(stmt)).scalars().all())
-

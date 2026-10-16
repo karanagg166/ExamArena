@@ -1,6 +1,7 @@
 """Unit tests for Answer Key and Rubric redaction in exam permissions."""
 
 from datetime import datetime
+
 from app.exams.permissions import redact_exam_solutions
 from app.exams.schemas import ExamResponse, ExamType
 from app.questions.schemas import QuestionOptionResponse, QuestionResponse, QuestionType

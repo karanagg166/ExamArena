@@ -1,6 +1,7 @@
 """Unit tests for CloudinaryStorageProvider and StorageProvider abstraction."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 from app.storage.base import (

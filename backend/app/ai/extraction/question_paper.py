@@ -194,14 +194,16 @@ async def extract_questions_from_document(
             q.question_number = str(idx)
 
         # Ensure no answer keys were guessed
-        for opt in q.options:
+        for _opt in q.options:
             # Phase 1 rule: is_correct should not be inferred unless explicitly stated
             pass
 
         # Check for missing marks
         if q.marks is None:
             if "Marks could not be confidently determined" not in " ".join(q.warnings):
-                q.warnings.append("Marks could not be confidently determined from document")
+                q.warnings.append(
+                    "Marks could not be confidently determined from document"
+                )
 
     final_paper = ExtractedQuestionPaper(
         title=paper_title,

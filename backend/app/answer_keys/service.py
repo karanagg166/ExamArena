@@ -314,7 +314,7 @@ async def confirm_answer_key_import(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid validated extraction data: {e}",
-            )
+            ) from e
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

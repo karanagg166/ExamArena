@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

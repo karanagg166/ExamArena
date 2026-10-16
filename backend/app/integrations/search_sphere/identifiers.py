@@ -62,7 +62,7 @@ def parse_tenant_school_id(tenant_id: str) -> str:
 
 
 def build_collection_id(
-    subject: Union[Subject, str],
+    subject: Subject | str,
     class_id: str | None = None,
 ) -> str:
     """

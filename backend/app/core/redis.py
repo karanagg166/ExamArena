@@ -168,4 +168,3 @@ def get_redis() -> aioredis.Redis | UpstashRedisRESTClient | InMemoryRedisFallba
     if redis_client is None:
         raise RuntimeError("Redis client not initialized. Call connect_redis() first.")
     return redis_client
-

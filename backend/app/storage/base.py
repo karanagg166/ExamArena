@@ -6,26 +6,31 @@ from dataclasses import dataclass
 
 class StorageError(Exception):
     """Base exception for storage operations."""
+
     pass
 
 
 class StorageConfigurationError(StorageError):
     """Raised when storage credentials or settings are missing or invalid."""
+
     pass
 
 
 class StorageUploadError(StorageError):
     """Raised when uploading a file fails."""
+
     pass
 
 
 class StorageReadError(StorageError):
     """Raised when retrieving or downloading a file fails."""
+
     pass
 
 
 class StorageDeleteError(StorageError):
     """Raised when deleting a stored asset fails."""
+
     pass
 
 

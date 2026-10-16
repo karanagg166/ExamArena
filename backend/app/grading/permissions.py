@@ -8,7 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import enforce_rbac_permission
-from app.core.models import Exam, Question, Role, StudentExam, StudentExamAnswer, Teacher
+from app.core.models import (
+    Exam,
+    Question,
+    Role,
+    StudentExam,
+    StudentExamAnswer,
+    Teacher,
+)
 from app.exams.permissions import can_manage_exam
 from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
@@ -107,4 +114,3 @@ async def require_exam_grading_access(
         )
 
     return exam, teacher
-

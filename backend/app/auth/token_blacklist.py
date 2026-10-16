@@ -32,9 +32,7 @@ async def blacklist_token(jti: str, expires_in_seconds: int) -> None:
         logger.info(f"Token {jti} blacklisted for {expires_in_seconds}s")
     except Exception as e:
         logger.warning(f"Failed to blacklist token {jti}: {e}")
-        raise TokenBlacklistUnavailableError(
-            "Blacklist service unavailable"
-        ) from e
+        raise TokenBlacklistUnavailableError("Blacklist service unavailable") from e
 
 
 async def is_token_blacklisted(jti: str) -> bool:
@@ -51,6 +49,4 @@ async def is_token_blacklisted(jti: str) -> bool:
         return result > 0
     except Exception as e:
         logger.warning(f"Failed to check token blacklist for {jti}: {e}")
-        raise TokenBlacklistUnavailableError(
-            "Blacklist service unavailable"
-        ) from e
+        raise TokenBlacklistUnavailableError("Blacklist service unavailable") from e

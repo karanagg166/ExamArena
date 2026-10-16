@@ -76,7 +76,7 @@ async def upload_question_paper(
             max_mb=settings.QUESTION_IMPORT_MAX_FILE_MB,
         )
     except DocumentValidationError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+        raise HTTPException(status_code=e.status_code, detail=str(e)) from e
 
     # Save to storage provider
     storage = get_storage_provider()

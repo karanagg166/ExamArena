@@ -1093,12 +1093,8 @@ class CourseMaterial(Base):
         default=CourseMaterialDocumentType.OTHER,
         nullable=False,
     )
-    searchSphereDocumentId: Mapped[str | None] = mapped_column(
-        String, nullable=True
-    )
-    searchSphereCollectionId: Mapped[str] = mapped_column(
-        String, nullable=False
-    )
+    searchSphereDocumentId: Mapped[str | None] = mapped_column(String, nullable=True)
+    searchSphereCollectionId: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[CourseMaterialStatus] = mapped_column(
         SQLEnum(CourseMaterialStatus, native_enum=False),
         default=CourseMaterialStatus.UPLOADED,

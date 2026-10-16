@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+
 import httpx
 
 from app.audit.context import get_current_request_id
@@ -46,11 +47,11 @@ class SearchSphereClient:
         timeout_seconds: float | None = None,
     ):
         self._base_url = (
-            base_url
-            if base_url is not None
-            else (settings.SEARCH_SPHERE_URL or "")
+            base_url if base_url is not None else (settings.SEARCH_SPHERE_URL or "")
         ).rstrip("/")
-        self._api_key = api_key if api_key is not None else settings.SEARCH_SPHERE_API_KEY
+        self._api_key = (
+            api_key if api_key is not None else settings.SEARCH_SPHERE_API_KEY
+        )
         self._client_id = client_id or build_client_id()
         self._timeout_seconds = (
             timeout_seconds

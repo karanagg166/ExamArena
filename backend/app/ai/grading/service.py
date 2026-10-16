@@ -55,7 +55,9 @@ def validate_grading_eligibility(question_type: QuestionType | str) -> None:
     AI grading is strictly reserved for SHORT_ANSWER and ESSAY.
     Objective questions (MULTIPLE_CHOICE, MULTIPLE_SELECT, TRUE_FALSE) are rejected.
     """
-    qt_str = question_type.value if hasattr(question_type, "value") else str(question_type)
+    qt_str = (
+        question_type.value if hasattr(question_type, "value") else str(question_type)
+    )
     if qt_str not in (QuestionType.SHORT_ANSWER.value, QuestionType.ESSAY.value):
         raise GradingEligibilityError(
             f"AI grading is only supported for SHORT_ANSWER and ESSAY questions, received: {qt_str}"
@@ -86,7 +88,11 @@ class AIGradingService:
         """
         # 1. Eligibility guard
         validate_grading_eligibility(question_type)
-        qt_str = question_type.value if hasattr(question_type, "value") else str(question_type)
+        qt_str = (
+            question_type.value
+            if hasattr(question_type, "value")
+            else str(question_type)
+        )
 
         clean_student_answer = (student_answer or "").strip()
         clean_reference = (reference_answer or "").strip() or None
@@ -173,16 +179,24 @@ class AIGradingService:
             )
         except CohereConfigurationError as exc:
             logger.error("Cohere configuration error: %s", exc)
-            raise AIGradingProviderError(f"AI grading configuration error: {exc}") from exc
+            raise AIGradingProviderError(
+                f"AI grading configuration error: {exc}"
+            ) from exc
         except CohereRateLimitError as exc:
             logger.warning("Cohere rate limit reached during grading: %s", exc)
-            raise AIGradingProviderError("AI grading service rate limit reached. Please grade manually or retry later.") from exc
+            raise AIGradingProviderError(
+                "AI grading service rate limit reached. Please grade manually or retry later."
+            ) from exc
         except CohereTimeoutError as exc:
             logger.warning("Cohere request timed out during grading: %s", exc)
-            raise AIGradingProviderError("AI grading request timed out. Please grade manually or retry later.") from exc
+            raise AIGradingProviderError(
+                "AI grading request timed out. Please grade manually or retry later."
+            ) from exc
         except CohereAPIError as exc:
             logger.error("Cohere API error during grading: %s", exc)
-            raise AIGradingProviderError("AI grading provider error encountered.") from exc
+            raise AIGradingProviderError(
+                "AI grading provider error encountered."
+            ) from exc
         except Exception as exc:
             logger.error("Unexpected error invoking Cohere grading: %s", exc)
             raise AIGradingProviderError(f"AI grading provider failed: {exc}") from exc
@@ -193,7 +207,9 @@ class AIGradingService:
             result = AIGradingResult.model_validate(data)
         except Exception as exc:
             logger.error("Malformed structured output from Cohere: %s", exc)
-            raise AIGradingValidationError(f"AI grading returned invalid structured output: {exc}") from exc
+            raise AIGradingValidationError(
+                f"AI grading returned invalid structured output: {exc}"
+            ) from exc
 
         # 8. Server-side Score Invariants and Normalization (Parts 11, 12)
         # Check criteria awarded bounds
@@ -212,7 +228,9 @@ class AIGradingService:
                     )
 
         # Check total vs rubric sum
-        calculated_sum = round(sum(item.awarded_marks for item in result.rubric_breakdown), 2)
+        calculated_sum = round(
+            sum(item.awarded_marks for item in result.rubric_breakdown), 2
+        )
         diff = abs(calculated_sum - result.suggested_marks)
 
         if diff <= 0.05:
@@ -225,7 +243,9 @@ class AIGradingService:
 
         # Enforce question max marks bounds
         if result.suggested_marks < 0:
-            raise AIGradingValidationError(f"Suggested total marks cannot be negative: {result.suggested_marks}")
+            raise AIGradingValidationError(
+                f"Suggested total marks cannot be negative: {result.suggested_marks}"
+            )
 
         if result.suggested_marks > max_marks:
             result.suggested_marks = float(max_marks)

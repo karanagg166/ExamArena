@@ -1,6 +1,9 @@
 """Search-Sphere RAG microservice integration package."""
 
-from app.integrations.search_sphere.client import SearchSphereClient, get_search_sphere_client
+from app.integrations.search_sphere.client import (
+    SearchSphereClient,
+    get_search_sphere_client,
+)
 from app.integrations.search_sphere.exceptions import (
     SearchSphereAuthenticationError,
     SearchSphereAuthorizationError,

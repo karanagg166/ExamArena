@@ -1,5 +1,6 @@
 """AI extraction package."""
 
+from app.ai.extraction.answer_key import extract_answer_key_from_document
 from app.ai.extraction.document import (
     DocumentExtractionError,
     DocumentSourceType,
@@ -8,7 +9,6 @@ from app.ai.extraction.document import (
     PageContent,
     validate_uploaded_file,
 )
-from app.ai.extraction.answer_key import extract_answer_key_from_document
 from app.ai.extraction.image import extract_image_document
 from app.ai.extraction.pdf import extract_pdf_document
 from app.ai.extraction.question_paper import (

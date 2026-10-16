@@ -49,9 +49,7 @@ def extract_pdf_document(file_bytes: bytes) -> ExtractedDocument:
                     )
                 )
                 if page_text_clean:
-                    total_text_parts.append(
-                        f"--- Page {idx} ---\n{page_text_clean}\n"
-                    )
+                    total_text_parts.append(f"--- Page {idx} ---\n{page_text_clean}\n")
 
     except DocumentExtractionError:
         raise

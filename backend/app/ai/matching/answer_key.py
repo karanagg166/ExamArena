@@ -316,7 +316,7 @@ def match_extracted_answer_key(
         if ma.status == MatchStatus.MATCHED and ma.matched_question_id:
             assigned_counts.setdefault(ma.matched_question_id, []).append(idx)
 
-    for q_id, indices in assigned_counts.items():
+    for _q_id, indices in assigned_counts.items():
         if len(indices) > 1:
             for idx in indices:
                 item = matched_answers[idx]

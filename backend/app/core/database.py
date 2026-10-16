@@ -133,53 +133,82 @@ async def init_db() -> None:
 
             # Phase 2 migrations: Question referenceAnswer and gradingRubric
             await conn.execute(
-                text('ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "referenceAnswer" TEXT;')
+                text(
+                    'ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "referenceAnswer" TEXT;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "gradingRubric" JSON;')
+                text(
+                    'ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "gradingRubric" JSON;'
+                )
             )
             # Phase 2 migrations: QuestionImport storage metadata
             await conn.execute(
-                text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageProvider" VARCHAR NOT NULL DEFAULT \'LOCAL\';')
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageProvider" VARCHAR NOT NULL DEFAULT \'LOCAL\';'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageKey" VARCHAR;')
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageKey" VARCHAR;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageUrl" VARCHAR;')
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageUrl" VARCHAR;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageResourceType" VARCHAR DEFAULT \'raw\';')
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageResourceType" VARCHAR DEFAULT \'raw\';'
+                )
             )
 
             # Phase 3 migrations: StudentExamAnswer AI grading proposal and teacher review metadata
             await conn.execute(
-                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiSuggestedMarks" DOUBLE PRECISION;')
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiSuggestedMarks" DOUBLE PRECISION;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiConfidence" VARCHAR;')
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiConfidence" VARCHAR;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiFeedback" TEXT;')
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiFeedback" TEXT;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiGradingBreakdown" JSONB;')
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiGradingBreakdown" JSONB;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiWarnings" JSONB;')
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiWarnings" JSONB;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiGradedAt" TIMESTAMPTZ;')
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "aiGradedAt" TIMESTAMPTZ;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedBy" VARCHAR;')
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedBy" VARCHAR;'
+                )
             )
             await conn.execute(
-                text('ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedAt" TIMESTAMPTZ;')
+                text(
+                    'ALTER TABLE "StudentExamAnswer" ADD COLUMN IF NOT EXISTS "gradedAt" TIMESTAMPTZ;'
+                )
             )
 
             # Phase 4 migrations: CourseMaterial table for Search-Sphere RAG integration
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                 CREATE TABLE IF NOT EXISTS "CourseMaterial" (
                     "id" VARCHAR PRIMARY KEY,
                     "schoolId" VARCHAR NOT NULL REFERENCES "School"("id") ON DELETE CASCADE,
@@ -199,24 +228,37 @@ async def init_db() -> None:
                     "createdAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
-            """))
-            await conn.execute(
-                text('CREATE INDEX IF NOT EXISTS "coursematerial_schoolid_idx" ON "CourseMaterial" ("schoolId");')
+            """)
             )
             await conn.execute(
-                text('CREATE INDEX IF NOT EXISTS "coursematerial_subject_idx" ON "CourseMaterial" ("subject");')
+                text(
+                    'CREATE INDEX IF NOT EXISTS "coursematerial_schoolid_idx" ON "CourseMaterial" ("schoolId");'
+                )
             )
             await conn.execute(
-                text('CREATE INDEX IF NOT EXISTS "coursematerial_classid_idx" ON "CourseMaterial" ("classId");')
+                text(
+                    'CREATE INDEX IF NOT EXISTS "coursematerial_subject_idx" ON "CourseMaterial" ("subject");'
+                )
             )
             await conn.execute(
-                text('CREATE INDEX IF NOT EXISTS "coursematerial_uploadedby_idx" ON "CourseMaterial" ("uploadedBy");')
+                text(
+                    'CREATE INDEX IF NOT EXISTS "coursematerial_classid_idx" ON "CourseMaterial" ("classId");'
+                )
             )
             await conn.execute(
-                text('CREATE INDEX IF NOT EXISTS "coursematerial_status_idx" ON "CourseMaterial" ("status");')
+                text(
+                    'CREATE INDEX IF NOT EXISTS "coursematerial_uploadedby_idx" ON "CourseMaterial" ("uploadedBy");'
+                )
             )
             await conn.execute(
-                text('CREATE INDEX IF NOT EXISTS "coursematerial_spheredocid_idx" ON "CourseMaterial" ("searchSphereDocumentId");')
+                text(
+                    'CREATE INDEX IF NOT EXISTS "coursematerial_status_idx" ON "CourseMaterial" ("status");'
+                )
+            )
+            await conn.execute(
+                text(
+                    'CREATE INDEX IF NOT EXISTS "coursematerial_spheredocid_idx" ON "CourseMaterial" ("searchSphereDocumentId");'
+                )
             )
 
             # Convert unique index on examCode to non-unique index if needed
@@ -280,7 +322,8 @@ async def init_db() -> None:
                         )
                         break
 
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                     UPDATE "SchoolClass" AS class
                     SET "nextRollNo" = COALESCE((
                       SELECT MAX(CASE WHEN student."rollNo" ~ '^[0-9]+$'
@@ -289,7 +332,8 @@ async def init_db() -> None:
                       WHERE student."classId" = class."id"
                     ), 0) + 1
                     WHERE class."nextRollNo" = 1;
-                    """))
+                    """)
+            )
             await conn.execute(
                 text('ALTER TABLE "SchoolClass" ALTER COLUMN "joinCode" SET NOT NULL;')
             )
@@ -299,7 +343,8 @@ async def init_db() -> None:
                     'ON "SchoolClass" ("joinCode");'
                 )
             )
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                     DO $$
                     DECLARE constraint_name TEXT;
                     BEGIN
@@ -315,14 +360,16 @@ async def init_db() -> None:
                         EXECUTE format('ALTER TABLE "Student" DROP CONSTRAINT %I', constraint_name);
                       END IF;
                     END $$;
-                    """))
+                    """)
+            )
             await conn.execute(
                 text(
                     "CREATE UNIQUE INDEX IF NOT EXISTS student_classid_rollno_key "
                     'ON "Student" ("classId", "rollNo");'
                 )
             )
-            await conn.execute(text("""
+            await conn.execute(
+                text("""
                     CREATE TABLE IF NOT EXISTS "TeacherSchoolJoinRequest" (
                         "id" VARCHAR PRIMARY KEY,
                         "teacherId" VARCHAR NOT NULL REFERENCES "Teacher"("id") ON DELETE CASCADE,
@@ -333,7 +380,8 @@ async def init_db() -> None:
                         "decidedBy" VARCHAR,
                         CONSTRAINT "teacherschooljoinrequest_teacherid_schoolid_key" UNIQUE ("teacherId", "schoolId")
                     )
-                    """))
+                    """)
+            )
             await conn.execute(
                 text(
                     'CREATE INDEX IF NOT EXISTS "teacherschooljoinrequest_schoolid_idx" ON "TeacherSchoolJoinRequest" ("schoolId")'

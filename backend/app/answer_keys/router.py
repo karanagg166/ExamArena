@@ -73,7 +73,7 @@ async def upload_answer_key(
             max_mb=settings.ANSWER_KEY_IMPORT_MAX_FILE_MB,
         )
     except DocumentValidationError as e:
-        raise HTTPException(status_code=e.status_code, detail=str(e))
+        raise HTTPException(status_code=e.status_code, detail=str(e)) from e
 
     storage = get_storage_provider()
     storage_res = await storage.save_file(

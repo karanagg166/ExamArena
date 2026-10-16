@@ -29,7 +29,9 @@ class AIGradingProposalResponse(BaseModel):
 
 class TeacherGradeUpdateRequest(BaseModel):
     marks: float = Field(ge=0, description="Marks to award for this answer")
-    feedback: str | None = Field(default=None, description="Teacher feedback for the student")
+    feedback: str | None = Field(
+        default=None, description="Teacher feedback for the student"
+    )
 
     model_config = ConfigDict(extra="forbid")
 
@@ -113,4 +115,3 @@ class BulkAIEvaluateResponse(BaseModel):
     results: list[BulkAIEvaluationItemResult] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
-

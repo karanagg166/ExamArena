@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -94,7 +95,9 @@ async def list_course_materials(
     count_query = select(func.count()).select_from(query.subquery())
     total = (await session.execute(count_query)).scalar_one() or 0
 
-    paged_query = query.order_by(CourseMaterial.createdAt.desc()).limit(limit).offset(offset)
+    paged_query = (
+        query.order_by(CourseMaterial.createdAt.desc()).limit(limit).offset(offset)
+    )
     items = (await session.execute(paged_query)).scalars().all()
 
     return items, total

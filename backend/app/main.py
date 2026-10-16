@@ -11,6 +11,7 @@ from app.core import database as db
 from app.core.config import settings
 from app.core.middleware import RequestCorrelationAndLoggingMiddleware
 from app.core.redis import connect_redis, disconnect_redis
+from app.sockets import socket_router
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ async def global_exception_handler(request, exc: Exception):
 
 # Include routers
 app.include_router(api_router)
+app.include_router(socket_router)
 
 
 @app.get("/")

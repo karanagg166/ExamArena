@@ -7,8 +7,8 @@ import uuid
 from app.core.config import settings
 from app.storage.base import (
     StorageDeleteError,
-    StorageReadError,
     StorageProvider,
+    StorageReadError,
     StorageUploadError,
     StoredFile,
 )
@@ -90,8 +90,8 @@ class LocalStorageProvider(StorageProvider):
                     return f.read()
 
             return await asyncio.to_thread(_read)
-        except FileNotFoundError:
-            raise StorageReadError(f"Storage file not found: {key}")
+        except FileNotFoundError as e:
+            raise StorageReadError(f"Storage file not found: {key}") from e
         except Exception as e:
             raise StorageReadError(f"Failed to read local file {key}: {str(e)}") from e
 
@@ -103,7 +103,9 @@ class LocalStorageProvider(StorageProvider):
                 return True
             return False
         except Exception as e:
-            raise StorageDeleteError(f"Failed to delete local file {key}: {str(e)}") from e
+            raise StorageDeleteError(
+                f"Failed to delete local file {key}: {str(e)}"
+            ) from e
 
     def get_url(self, key: str, resource_type: str = "raw") -> str | None:
         return None

@@ -26,7 +26,9 @@ def extract_image_document(file_bytes: bytes, filename: str = "") -> ExtractedDo
             img.verify()  # Verify image integrity
     except Exception as e:
         logger.error("Corrupted image file: %s", e)
-        raise DocumentExtractionError(f"Corrupt or unreadable image file: {str(e)}") from e
+        raise DocumentExtractionError(
+            f"Corrupt or unreadable image file: {str(e)}"
+        ) from e
 
     # Re-open after verify() since verify() closes image
     width, height, img_format = 0, 0, ""
@@ -44,7 +46,9 @@ def extract_image_document(file_bytes: bytes, filename: str = "") -> ExtractedDo
 
         with Image.open(io.BytesIO(file_bytes)) as img:
             extracted_text = (pytesseract.image_to_string(img) or "").strip()
-            logger.info("Extracted %d characters via pytesseract OCR", len(extracted_text))
+            logger.info(
+                "Extracted %d characters via pytesseract OCR", len(extracted_text)
+            )
     except ImportError:
         logger.info("pytesseract OCR engine not installed in environment")
     except Exception as e:

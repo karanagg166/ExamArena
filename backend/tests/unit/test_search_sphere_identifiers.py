@@ -1,6 +1,7 @@
 """Unit tests for Search-Sphere identifier mapping and normalization."""
 
 import pytest
+
 from app.core.models import Subject
 from app.integrations.search_sphere.identifiers import (
     build_client_id,

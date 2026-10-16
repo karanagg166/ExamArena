@@ -32,7 +32,11 @@ def ensure_cloudinary_configured(
 ) -> None:
     """Validate environment settings and configure Cloudinary centrally."""
     global _CLOUDINARY_INITIALIZED
-    if _CLOUDINARY_INITIALIZED and not force and not (cloud_name or api_key or api_secret):
+    if (
+        _CLOUDINARY_INITIALIZED
+        and not force
+        and not (cloud_name or api_key or api_secret)
+    ):
         return
 
     c_name = cloud_name or settings.CLOUDINARY_CLOUDNAME
@@ -62,9 +66,14 @@ def ensure_cloudinary_configured(
             secure=True,
         )
         _CLOUDINARY_INITIALIZED = True
-        logger.info("Cloudinary storage provider initialized successfully for cloud '%s'", c_name)
+        logger.info(
+            "Cloudinary storage provider initialized successfully for cloud '%s'",
+            c_name,
+        )
     except Exception as e:
-        raise StorageConfigurationError(f"Failed to configure Cloudinary SDK: {str(e)}") from e
+        raise StorageConfigurationError(
+            f"Failed to configure Cloudinary SDK: {str(e)}"
+        ) from e
 
 
 class CloudinaryStorageProvider(StorageProvider):
@@ -111,7 +120,6 @@ class CloudinaryStorageProvider(StorageProvider):
             api_secret=api_secret,
             force=True,
         )
-
 
     def _determine_resource_type(self, clean_ext: str, requested: str) -> str:
         """Map file extension to explicit Cloudinary resource type.
@@ -196,7 +204,9 @@ class CloudinaryStorageProvider(StorageProvider):
                 secure=True,
             )
         except Exception as e:
-            raise StorageReadError(f"Failed to generate Cloudinary URL for key '{key}': {str(e)}") from e
+            raise StorageReadError(
+                f"Failed to generate Cloudinary URL for key '{key}': {str(e)}"
+            ) from e
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -214,7 +224,9 @@ class CloudinaryStorageProvider(StorageProvider):
             raise
         except Exception as e:
             logger.error("Failed to read Cloudinary asset '%s': %s", key, e)
-            raise StorageReadError(f"Failed to download Cloudinary asset: {str(e)}") from e
+            raise StorageReadError(
+                f"Failed to download Cloudinary asset: {str(e)}"
+            ) from e
 
     async def delete_file(
         self,
@@ -240,7 +252,9 @@ class CloudinaryStorageProvider(StorageProvider):
             return res.get("result") in ("ok", "not found")
         except Exception as e:
             logger.error("Failed to delete Cloudinary asset '%s': %s", target_key, e)
-            raise StorageDeleteError(f"Failed to delete Cloudinary asset: {str(e)}") from e
+            raise StorageDeleteError(
+                f"Failed to delete Cloudinary asset: {str(e)}"
+            ) from e
 
     def get_url(self, key: str, resource_type: str = "raw") -> str | None:
         """Return public URL for the stored Cloudinary asset."""

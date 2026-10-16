@@ -49,3 +49,8 @@ export function getErrorMessage(error: unknown): string {
 
   return "An unexpected error occurred.";
 }
+
+export function detailFromError(error: unknown, fallback = "An unexpected error occurred."): string {
+  const msg = getErrorMessage(error);
+  return msg && msg !== "An unexpected error occurred." ? msg : fallback;
+}

@@ -97,7 +97,17 @@ def validate_uploaded_file(
     if len(parts) > 2:
         # Check intermediate extensions
         for part in parts[1:-1]:
-            if part.lower() in ("php", "exe", "sh", "py", "js", "html", "bat", "cmd", "jsp"):
+            if part.lower() in (
+                "php",
+                "exe",
+                "sh",
+                "py",
+                "js",
+                "html",
+                "bat",
+                "cmd",
+                "jsp",
+            ):
                 raise DocumentValidationError(
                     "Suspicious multiple extensions detected", status_code=400
                 )

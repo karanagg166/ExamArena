@@ -1,6 +1,7 @@
 """Unit tests for digital PDF and image extraction."""
 
 import os
+
 import pytest
 
 from app.ai.extraction.document import (

@@ -1,5 +1,6 @@
 # FastAPI & Core Web Server
 fastapi==0.110.0
+uvicorn==0.27.1
 pydantic==2.6.4
 pydantic-settings==2.1.0
 email-validator>=2.0.0
@@ -7,13 +8,18 @@ sqlalchemy==2.0.28
 python-dotenv==1.0.1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt>=4.0.0
 asyncpg>=0.29.0
 alembic>=1.13.0
+psycopg2-binary>=2.9.9
+casbin>=1.35.0
 
 # AI Integration & Document Parsing
 openai
+cohere>=7.0.0
 PyPDF2
 pdfplumber
+pillow>=10.0.0
 
 # Data Processing & Exporting
 pandas
@@ -23,6 +29,7 @@ reportlab
 # Storage & Background Tasks
 boto3
 cloudinary
+arq
 redis
 httpx
 

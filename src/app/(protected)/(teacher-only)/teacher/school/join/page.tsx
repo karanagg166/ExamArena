@@ -7,7 +7,7 @@ import type { School } from "@/types/school";
 import { useSchoolStore, useTeacherRequestStore } from "@/stores";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/loading";
-import { Building2, Plus, RefreshCw, Search } from "lucide-react";
+import { Building2, Plus, RefreshCw, Search, X } from "lucide-react";
 
 export default function TeacherJoinSchoolPage() {
   const router = useRouter();
@@ -142,15 +142,41 @@ export default function TeacherJoinSchoolPage() {
 
         {/* Search Bar */}
         {schools.length > 0 && (
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search schools by name, code, or city..."
-              className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search schools by name, code, or city..."
+                className="w-full pl-11 pr-10 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
+              <span>
+                Showing {filteredSchools.length} of {schools.length} institutions
+              </span>
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -203,10 +229,19 @@ export default function TeacherJoinSchoolPage() {
         ) : null}
 
         {!loading && schools.length > 0 && filteredSchools.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center space-y-3 dark:border-slate-800 dark:bg-slate-900">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               No schools match &quot;{searchQuery}&quot;. Try a different search term.
             </p>
+            <div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSearchQuery("")}
+              >
+                Clear Search
+              </Button>
+            </div>
           </div>
         ) : null}
 

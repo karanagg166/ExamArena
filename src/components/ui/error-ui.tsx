@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -18,6 +19,8 @@ export function ErrorUI({
   title = "Something went wrong",
   subtitle = "An unexpected error occurred while rendering this page.",
 }: ErrorUIProps) {
+  const router = useRouter();
+
   useEffect(() => {
     console.error("Captured boundary error:", error);
   }, [error]);
@@ -58,7 +61,7 @@ export function ErrorUI({
             variant="secondary"
             className="w-full sm:w-auto border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-200"
             onClick={() => {
-              window.location.href = "/";
+              router.push("/");
             }}
           >
             <Home className="mr-2 h-4 w-4" />

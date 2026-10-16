@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Annotated, Any
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -59,7 +60,9 @@ async def upload_course_material(
     title: Annotated[str, Form(...)],
     subject: Annotated[Subject, Form(...)],
     file: UploadFile = File(...),
-    document_type: Annotated[CourseMaterialDocumentType, Form()] = CourseMaterialDocumentType.OTHER,
+    document_type: Annotated[
+        CourseMaterialDocumentType, Form()
+    ] = CourseMaterialDocumentType.OTHER,
     class_id: Annotated[str | None, Form()] = None,
     description: Annotated[str | None, Form()] = None,
     current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
@@ -93,15 +96,21 @@ async def upload_course_material(
 async def list_course_materials(
     subject: Subject | None = Query(None, description="Filter by subject"),
     class_id: str | None = Query(None, description="Filter by class"),
-    status_filter: CourseMaterialStatus | None = Query(None, alias="status", description="Filter by status"),
-    document_type: CourseMaterialDocumentType | None = Query(None, description="Filter by document type"),
+    status_filter: CourseMaterialStatus | None = Query(
+        None, alias="status", description="Filter by status"
+    ),
+    document_type: CourseMaterialDocumentType | None = Query(
+        None, description="Filter by document type"
+    ),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
     db: AsyncSession = Depends(get_db),
 ) -> CourseMaterialListResponse:
     """List materials scoped strictly to authenticated school tenant."""
-    school_id = await resolve_user_search_school_id(current_user, requested_class_id=class_id, session=db)
+    school_id = await resolve_user_search_school_id(
+        current_user, requested_class_id=class_id, session=db
+    )
     items, total = await crud.list_course_materials(
         session=db,
         school_id=school_id,
@@ -129,7 +138,9 @@ async def get_course_material(
     current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
     db: AsyncSession = Depends(get_db),
 ) -> CourseMaterialResponse:
-    school_id = await resolve_user_search_school_id(current_user, requested_class_id=None, session=db)
+    school_id = await resolve_user_search_school_id(
+        current_user, requested_class_id=None, session=db
+    )
     material = await crud.get_course_material_by_id(db, material_id)
     if not material or material.schoolId != school_id:
         raise HTTPException(
@@ -239,4 +250,3 @@ async def answer_course_materials(
         document_type=body.document_type,
         limit=body.limit,
     )
-

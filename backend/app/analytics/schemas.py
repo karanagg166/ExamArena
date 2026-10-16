@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.attempts.schemas import ExamScoreboardItem
 
 
-class PerformanceBracket(str, Enum):
+class PerformanceBracket(StrEnum):
     ALL = "ALL"
     PASSED = "PASSED"
     FAILED = "FAILED"
     DISTINCTION = "DISTINCTION"
 
 
-class AnalyticsSortBy(str, Enum):
+class AnalyticsSortBy(StrEnum):
     RANK = "rank"
     SCORE = "score"
     PERCENTAGE = "percentage"
@@ -26,7 +26,7 @@ class AnalyticsSortBy(str, Enum):
     SUBMITTED_AT = "submittedAt"
 
 
-class SortOrder(str, Enum):
+class SortOrder(StrEnum):
     ASC = "asc"
     DESC = "desc"
 

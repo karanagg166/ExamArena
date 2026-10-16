@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,7 +44,9 @@ MAX_COURSE_MATERIAL_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 ALLOWED_MIME_TYPES = {"application/pdf"}
 
 
-def validate_material_file(file_bytes: bytes, filename: str, content_type: str | None) -> str:
+def validate_material_file(
+    file_bytes: bytes, filename: str, content_type: str | None
+) -> str:
     """Validate that uploaded file is a valid, non-empty PDF within bounds."""
     if not file_bytes:
         raise HTTPException(
@@ -184,7 +187,9 @@ class CourseMaterialService:
 
         except Exception as exc:
             err_msg = str(getattr(exc, "message", str(exc)))
-            logger.error("Failed indexing material %s in Search-Sphere: %s", material.id, err_msg)
+            logger.error(
+                "Failed indexing material %s in Search-Sphere: %s", material.id, err_msg
+            )
             # Safe failure compensation: update local row to FAILED
             await crud.update_course_material_status(
                 session=session,
@@ -336,7 +341,9 @@ class CourseMaterialService:
                     CourseMaterialSearchResultItem(
                         chunk_id=item.get("chunk_id", ""),
                         search_sphere_document_id=item.get("document_id", ""),
-                        material_id=item.get("metadata", {}).get("exam_arena_material_id")
+                        material_id=item.get("metadata", {}).get(
+                            "exam_arena_material_id"
+                        )
                         if isinstance(item.get("metadata"), dict)
                         else None,
                         file_name=item.get("file_name"),
@@ -389,7 +396,9 @@ class CourseMaterialService:
             )
 
             raw_citations = raw_res.get("citations", [])
-            doc_ids = [c.get("document_id") for c in raw_citations if c.get("document_id")]
+            doc_ids = [
+                c.get("document_id") for c in raw_citations if c.get("document_id")
+            ]
             material_map = {}
             if doc_ids:
                 materials = await crud.get_course_materials_by_ids(session, doc_ids)
@@ -401,22 +410,31 @@ class CourseMaterialService:
                 mat = material_map.get(doc_id)
                 citations.append(
                     CourseMaterialAnswerCitation(
-                        citation_number=int(c.get("citation_number", len(citations) + 1)),
+                        citation_number=int(
+                            c.get("citation_number", len(citations) + 1)
+                        ),
                         file_name=mat.originalFileName if mat else c.get("file_name"),
                         title=mat.title if mat else None,
                         page_number=c.get("page_number"),
                         text_snippet=c.get("text_snippet", ""),
                         material_id=mat.id if mat else doc_id,
-                        document_type=mat.documentType.value if mat else c.get("document_type"),
+                        document_type=mat.documentType.value
+                        if mat
+                        else c.get("document_type"),
                     )
                 )
 
-            answer_text = raw_res.get("answer") or "I couldn't find enough information in the uploaded course materials to answer this reliably."
+            answer_text = (
+                raw_res.get("answer")
+                or "I couldn't find enough information in the uploaded course materials to answer this reliably."
+            )
 
             return CourseMaterialAnswerResponse(
                 answer=answer_text,
                 citations=citations,
-                retrieved_chunk_count=int(raw_res.get("retrieved_chunk_count", len(raw_citations))),
+                retrieved_chunk_count=int(
+                    raw_res.get("retrieved_chunk_count", len(raw_citations))
+                ),
                 warnings=raw_res.get("warnings", []),
                 duration_ms=float(raw_res.get("duration_ms", 0.0)),
             )
@@ -426,4 +444,3 @@ class CourseMaterialService:
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Grounded answer generation service error: {exc.message}",
             ) from exc
-

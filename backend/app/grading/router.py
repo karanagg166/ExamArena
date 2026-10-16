@@ -42,7 +42,6 @@ router = APIRouter(prefix="/api/v1/student-answers", tags=["grading"])
 exam_grading_router = APIRouter(prefix="/api/v1/exams", tags=["grading"])
 
 
-
 @router.post(
     "/{answer_id}/ai-grade",
     response_model=AIGradingProposalResponse,
@@ -312,7 +311,9 @@ async def get_answer_details_for_grading(
             RubricGradeResponse(
                 criterion=item.get("criterion", ""),
                 maxMarks=float(item.get("max_marks", item.get("maxMarks", 0.0))),
-                awardedMarks=float(item.get("awarded_marks", item.get("awardedMarks", 0.0))),
+                awardedMarks=float(
+                    item.get("awarded_marks", item.get("awardedMarks", 0.0))
+                ),
                 justification=item.get("justification", ""),
             )
             for item in raw_breakdown
@@ -629,4 +630,3 @@ async def evaluate_pending_subjective_answers(
         remainingCount=remaining_count,
         results=results,
     )
-

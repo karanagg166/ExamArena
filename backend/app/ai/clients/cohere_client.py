@@ -86,9 +86,7 @@ class CohereClient:
             else settings.QUESTION_IMPORT_MAX_RETRIES
         )
         self.timeout = (
-            timeout
-            if timeout is not None
-            else settings.QUESTION_IMPORT_TIMEOUT_SECONDS
+            timeout if timeout is not None else settings.QUESTION_IMPORT_TIMEOUT_SECONDS
         )
         self._client: cohere.ClientV2 | None = None
 
@@ -208,7 +206,14 @@ class CohereClient:
                         raise CohereRateLimitError(
                             "Cohere rate limit reached. Please try again later."
                         ) from e
-                    if isinstance(e, (httpx.TimeoutException, TimeoutError, cohere.GatewayTimeoutError)):
+                    if isinstance(
+                        e,
+                        (
+                            httpx.TimeoutException,
+                            TimeoutError,
+                            cohere.GatewayTimeoutError,
+                        ),
+                    ):
                         raise CohereTimeoutError(
                             "Cohere API call timed out. Please try again."
                         ) from e
@@ -249,7 +254,9 @@ class CohereClient:
                 # Check if it's already one of our custom exceptions
                 if isinstance(e, CohereClientError):
                     raise
-                logger.exception("Unexpected error calling Cohere: %s", type(e).__name__)
+                logger.exception(
+                    "Unexpected error calling Cohere: %s", type(e).__name__
+                )
                 raise CohereAPIError(
                     f"Unexpected Cohere error occurred: {type(e).__name__}"
                 ) from e

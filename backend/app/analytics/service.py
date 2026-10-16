@@ -131,7 +131,10 @@ class AnalyticsService:
                 func.count(StudentExam.id).label("total_attempts"),
                 func.count(
                     case(
-                        (StudentExam.status == StudentExamStatus.GRADED, StudentExam.id),
+                        (
+                            StudentExam.status == StudentExamStatus.GRADED,
+                            StudentExam.id,
+                        ),
                         else_=None,
                     )
                 ).label("graded_attempts"),
@@ -428,7 +431,10 @@ class AnalyticsService:
             # Search filter
             if search:
                 s_lower = search.strip().lower()
-                if s_lower not in student_name.lower() and s_lower not in roll_no.lower():
+                if (
+                    s_lower not in student_name.lower()
+                    and s_lower not in roll_no.lower()
+                ):
                     continue
 
             # Compute normalized percentage across finalized exams
@@ -752,9 +758,7 @@ class AnalyticsService:
                 maxMarks=exam.maxMarks,
                 percentage=pct,
                 status=(
-                    se.status.value
-                    if hasattr(se.status, "value")
-                    else str(se.status)
+                    se.status.value if hasattr(se.status, "value") else str(se.status)
                 ),
                 startedAt=se.startedAt,
                 submittedAt=se.submittedAt,
@@ -792,11 +796,15 @@ class AnalyticsService:
 
         if bracket == PerformanceBracket.PASSED:
             filtered_items = [
-                it for it in filtered_items if it.percentage >= PASSING_PERCENTAGE_THRESHOLD
+                it
+                for it in filtered_items
+                if it.percentage >= PASSING_PERCENTAGE_THRESHOLD
             ]
         elif bracket == PerformanceBracket.FAILED:
             filtered_items = [
-                it for it in filtered_items if it.percentage < PASSING_PERCENTAGE_THRESHOLD
+                it
+                for it in filtered_items
+                if it.percentage < PASSING_PERCENTAGE_THRESHOLD
             ]
         elif bracket == PerformanceBracket.DISTINCTION:
             filtered_items = [
@@ -821,9 +829,7 @@ class AnalyticsService:
                 key=lambda x: (x.marksObtained, -x.rank), reverse=reverse
             )
         elif sort_by == AnalyticsSortBy.NAME:
-            filtered_items.sort(
-                key=lambda x: x.studentName.lower(), reverse=reverse
-            )
+            filtered_items.sort(key=lambda x: x.studentName.lower(), reverse=reverse)
         elif sort_by == AnalyticsSortBy.ROLL_NO:
             filtered_items.sort(key=lambda x: x.rollNo, reverse=reverse)
         elif sort_by == AnalyticsSortBy.SUBMITTED_AT:

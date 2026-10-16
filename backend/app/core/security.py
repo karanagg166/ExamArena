@@ -34,9 +34,7 @@ def is_password_hash(value: str | None) -> bool:
     if not value or not isinstance(value, str):
         return False
     if len(value) == 60 and (
-        value.startswith("$2a$")
-        or value.startswith("$2b$")
-        or value.startswith("$2y$")
+        value.startswith("$2a$") or value.startswith("$2b$") or value.startswith("$2y$")
     ):
         parts = value.split("$")
         if len(parts) >= 4 and parts[2].isdigit():
@@ -57,9 +55,7 @@ def decode_token_claims(token: str | None) -> dict | None:
     if not token or not isinstance(token, str):
         return None
     try:
-        return jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except (JWTError, Exception):
         return None
 

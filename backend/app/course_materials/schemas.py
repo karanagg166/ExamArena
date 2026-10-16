@@ -45,13 +45,17 @@ class CourseMaterialStatusRefreshResponse(BaseModel):
 
 
 class CourseMaterialSearchRequest(BaseModel):
-    query: str = Field(..., min_length=1, max_length=2000, description="Natural language search query")
+    query: str = Field(
+        ..., min_length=1, max_length=2000, description="Natural language search query"
+    )
     subject: Subject = Field(..., description="Target academic subject")
     class_id: str | None = Field(None, description="Optional specific class scope")
     document_type: CourseMaterialDocumentType | None = Field(
         None, description="Optional document type filter"
     )
-    limit: int = Field(default=10, ge=1, le=50, description="Maximum number of search chunks")
+    limit: int = Field(
+        default=10, ge=1, le=50, description="Maximum number of search chunks"
+    )
 
 
 class CourseMaterialSearchResultItem(BaseModel):
@@ -77,13 +81,22 @@ class CourseMaterialSearchResponse(BaseModel):
 class CourseMaterialAnswerRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    query: str = Field(..., min_length=1, max_length=2000, description="Question about course materials")
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Question about course materials",
+    )
     subject: Subject = Field(..., description="Target academic subject")
-    class_id: str | None = Field(None, alias="classId", description="Optional specific class scope")
+    class_id: str | None = Field(
+        None, alias="classId", description="Optional specific class scope"
+    )
     document_type: CourseMaterialDocumentType | None = Field(
         None, alias="documentType", description="Optional document type filter"
     )
-    limit: int = Field(default=5, ge=1, le=20, description="Number of context chunks to retrieve")
+    limit: int = Field(
+        default=5, ge=1, le=20, description="Number of context chunks to retrieve"
+    )
 
 
 class CourseMaterialAnswerCitation(BaseModel):
@@ -106,4 +119,3 @@ class CourseMaterialAnswerResponse(BaseModel):
     retrieved_chunk_count: int = Field(default=0, alias="retrievedChunkCount")
     warnings: list[str] = Field(default_factory=list)
     duration_ms: float = Field(default=0.0, alias="durationMs")
-

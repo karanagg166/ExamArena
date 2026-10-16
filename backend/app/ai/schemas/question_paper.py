@@ -105,7 +105,8 @@ class ExtractedQuestionPaper(BaseModel):
         default_factory=list, description="Extracted questions in paper order"
     )
     warnings: list[str] = Field(
-        default_factory=list, description="Document-level warnings or extraction caveats"
+        default_factory=list,
+        description="Document-level warnings or extraction caveats",
     )
 
     model_config = ConfigDict(extra="ignore")

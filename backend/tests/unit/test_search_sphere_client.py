@@ -1,8 +1,9 @@
 """Unit tests for SearchSphereClient with HTTP mocking and error boundaries."""
 
 import json
-import pytest
+
 import httpx
+import pytest
 
 from app.audit.context import clear_audit_context, set_current_request_id
 from app.integrations.search_sphere.client import SearchSphereClient
@@ -95,10 +96,10 @@ async def test_client_error_mappings(monkeypatch):
     ]
 
     for status_code, expected_exc in status_to_test:
-        def mock_handler(request: httpx.Request) -> httpx.Response:
+        def mock_handler(request: httpx.Request, code: int = status_code) -> httpx.Response:
             return httpx.Response(
-                status_code,
-                json={"detail": f"Upstream error for {status_code}"},
+                code,
+                json={"detail": f"Upstream error for {code}"},
             )
 
         transport = httpx.MockTransport(mock_handler)

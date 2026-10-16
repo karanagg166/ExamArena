@@ -62,7 +62,9 @@ def map_extracted_type_to_model(extracted_type: ExtractedQuestionType) -> Questi
         ExtractedQuestionType.ESSAY: QuestionType.ESSAY,
     }
     if extracted_type not in type_map:
-        raise ValueError(f"Cannot map unknown question type '{extracted_type}' to database model")
+        raise ValueError(
+            f"Cannot map unknown question type '{extracted_type}' to database model"
+        )
     return type_map[extracted_type]
 
 
@@ -81,7 +83,9 @@ def format_import_response(record: QuestionImport) -> QuestionImportResponse:
             subject = paper.subject
             warnings = paper.warnings
         except Exception as e:
-            logger.warning("Failed to parse validatedExtraction in record %s: %s", record.id, e)
+            logger.warning(
+                "Failed to parse validatedExtraction in record %s: %s", record.id, e
+            )
 
     return QuestionImportResponse(
         id=record.id,
@@ -118,7 +122,10 @@ async def process_question_import(
         return
 
     # Idempotency check: do not re-process if already in review or completed
-    if record.status in (QuestionImportStatus.NEEDS_REVIEW, QuestionImportStatus.COMPLETED):
+    if record.status in (
+        QuestionImportStatus.NEEDS_REVIEW,
+        QuestionImportStatus.COMPLETED,
+    ):
         logger.info(
             "QuestionImport %s is already in state %s. Skipping duplicate processing.",
             import_id,
@@ -162,7 +169,9 @@ async def process_question_import(
         )
 
         if not extracted_paper.questions:
-            raise DocumentExtractionError("No questions could be detected or extracted from the uploaded document.")
+            raise DocumentExtractionError(
+                "No questions could be detected or extracted from the uploaded document."
+            )
 
         # 4. Save validated draft and transition to NEEDS_REVIEW
         paper_dict = extracted_paper.model_dump()
@@ -250,7 +259,10 @@ async def confirm_question_import(
 
     # Idempotency check: if already completed, return existing success state without duplicating
     if record.status == QuestionImportStatus.COMPLETED:
-        logger.info("QuestionImport %s is already COMPLETED. Returning idempotent confirmation.", import_id)
+        logger.info(
+            "QuestionImport %s is already COMPLETED. Returning idempotent confirmation.",
+            import_id,
+        )
         # Count existing questions or return 0
         return QuestionImportConfirmResponse(
             id=record.id,
@@ -266,7 +278,9 @@ async def confirm_question_import(
             detail=f"Cannot confirm import in '{record.status}' state. Only imports in 'NEEDS_REVIEW' can be confirmed.",
         )
 
-    if not record.validatedExtraction or not isinstance(record.validatedExtraction, dict):
+    if not record.validatedExtraction or not isinstance(
+        record.validatedExtraction, dict
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No valid question draft found for confirmation",
@@ -278,7 +292,7 @@ async def confirm_question_import(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Corrupt or invalid question draft schema: {str(e)}",
-        )
+        ) from e
 
     if not paper.questions:
         raise HTTPException(
@@ -315,7 +329,10 @@ async def confirm_question_import(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"{q_label} must have at least 2 options.",
                 )
-            if q.question_type == ExtractedQuestionType.TRUE_FALSE and len(q.options) != 2:
+            if (
+                q.question_type == ExtractedQuestionType.TRUE_FALSE
+                and len(q.options) != 2
+            ):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"{q_label} is True/False and must have exactly 2 options.",
@@ -348,16 +365,19 @@ async def confirm_question_import(
             # Existing sections for this exam
             sec_stmt = select(ExamSection).where(ExamSection.examId == record.examId)
             existing_sections = {
-                sec.name: sec for sec in (await session.execute(sec_stmt)).scalars().all()
+                sec.name: sec
+                for sec in (await session.execute(sec_stmt)).scalars().all()
             }
 
             max_sec_order_stmt = select(func.max(ExamSection.sortOrder)).where(
                 ExamSection.examId == record.examId
             )
-            curr_max_sec_order = (await session.execute(max_sec_order_stmt)).scalar() or 0
+            curr_max_sec_order = (
+                await session.execute(max_sec_order_stmt)
+            ).scalar() or 0
 
             # Insert questions
-            for idx, q in enumerate(paper.questions, start=1):
+            for _idx, q in enumerate(paper.questions, start=1):
                 curr_max_q += 1
                 sec_name = (q.section or "Section A").strip()
                 db_q_type = map_extracted_type_to_model(q.question_type)
@@ -399,7 +419,11 @@ async def confirm_question_import(
                 ):
                     for opt_idx, opt in enumerate(q.options, start=1):
                         # Phase 1: isCorrect defaults to False unless explicitly set during teacher review
-                        is_correct = bool(opt.is_correct) if opt.is_correct is not None else False
+                        is_correct = (
+                            bool(opt.is_correct)
+                            if opt.is_correct is not None
+                            else False
+                        )
                         opt_entity = QuestionOption(
                             questionId=question_entity.id,
                             optionNumber=opt_idx,

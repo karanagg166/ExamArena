@@ -35,7 +35,9 @@ def merge_and_deduplicate_answers(
             continue
 
         if norm_ref in seen_refs:
-            logger.info("Deduplicating answer key item with ref: '%s'", ans.question_reference)
+            logger.info(
+                "Deduplicating answer key item with ref: '%s'", ans.question_reference
+            )
             continue
 
         seen_refs.add(norm_ref)
