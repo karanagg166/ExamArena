@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -39,12 +40,31 @@ async def connect_with_retry(attempts: int = 5, base_delay: int = 2) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown logic."""
-    await connect_with_retry()
-    await connect_redis()
+    if not os.getenv("VERCEL"):
+        try:
+            await connect_with_retry()
+        except Exception as exc:
+            logger.warning("Database initialization failed during startup: %s", exc)
+    else:
+        logger.info("Running on Vercel serverless environment; skipping startup DDL migrations.")
+
+    try:
+        await asyncio.wait_for(connect_redis(), timeout=4.0)
+    except Exception as exc:
+        logger.warning("Redis initialization timed out or failed: %s", exc)
+
     yield
-    await db.close_db()
-    await disconnect_redis()
-    logger.info("🔌 Database and Redis disconnected")
+
+    if not os.getenv("VERCEL"):
+        try:
+            await db.close_db()
+        except Exception:
+            pass
+        try:
+            await disconnect_redis()
+        except Exception:
+            pass
+        logger.info("🔌 Database and Redis disconnected")
 
 
 app = FastAPI(

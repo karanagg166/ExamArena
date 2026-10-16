@@ -48,6 +48,9 @@ engine = create_async_engine(
     echo=False,
     future=True,
     pool_pre_ping=True,
+    connect_args={"timeout": 10.0, "command_timeout": 10.0}
+    if "asyncpg" in DATABASE_URL
+    else {},
 )
 
 AsyncSessionLocal = async_sessionmaker(
