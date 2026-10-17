@@ -150,3 +150,254 @@ async def test_connection_manager_dead_socket_cleanup():
     # Broadcast should catch the error and remove the dead socket
     await cm.broadcast("room-A", {"type": "PING"})
     assert cm.get_room_occupancy("room-A") == 0
+
+
+@pytest.mark.asyncio
+async def test_websocket_authenticate_unauthenticated(mocker):
+    """Unauthenticated connections (missing or invalid token) must be rejected."""
+    from app.sockets.server import authenticate_websocket
+
+    # No token at all
+    ws_no_token = AsyncMock()
+    ws_no_token.query_params = {}
+    ws_no_token.cookies = {}
+    ws_no_token.headers = {}
+    user = await authenticate_websocket(ws_no_token)
+    assert user is None
+
+    # Invalid token
+    mocker.patch("app.sockets.server.decode_token_claims", return_value=None)
+    ws_invalid_token = AsyncMock()
+    ws_invalid_token.query_params = {"token": "invalid_jwt"}
+    ws_invalid_token.cookies = {}
+    ws_invalid_token.headers = {}
+    user = await authenticate_websocket(ws_invalid_token)
+    assert user is None
+
+
+@pytest.mark.asyncio
+async def test_websocket_authenticate_revoked_token(mocker):
+    """Blacklisted / revoked tokens must be rejected."""
+    from app.sockets.server import authenticate_websocket
+
+    mocker.patch(
+        "app.sockets.server.decode_token_claims",
+        return_value={"sub": "user-1", "jti": "revoked-jti"},
+    )
+    mocker.patch("app.sockets.server.is_token_blacklisted", return_value=True)
+
+    ws = AsyncMock()
+    ws.query_params = {"token": "revoked_token"}
+    ws.cookies = {}
+    ws.headers = {}
+    user = await authenticate_websocket(ws)
+    assert user is None
+
+
+def _make_test_user(
+    user_id: str = "usr-1",
+    email: str = "test@example.com",
+    name: str = "Test User",
+    role: str = "STUDENT",
+):
+    from app.core.models import Role
+    from app.users.schemas import UserResponse
+
+    role_val = Role(role) if isinstance(role, str) else role
+    return UserResponse(
+        id=user_id,
+        email=email,
+        name=name,
+        role=role_val,
+        phoneNo="+919876543210",
+        city="Mumbai",
+        state="Maharashtra",
+        country="India",
+        pincode="400001",
+        dateOfBirth="2000-01-01T00:00:00Z",
+        createdAt="2026-01-01T00:00:00Z",
+        updatedAt="2026-01-01T00:00:00Z",
+    )
+
+
+@pytest.mark.asyncio
+async def test_websocket_authenticate_valid_token(mocker):
+    """Valid token returns the authenticated user."""
+    from app.core.models import Role
+    from app.sockets.server import authenticate_websocket
+
+    mock_user = _make_test_user("usr-123", "student@example.com", "Student A", Role.STUDENT)
+    mocker.patch(
+        "app.sockets.server.decode_token_claims",
+        return_value={"sub": "usr-123", "jti": "valid-jti"},
+    )
+    mocker.patch("app.sockets.server.is_token_blacklisted", return_value=False)
+    mocker.patch("app.sockets.server.get_user_by_id", return_value=mock_user)
+
+    ws = AsyncMock()
+    ws.query_params = {"token": "valid_token"}
+    ws.cookies = {}
+    ws.headers = {}
+    user = await authenticate_websocket(ws)
+    assert user is not None
+    assert user.id == "usr-123"
+    assert user.role == Role.STUDENT
+
+
+@pytest.mark.asyncio
+async def test_websocket_exam_authorization_cross_school(mocker):
+    """Teacher or student from School B attempting to access exam from School A must be rejected."""
+    from app.core.models import Role
+    from app.sockets.server import authorize_exam_access
+
+    # Teacher from School B
+    teacher_user = _make_test_user("teacher-b", "teacherb@schoolb.com", "Teacher B", Role.TEACHER)
+    mock_teacher_profile = mocker.MagicMock()
+    mock_teacher_profile.id = "tch-b"
+    mock_teacher_profile.schoolId = "school-B"
+
+    # Exam belongs to School A
+    mock_exam_creator = mocker.MagicMock()
+    mock_exam_creator.id = "tch-a"
+    mock_exam_creator.schoolId = "school-A"
+
+    mock_exam = mocker.MagicMock()
+    mock_exam.id = "exam-1"
+    mock_exam.teacherId = "tch-a"
+    mock_exam.teacher = mock_exam_creator
+    mock_exam.isPublished = True
+
+    mocker.patch("app.sockets.server.get_exam_by_id", return_value=mock_exam)
+    mocker.patch("app.sockets.server.get_teacher_by_user_id", return_value=mock_teacher_profile)
+    mocker.patch("app.sockets.server.can_manage_exam", return_value=False)
+
+    authorized, _, _ = await authorize_exam_access(teacher_user, "exam-1")
+    assert authorized is False
+
+    # Student from School B attempting School A exam
+    student_user = _make_test_user("student-b", "studentb@schoolb.com", "Student B", Role.STUDENT)
+    mock_student_profile = mocker.MagicMock()
+    mock_student_profile.id = "stu-b"
+    mock_student_profile.schoolId = "school-B"
+
+    mocker.patch("app.sockets.server.get_student_by_user_id", return_value=mock_student_profile)
+
+    authorized, _, _ = await authorize_exam_access(student_user, "exam-1")
+    assert authorized is False
+
+
+@pytest.mark.asyncio
+async def test_websocket_exam_authorization_valid_student_and_teacher(mocker):
+    """Authorized student and creator teacher from same school must pass authorization."""
+    from app.core.models import Role
+    from app.sockets.server import authorize_exam_access
+
+    mock_exam_creator = mocker.MagicMock()
+    mock_exam_creator.id = "tch-a"
+    mock_exam_creator.schoolId = "school-A"
+
+    mock_exam = mocker.MagicMock()
+    mock_exam.id = "exam-1"
+    mock_exam.teacherId = "tch-a"
+    mock_exam.teacher = mock_exam_creator
+    mock_exam.isPublished = True
+
+    mocker.patch("app.sockets.server.get_exam_by_id", return_value=mock_exam)
+
+    # Creator teacher
+    teacher_user = _make_test_user("usr-teacher-a", "teachera@schoola.com", "Teacher A", Role.TEACHER)
+    mock_teacher_profile = mocker.MagicMock()
+    mock_teacher_profile.id = "tch-a"
+    mock_teacher_profile.schoolId = "school-A"
+    mocker.patch("app.sockets.server.get_teacher_by_user_id", return_value=mock_teacher_profile)
+    mocker.patch("app.sockets.server.can_manage_exam", return_value=True)
+
+    authorized, exam_ret, prof = await authorize_exam_access(teacher_user, "exam-1")
+    assert authorized is True
+    assert exam_ret.id == "exam-1"
+
+    # Enrolled student from School A
+    student_user = _make_test_user("usr-student-a", "studenta@schoola.com", "Student A", Role.STUDENT)
+    mock_student_profile = mocker.MagicMock()
+    mock_student_profile.id = "stu-a"
+    mock_student_profile.schoolId = "school-A"
+    mocker.patch("app.sockets.server.get_student_by_user_id", return_value=mock_student_profile)
+
+    authorized, exam_ret, prof = await authorize_exam_access(student_user, "exam-1")
+    assert authorized is True
+    assert prof.id == "stu-a"
+
+
+@pytest.mark.asyncio
+async def test_websocket_exam_endpoint_lifecycle_and_security(mocker):
+    """Test full WebSocket endpoint lifecycle: reject unauth, prevent spoofing & forged events."""
+    from fastapi import WebSocketDisconnect
+    from app.core.models import Role
+    from app.sockets.server import exam_websocket_endpoint
+
+    # 1. Unauthenticated client rejected with WS_1008
+    mocker.patch("app.sockets.server.authenticate_websocket", return_value=None)
+    ws_unauth = AsyncMock()
+    await exam_websocket_endpoint(ws_unauth, "exam-1")
+    ws_unauth.close.assert_awaited_once_with(code=1008, reason="Unauthorized")
+
+    # 2. Student connects and attempts identity spoofing + forged privileged events
+    student_user = _make_test_user("student-real-id", "student@schoola.com", "Student Real", Role.STUDENT)
+    mocker.patch("app.sockets.server.authenticate_websocket", return_value=student_user)
+
+    mock_student_profile = mocker.MagicMock()
+    mock_student_profile.id = "stu-prof-real"
+    mock_student_profile.schoolId = "school-A"
+
+    mock_exam = mocker.MagicMock()
+    mock_exam.id = "exam-1"
+    mocker.patch(
+        "app.sockets.server.authorize_exam_access",
+        return_value=(True, mock_exam, mock_student_profile),
+    )
+
+    # Client sends:
+    # 1. exam:join with spoofed userId: "admin"
+    # 2. exam:time_sync (privileged event forbidden for students)
+    # 3. proctoring:terminate (privileged event forbidden for students)
+    # 4. proctoring:warning with spoofed studentId: "other-student"
+    # 5. Disconnect
+    ws_client = AsyncMock()
+    ws_client.receive_json.side_effect = [
+        {"event": "exam:join", "data": {"userId": "spoofed-admin", "role": "ADMIN"}},
+        {"event": "exam:time_sync", "data": {"remainingSeconds": 0}},
+        {"event": "proctoring:terminate", "data": {"studentId": "victim-student"}},
+        {"event": "proctoring:warning", "data": {"studentId": "victim-student", "warningCount": 3}},
+        WebSocketDisconnect(),
+    ]
+
+    mock_broadcast = mocker.patch("app.sockets.manager.manager.broadcast", new_callable=AsyncMock)
+    mock_send_personal = mocker.patch(
+        "app.sockets.manager.manager.send_personal_message", new_callable=AsyncMock
+    )
+    mocker.patch("app.sockets.manager.manager.connect", new_callable=AsyncMock)
+    mocker.patch("app.sockets.manager.manager.disconnect")
+
+    await exam_websocket_endpoint(ws_client, "exam-1")
+
+    # Verify exam:join broadcast used the REAL authenticated student_user identity, NOT spoofed-admin!
+    join_call = mock_broadcast.call_args_list[0]
+    join_event = join_call[0][1]
+    assert join_event["event"] == "exam:join"
+    assert join_event["data"]["userId"] == "student-real-id"
+    assert join_event["data"]["role"] == Role.STUDENT
+
+    # Verify time_sync was NOT broadcast, but sent an error to client
+    broadcast_events = [c[0][1]["event"] for c in mock_broadcast.call_args_list]
+    assert "exam:time_sync" not in broadcast_events
+    assert "proctoring:terminate" not in broadcast_events
+
+    # Verify personal error messages were sent back to the student
+    personal_messages = [c[0][0] for c in mock_send_personal.call_args_list]
+    assert any("Unauthorized to synchronize timer" in str(msg) for msg in personal_messages)
+    assert any("Unauthorized to terminate exam" in str(msg) for msg in personal_messages)
+
+    # Verify proctoring:warning was sanitized to student's own ID
+    warning_event = [c[0][1] for c in mock_broadcast.call_args_list if c[0][1]["event"] == "proctoring:warning"][0]
+    assert warning_event["data"]["studentId"] == "stu-prof-real"
+

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
+from fastapi import APIRouter, Depends, HTTPException, Response, status  # type: ignore
 from pydantic import ValidationError
 
 import app.exams.crud as crud
@@ -9,6 +9,7 @@ from app.attempts.schemas import ExamScoreboardItem
 from app.audit.actions import AuditAction, AuditResourceType
 from app.audit.service import record_audit_event
 from app.core.models import Role, StudentExamStatus
+from app.exams.export import generate_exam_results_excel, generate_exam_results_pdf
 from app.exams.permissions import can_manage_exam, redact_exam_solutions
 from app.exams.schemas import (
     ExamCreateRequest,
@@ -282,6 +283,51 @@ async def get_exam_results_endpoint(
 
     await require_exam_manager(current_user, exam)
     return await crud.get_exam_results(exam_id)
+
+
+@router.get("/{exam_id}/export/excel")
+async def export_exam_results_excel_endpoint(
+    exam_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Export all student results for an exam as an Excel spreadsheet."""
+    exam = await crud.get_exam_by_id(exam_id)
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    await require_exam_manager(current_user, exam)
+    results = await crud.get_exam_results(exam_id)
+    excel_bytes = generate_exam_results_excel(exam, results)
+
+    clean_filename = f"exam_results_{exam_id}.xlsx"
+    return Response(
+        content=excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{clean_filename}"'},
+    )
+
+
+@router.get("/{exam_id}/export/pdf")
+async def export_exam_results_pdf_endpoint(
+    exam_id: str,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Export all student results for an exam as a printable PDF report."""
+    exam = await crud.get_exam_by_id(exam_id)
+    if not exam:
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    await require_exam_manager(current_user, exam)
+    results = await crud.get_exam_results(exam_id)
+    pdf_bytes = generate_exam_results_pdf(exam, results)
+
+    clean_filename = f"exam_results_{exam_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{clean_filename}"'},
+    )
+
 
 
 @router.delete("/{exam_id}", status_code=status.HTTP_204_NO_CONTENT)

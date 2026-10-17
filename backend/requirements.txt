@@ -20,6 +20,7 @@ cohere>=7.0.0
 PyPDF2
 pdfplumber
 pillow>=10.0.0
+pytesseract>=0.3.10
 
 # Proctoring (Computer Vision)
 opencv-python

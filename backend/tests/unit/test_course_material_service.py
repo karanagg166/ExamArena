@@ -231,6 +231,38 @@ async def test_delete_course_material(mocker):
 
 
 @pytest.mark.asyncio
+async def test_delete_course_material_upstream_failure_preserves_local_record(mocker):
+    mock_ss = MagicMock(spec=SearchSphereClient)
+    mock_ss.delete_document = AsyncMock(side_effect=SearchSphereError("Search-Sphere 500 error"))
+
+    mock_material = MagicMock(spec=CourseMaterial)
+    mock_material.id = "mat_del_fail"
+    mock_material.schoolId = "sch_1"
+    mock_material.searchSphereDocumentId = "ss_doc_fail"
+
+    mocker.patch(
+        "app.course_materials.crud.get_course_material_by_id",
+        AsyncMock(return_value=mock_material),
+    )
+    mock_crud_del = mocker.patch(
+        "app.course_materials.crud.delete_course_material",
+        AsyncMock(return_value=True),
+    )
+
+    service = CourseMaterialService(search_sphere_client=mock_ss)
+    with pytest.raises(HTTPException) as exc_info:
+        await service.delete_course_material(
+            session=AsyncMock(),
+            material_id="mat_del_fail",
+            school_id="sch_1",
+        )
+
+    assert exc_info.value.status_code == 502
+    assert "Failed to delete document from search engine" in exc_info.value.detail
+    mock_crud_del.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_search_course_materials(mocker):
     mock_ss = MagicMock(spec=SearchSphereClient)
     mock_ss.search = AsyncMock(
@@ -387,3 +419,57 @@ async def test_answer_question_upstream_error():
 
     assert exc_info.value.status_code == 502
     assert "Grounded answer generation service error" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_answer_question_with_search_sphere_internal_doc_id(mocker):
+    mock_ss = AsyncMock()
+    # Search-Sphere returns citation with internal document id 'ss_internal_doc_999'
+    mock_ss.generate_answer = AsyncMock(
+        return_value={
+            "answer": "Cellular respiration occurs in the mitochondria. [1]",
+            "citations": [
+                {
+                    "citation_number": 1,
+                    "chunk_id": "chk_bio_2",
+                    "document_id": "ss_internal_doc_999",
+                    "file_name": "unknown.pdf",
+                    "page_number": 25,
+                    "text_snippet": "Mitochondria produce ATP...",
+                }
+            ],
+            "retrieved_chunk_count": 1,
+            "duration_ms": 20.0,
+        }
+    )
+
+    mock_session = AsyncMock()
+    mock_material = MagicMock()
+    mock_material.id = "mat_local_real_id"
+    mock_material.searchSphereDocumentId = "ss_internal_doc_999"
+    mock_material.schoolId = "sch_alpha"
+    mock_material.title = "Cell Biology Guide"
+    mock_material.originalFileName = "cell_biology.pdf"
+    mock_material.documentType = CourseMaterialDocumentType.TEACHER_NOTES
+
+    mocker.patch(
+        "app.course_materials.crud.get_course_materials_by_ids",
+        AsyncMock(return_value=[mock_material]),
+    )
+
+    service = CourseMaterialService(search_sphere_client=mock_ss)
+    res = await service.answer_question(
+        session=mock_session,
+        school_id="sch_alpha",
+        query="Where does cellular respiration take place?",
+        subject=Subject.SCIENCE,
+    )
+
+    assert len(res.citations) == 1
+    assert res.citations[0].citation_number == 1
+    # Successfully mapped internal Search-Sphere ID to local CourseMaterial details
+    assert res.citations[0].material_id == "mat_local_real_id"
+    assert res.citations[0].title == "Cell Biology Guide"
+    assert res.citations[0].file_name == "cell_biology.pdf"
+    assert res.citations[0].document_type == "TEACHER_NOTES"
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAttemptEngine } from '@/hooks/useAttemptEngine';
 import { useAttemptStore } from '@/stores/useAttemptStore';
@@ -9,7 +9,7 @@ import { AttemptQuestion } from '@/components/attempt/AttemptQuestion';
 import { AttemptSummary } from '@/components/attempt/AttemptSummary';
 import { ExamTimer } from '@/components/attempt/ExamTimer';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronLeft, Send, AlertCircle, Maximize, PanelRightOpen, PanelRightClose, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Send, AlertCircle, Maximize, PanelRightOpen, PanelRightClose, X, Check, Loader2 } from 'lucide-react';
 import { GlassCard } from '@/components/ui/glass-card';
 import { useProctoring } from '@/hooks/useProctoring';
 import { ProctoringWarning } from '@/components/attempt/ProctoringWarning';
@@ -42,6 +42,13 @@ export default function ExamAttemptPage() {
     const [warningReason, setWarningReason] = useState("");
     const [warningDisplayCount, setWarningDisplayCount] = useState(0);
 
+    // Autosave state and tracking
+    const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const submittingRef = useRef(false);
+    const draftSequenceRef = useRef(0);
+    const lastAckSequenceRef = useRef(0);
+    const draftTimerRef = useRef<NodeJS.Timeout | null>(null);
+
     const handleWarning = useCallback((count: number, reason: string) => {
         setWarningReason(reason);
         setWarningDisplayCount(count);
@@ -70,6 +77,35 @@ export default function ExamAttemptPage() {
                         timeRemainingSeconds: storeState.timeRemainingSeconds ?? durationSecs,
                     });
                 }
+
+                // Verify attempt status and recover server draft answers on resume/refresh
+                try {
+                    const attemptRes = await api.get(`/api/v1/attempts/${attemptId}`);
+                    const serverAttempt = attemptRes.data;
+                    if (serverAttempt?.status === 'SUBMITTED' || serverAttempt?.status === 'GRADED') {
+                        submitAttemptLocal();
+                        router.replace(`/student/exams/${examId}/result`);
+                        return;
+                    }
+                    if (serverAttempt?.answers && serverAttempt.answers.length > 0) {
+                        const currentStoreAnswers = useAttemptStore.getState().answers;
+                        serverAttempt.answers.forEach((srvAns: { id: string; questionId: string; textAnswer?: string; selectedOptions?: { optionId: string }[] }) => {
+                            const local = currentStoreAnswers[srvAns.questionId];
+                            const hasLocalContent = local?.textAnswer || (local?.selectedOptions && local.selectedOptions.length > 0);
+                            const hasServerContent = srvAns.textAnswer || (srvAns.selectedOptions && srvAns.selectedOptions.length > 0);
+                            if (!hasLocalContent && hasServerContent) {
+                                useAttemptStore.getState().setAnswerState(srvAns.questionId, {
+                                    id: srvAns.id,
+                                    textAnswer: srvAns.textAnswer,
+                                    selectedOptions: srvAns.selectedOptions,
+                                    status: 'ANSWERED',
+                                });
+                            }
+                        });
+                    }
+                } catch {
+                    // Ignore non-fatal attempt status check during fetch
+                }
             } catch {
                 setError("Failed to load exam data. Check your connection.");
             } finally {
@@ -78,14 +114,17 @@ export default function ExamAttemptPage() {
         };
 
         fetchExamAndEnsureSync();
-    }, [examId, attemptId, status, currentExamId, router]);
+    }, [examId, attemptId, status, currentExamId, router, submitAttemptLocal]);
 
     const handleSubmit = useCallback(async () => {
-        if (!attemptId || submitting) return;
+        if (!attemptId || submittingRef.current) return;
+        submittingRef.current = true;
         setSubmitting(true);
         setShowConfirmSubmit(false);
         try {
-            const formattedAnswers = Object.values(answers).map(ans => ({
+            // Fresh read directly from store to guarantee latest answers are always submitted
+            const freshAnswers = useAttemptStore.getState().answers;
+            const formattedAnswers = Object.values(freshAnswers).map(ans => ({
                 id: ans.id,
                 textAnswer: ans.textAnswer,
                 selectedOptions: ans.selectedOptions
@@ -114,14 +153,58 @@ export default function ExamAttemptPage() {
             router.replace(`/student/exams/${examId}/result`);
         } catch (err: unknown) {
             console.error("Submission failed", err);
+            submittingRef.current = false;
             const msg = getErrorMessage(err) || "Failed to submit exam. Please check your connection and try again.";
             toast.error(msg);
             setSubmitting(false);
         }
-    }, [answers, attemptId, submitting, submitAttemptLocal, clearAttempt, examId, router]);
+    }, [attemptId, submitAttemptLocal, clearAttempt, examId, router]);
+
+    // Debounced server-side draft autosave
+    useEffect(() => {
+        if (!attemptId || status !== 'IN_PROGRESS' || submitting) return;
+
+        if (draftTimerRef.current) {
+            clearTimeout(draftTimerRef.current);
+        }
+
+        draftTimerRef.current = setTimeout(async () => {
+            const seq = ++draftSequenceRef.current;
+            setDraftStatus('saving');
+            try {
+                const freshAnswers = useAttemptStore.getState().answers;
+                const formattedDraft = Object.values(freshAnswers).map(ans => ({
+                    id: ans.id || undefined,
+                    questionId: ans.questionId,
+                    textAnswer: ans.textAnswer,
+                    selectedOptions: ans.selectedOptions,
+                }));
+
+                const res = await api.put(`/api/v1/attempts/${attemptId}/draft`, {
+                    clientSequence: seq,
+                    answers: formattedDraft,
+                });
+
+                if (res.data?.clientSequence >= lastAckSequenceRef.current) {
+                    lastAckSequenceRef.current = res.data.clientSequence;
+                    setDraftStatus('saved');
+                }
+            } catch (err) {
+                console.warn("Draft autosave error:", err);
+                setDraftStatus('error');
+            }
+        }, 1500);
+
+        return () => {
+            if (draftTimerRef.current) {
+                clearTimeout(draftTimerRef.current);
+            }
+        };
+    }, [answers, attemptId, status, submitting]);
 
     const proctoring = useProctoring({
         maxWarnings: 3,
+        attemptId: attemptId,
         onWarning: handleWarning,
         onAutoSubmit: handleSubmit,
         onFullscreenExit: () => {},
@@ -228,8 +311,27 @@ export default function ExamAttemptPage() {
                         </span>
                     </div>
                     
-                    {/* Right: Timer, Sidebar Toggle, Submit */}
+                    {/* Right: Autosave Status, Timer, Sidebar Toggle, Submit */}
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                        {draftStatus === 'saving' && (
+                            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-amber-400 font-medium bg-amber-400/10 border border-amber-400/20 px-2 py-1 rounded-md">
+                                <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
+                                Saving draft...
+                            </span>
+                        )}
+                        {draftStatus === 'saved' && (
+                            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-emerald-400 font-medium bg-emerald-400/10 border border-emerald-400/20 px-2 py-1 rounded-md">
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                Draft saved
+                            </span>
+                        )}
+                        {draftStatus === 'error' && (
+                            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-rose-400 font-medium bg-rose-400/10 border border-rose-400/20 px-2 py-1 rounded-md">
+                                <AlertCircle className="w-3 h-3 text-rose-400" />
+                                Save error (retrying...)
+                            </span>
+                        )}
+
                         <ExamTimer 
                             examId={examId} 
                             durationMinutes={exam.duration} 

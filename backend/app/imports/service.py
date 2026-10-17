@@ -317,6 +317,11 @@ async def confirm_question_import(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"{q_label} is missing positive marks. Please assign marks before confirming.",
             )
+        if not float(q.marks).is_integer():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{q_label} has fractional marks ({q.marks}). Only positive integer marks are supported. Please edit question marks to a whole number before confirming.",
+            )
 
         # 3. Validate options for objective types
         if q.question_type in (
@@ -381,7 +386,7 @@ async def confirm_question_import(
                 curr_max_q += 1
                 sec_name = (q.section or "Section A").strip()
                 db_q_type = map_extracted_type_to_model(q.question_type)
-                q_marks = int(round(q.marks or 1))
+                q_marks = int(q.marks)
 
                 # Find or create section
                 section_record = existing_sections.get(sec_name)

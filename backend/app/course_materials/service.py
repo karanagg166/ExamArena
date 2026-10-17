@@ -302,11 +302,15 @@ class CourseMaterialService:
                     material.searchSphereDocumentId,
                 )
             except SearchSphereError as exc:
-                logger.warning(
+                logger.error(
                     "Failed upstream Search-Sphere document deletion for %s: %s",
                     material.id,
                     exc,
                 )
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Failed to delete document from search engine: {exc.message}. Local metadata was retained to avoid orphaned searchable content.",
+                ) from exc
 
         # 2. Delete local metadata
         return await crud.delete_course_material(session, material.id)
@@ -402,7 +406,11 @@ class CourseMaterialService:
             material_map = {}
             if doc_ids:
                 materials = await crud.get_course_materials_by_ids(session, doc_ids)
-                material_map = {m.id: m for m in materials if m.schoolId == school_id}
+                for m in materials:
+                    if m.schoolId == school_id:
+                        material_map[m.id] = m
+                        if m.searchSphereDocumentId:
+                            material_map[m.searchSphereDocumentId] = m
 
             citations: list[CourseMaterialAnswerCitation] = []
             for c in raw_citations:

@@ -379,3 +379,164 @@ async def test_malformed_json_from_provider_rejected():
             reference_answer="Reference answer",
             grading_rubric=[{"criterion": "Overall", "marks": 5.0}],
         )
+
+
+@pytest.mark.asyncio
+async def test_invented_criterion_rejected():
+    """AI returning a criterion not present in teacher's rubric must be rejected."""
+    mock_client = MagicMock(spec=CohereClient)
+    rubric = [{"criterion": "Grammar and Structure", "marks": 5.0}]
+    cohere_output = {
+        "suggested_marks": 5.0,
+        "max_marks": 5.0,
+        "rubric_breakdown": [
+            {
+                "criterion": "Grammar and Structure",
+                "max_marks": 5.0,
+                "awarded_marks": 3.0,
+                "justification": "Good grammar",
+            },
+            {
+                "criterion": "Invented Extra Criterion",  # Hallucinated
+                "max_marks": 2.0,
+                "awarded_marks": 2.0,
+                "justification": "Bonus",
+            },
+        ],
+        "feedback": "Decent",
+        "confidence": "HIGH",
+        "warnings": [],
+    }
+    mock_client.extract_structured_json = AsyncMock(
+        return_value=(json.dumps(cohere_output), {})
+    )
+    service = AIGradingService(client=mock_client)
+
+    with pytest.raises(AIGradingValidationError, match="invented unknown criterion"):
+        await service.grade_subjective_answer(
+            question_text="Sample",
+            question_type=QuestionType.SHORT_ANSWER,
+            max_marks=5.0,
+            student_answer="Student answer",
+            reference_answer="Reference answer",
+            grading_rubric=rubric,
+        )
+
+
+@pytest.mark.asyncio
+async def test_missing_criterion_rejected():
+    """AI omitting a required criterion from teacher's rubric must be rejected."""
+    mock_client = MagicMock(spec=CohereClient)
+    rubric = [
+        {"criterion": "Accuracy", "marks": 3.0},
+        {"criterion": "Clarity", "marks": 2.0},
+    ]
+    cohere_output = {
+        "suggested_marks": 3.0,
+        "max_marks": 3.0,
+        "rubric_breakdown": [
+            {
+                "criterion": "Accuracy",
+                "max_marks": 3.0,
+                "awarded_marks": 3.0,
+                "justification": "Accurate",
+            }
+            # Missing 'Clarity'
+        ],
+        "feedback": "Missing clarity criterion",
+        "confidence": "HIGH",
+        "warnings": [],
+    }
+    mock_client.extract_structured_json = AsyncMock(
+        return_value=(json.dumps(cohere_output), {})
+    )
+    service = AIGradingService(client=mock_client)
+
+    with pytest.raises(AIGradingValidationError, match="Missing required rubric criterion"):
+        await service.grade_subjective_answer(
+            question_text="Sample",
+            question_type=QuestionType.SHORT_ANSWER,
+            max_marks=5.0,
+            student_answer="Student answer",
+            reference_answer="Reference answer",
+            grading_rubric=rubric,
+        )
+
+
+@pytest.mark.asyncio
+async def test_duplicate_criterion_rejected():
+    """AI returning duplicate criteria must be rejected."""
+    mock_client = MagicMock(spec=CohereClient)
+    rubric = [{"criterion": "Accuracy", "marks": 5.0}]
+    cohere_output = {
+        "suggested_marks": 4.0,
+        "max_marks": 5.0,
+        "rubric_breakdown": [
+            {
+                "criterion": "Accuracy",
+                "max_marks": 5.0,
+                "awarded_marks": 2.0,
+                "justification": "Part 1",
+            },
+            {
+                "criterion": "Accuracy",
+                "max_marks": 5.0,
+                "awarded_marks": 2.0,
+                "justification": "Part 2",
+            },
+        ],
+        "feedback": "Duplicate",
+        "confidence": "HIGH",
+        "warnings": [],
+    }
+    mock_client.extract_structured_json = AsyncMock(
+        return_value=(json.dumps(cohere_output), {})
+    )
+    service = AIGradingService(client=mock_client)
+
+    with pytest.raises(AIGradingValidationError, match="Duplicate criterion"):
+        await service.grade_subjective_answer(
+            question_text="Sample",
+            question_type=QuestionType.SHORT_ANSWER,
+            max_marks=5.0,
+            student_answer="Student answer",
+            reference_answer="Reference answer",
+            grading_rubric=rubric,
+        )
+
+
+@pytest.mark.asyncio
+async def test_altered_criterion_max_marks_rejected():
+    """AI altering a criterion's max marks from 2.0 to 5.0 must be rejected."""
+    mock_client = MagicMock(spec=CohereClient)
+    rubric = [{"criterion": "Accuracy", "marks": 2.0}]
+    cohere_output = {
+        "suggested_marks": 5.0,
+        "max_marks": 5.0,
+        "rubric_breakdown": [
+            {
+                "criterion": "Accuracy",
+                "max_marks": 5.0,  # Altered from 2.0 to 5.0!
+                "awarded_marks": 5.0,
+                "justification": "Altered max marks",
+            }
+        ],
+        "feedback": "Altered",
+        "confidence": "HIGH",
+        "warnings": [],
+    }
+    mock_client.extract_structured_json = AsyncMock(
+        return_value=(json.dumps(cohere_output), {})
+    )
+    service = AIGradingService(client=mock_client)
+
+    with pytest.raises(AIGradingValidationError, match="altered from trusted rubric"):
+        await service.grade_subjective_answer(
+            question_text="Sample",
+            question_type=QuestionType.SHORT_ANSWER,
+            max_marks=5.0,
+            student_answer="Student answer",
+            reference_answer="Reference answer",
+            grading_rubric=rubric,
+        )
+

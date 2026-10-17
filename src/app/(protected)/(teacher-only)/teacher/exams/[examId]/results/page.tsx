@@ -10,6 +10,8 @@ import {
   Users,
   TrendingUp,
   Download,
+  FileSpreadsheet,
+  FileText,
   CheckCircle2,
   ChevronRight,
 } from "lucide-react";
@@ -137,6 +139,42 @@ export default function ExamResultsLeaderboardPage() {
     a.click();
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const res = await api.get(`/api/v1/exams/${examId}/export/excel`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${exam?.name || "exam"}_results.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("Failed to export Excel results.");
+    }
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const res = await api.get(`/api/v1/exams/${examId}/export/pdf`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${exam?.name || "exam"}_results.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("Failed to export PDF results.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="page-shell flex items-center justify-center min-h-[60vh]">
@@ -169,7 +207,7 @@ export default function ExamResultsLeaderboardPage() {
           title={`${exam.name} — Student Leaderboard`}
           subtitle={`Scoreboard, student rankings, and performance metrics for ${exam.subject || "General"}.`}
           actions={
-            <div className="flex gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <Link href={`/teacher/exams/${examId}`}>
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="mr-2 h-4 w-4" /> Exam Details
@@ -178,12 +216,32 @@ export default function ExamResultsLeaderboardPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleExportExcel}
+                disabled={results.length === 0}
+                className="flex items-center gap-1.5 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+              >
+                <FileSpreadsheet size={15} />
+                Export Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={results.length === 0}
+                className="flex items-center gap-1.5 border-blue-500/40 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+              >
+                <FileText size={15} />
+                Export PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleExportCSV}
                 disabled={results.length === 0}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1.5"
               >
                 <Download size={15} />
-                Export CSV
+                CSV
               </Button>
             </div>
           }

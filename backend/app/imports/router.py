@@ -49,6 +49,31 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["question-imports"])
 
 
+async def dispatch_import_job(
+    import_id: str, background_tasks: BackgroundTasks
+) -> None:
+    """Dispatches question paper import job to ARQ queue when configured, falling back to background tasks."""
+    if settings.REDIS_URL:
+        try:
+            from arq import create_pool
+            from arq.connections import RedisSettings
+
+            pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
+            await pool.enqueue_job("run_import_job", import_id)
+            await pool.aclose()
+            logger.info(
+                "Successfully enqueued QuestionImport %s to ARQ queue", import_id
+            )
+            return
+        except Exception as e:
+            logger.warning(
+                "Failed to enqueue to ARQ queue (%s). Falling back to background task.",
+                e,
+            )
+
+    background_tasks.add_task(process_question_import, import_id)
+
+
 @router.post(
     "/api/v1/exams/{exam_id}/question-imports",
     status_code=status.HTTP_202_ACCEPTED,
@@ -120,8 +145,8 @@ async def upload_question_paper(
         },
     )
 
-    # Dispatch asynchronous background worker
-    background_tasks.add_task(process_question_import, import_record.id)
+    # Dispatch asynchronous worker (durable ARQ if available, background task fallback)
+    await dispatch_import_job(import_record.id, background_tasks)
 
     return format_import_response(import_record)
 
