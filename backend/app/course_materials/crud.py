@@ -144,9 +144,16 @@ async def get_course_materials_by_ids(
     session: AsyncSession,
     material_ids: Sequence[str],
 ) -> Sequence[CourseMaterial]:
-    """Fetch multiple CourseMaterials by their IDs."""
+    """Fetch multiple CourseMaterials by their local IDs or searchSphereDocumentId."""
     if not material_ids:
         return []
-    stmt = select(CourseMaterial).where(CourseMaterial.id.in_(material_ids))
+    from sqlalchemy import or_
+
+    stmt = select(CourseMaterial).where(
+        or_(
+            CourseMaterial.id.in_(material_ids),
+            CourseMaterial.searchSphereDocumentId.in_(material_ids),
+        )
+    )
     res = await session.execute(stmt)
     return res.scalars().all()

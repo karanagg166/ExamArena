@@ -21,6 +21,10 @@ def mock_attempts_db(mocker):
             "app.attempts.router.crud.submit_exam_attempt",
             new_callable=AsyncMock,
         ),
+        "save_attempt_draft": mocker.patch(
+            "app.attempts.router.crud.save_attempt_draft",
+            new_callable=AsyncMock,
+        ),
         "get_student_by_user_id": mocker.patch(
             "app.attempts.router.get_student_by_user_id",
             new_callable=AsyncMock,

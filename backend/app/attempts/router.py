@@ -8,6 +8,8 @@ from app.attempts.redaction import redact_attempt_for_student
 from app.attempts.schemas import (
     ProctoringViolationRequest,
     StudentExamCreate,
+    StudentExamDraftResponse,
+    StudentExamDraftUpdate,
     StudentExamResponse,
     StudentExamSubmit,
 )
@@ -168,3 +170,28 @@ async def log_proctoring_violation(
         },
     )
     return {"message": "Proctoring violation recorded", "attemptId": attempt.id}
+
+
+@router.put("/{attempt_id}/draft", response_model=StudentExamDraftResponse)
+async def update_attempt_draft(
+    attempt_id: str,
+    draft_data: StudentExamDraftUpdate,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+):
+    """Save in-progress draft answers for an active exam attempt."""
+    if current_user.role != Role.STUDENT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only students can save exam drafts",
+        )
+    try:
+        return await crud.save_attempt_draft(
+            attempt_id=attempt_id,
+            draft_data=draft_data,
+            user_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+

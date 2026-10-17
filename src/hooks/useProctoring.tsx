@@ -1,31 +1,60 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 // src/hooks/useProctoring.ts
 import { useEffect, useRef, useCallback, useState } from "react"
+import { api } from "@/lib/axios"
 
 interface ProctoringConfig {
-    maxWarnings: number          // auto-submit after X violations
+    maxWarnings?: number          // auto-submit after X violations (default 3)
+    initialWarningCount?: number  // restore warning count on resume/refresh
+    attemptId?: string | null     // persistent audit logging
     onWarning: (count: number, reason: string) => void
     onAutoSubmit: () => void     // called when max warnings reached
-    onFullscreenExit: () => void
+    onFullscreenExit?: () => void
     enabled: boolean             // false when exam submitted
 }
 
 export const useProctoring = ({
     maxWarnings = 3,
+    initialWarningCount = 0,
+    attemptId = null,
     onWarning,
     onAutoSubmit,
     onFullscreenExit,
     enabled,
 }: ProctoringConfig) => {
-    const [warningCount, setWarningCount] = useState(0)
+    const [warningCount, setWarningCount] = useState(initialWarningCount)
     const [isFullscreen, setIsFullscreen] = useState(false)
-    const warningRef = useRef(0)
+    const warningRef = useRef(initialWarningCount)
     const enabledRef = useRef(enabled)
 
-    // Keep ref in sync so event handlers always see the latest value
+    // Store callbacks and configs in refs to guarantee event listeners always invoke the freshest callbacks
+    const onAutoSubmitRef = useRef(onAutoSubmit)
+    onAutoSubmitRef.current = onAutoSubmit
+
+    const onWarningRef = useRef(onWarning)
+    onWarningRef.current = onWarning
+
+    const onFullscreenExitRef = useRef(onFullscreenExit)
+    onFullscreenExitRef.current = onFullscreenExit
+
+    const maxWarningsRef = useRef(maxWarnings)
+    maxWarningsRef.current = maxWarnings
+
+    const attemptIdRef = useRef(attemptId)
+    attemptIdRef.current = attemptId
+
+    // Keep enabled ref in sync
     useEffect(() => {
         enabledRef.current = enabled
     }, [enabled])
+
+    // Update warning count if initialWarningCount changes (e.g. hydrated from server)
+    useEffect(() => {
+        if (initialWarningCount > warningRef.current) {
+            warningRef.current = initialWarningCount
+            setWarningCount(initialWarningCount)
+        }
+    }, [initialWarningCount])
 
     // ── Enter Fullscreen ───────────────────────────────────────────
     const enterFullscreen = useCallback(async () => {
@@ -55,12 +84,22 @@ export const useProctoring = ({
         warningRef.current += 1
         const newCount = warningRef.current
         setWarningCount(newCount)
-        onWarning(newCount, reason)
+        onWarningRef.current?.(newCount, reason)
 
-        if (newCount >= maxWarnings) {
-            onAutoSubmit()
+        // Durable audit logging
+        if (attemptIdRef.current) {
+            api.post(`/api/v1/attempts/${attemptIdRef.current}/proctoring-violation`, {
+                violationType: reason,
+                details: { warningCount: newCount, timestamp: new Date().toISOString() },
+            }).catch((err) => {
+                console.warn("Failed to record proctoring audit violation:", err)
+            })
         }
-    }, [maxWarnings, onWarning, onAutoSubmit])
+
+        if (newCount >= maxWarningsRef.current) {
+            onAutoSubmitRef.current?.()
+        }
+    }, [])
 
     useEffect(() => {
         if (!enabled) return
@@ -69,7 +108,7 @@ export const useProctoring = ({
         const handleFullscreenChange = () => {
             if (!document.fullscreenElement) {
                 setIsFullscreen(false)
-                onFullscreenExit()
+                onFullscreenExitRef.current?.()
                 triggerWarning("Exited fullscreen")
             } else {
                 setIsFullscreen(true)

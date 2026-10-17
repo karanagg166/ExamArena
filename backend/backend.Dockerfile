@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     libpq-dev \
     ffmpeg libsm6 libxext6 \
+    tesseract-ocr \
+    libtesseract-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./backend/requirements.txt ./requirements.txt

@@ -212,8 +212,65 @@ class AIGradingService:
             ) from exc
 
         # 8. Server-side Score Invariants and Normalization (Parts 11, 12)
-        # Check criteria awarded bounds
+        import math
+
+        if not math.isfinite(result.suggested_marks):
+            raise AIGradingValidationError(
+                "AI suggested total marks is not a valid finite number"
+            )
+
+        # Build trusted criteria map from server-defined effective rubric
+        trusted_criteria_map = {
+            c.get("criterion", "").strip(): float(c.get("marks", 0.0))
+            for c in effective_rubric
+        }
+
+        # Track returned criteria to enforce 1:1 matching
+        returned_criteria_counts: dict[str, int] = {}
         for item in result.rubric_breakdown:
+            crit_name = item.criterion.strip()
+            returned_criteria_counts[crit_name] = (
+                returned_criteria_counts.get(crit_name, 0) + 1
+            )
+
+            if not math.isfinite(item.awarded_marks) or not math.isfinite(
+                item.max_marks
+            ):
+                raise AIGradingValidationError(
+                    f"Criterion '{item.criterion}' contains non-finite numeric marks"
+                )
+
+        # Check for duplicate criteria
+        for crit_name, count in returned_criteria_counts.items():
+            if count > 1:
+                raise AIGradingValidationError(
+                    f"Duplicate criterion '{crit_name}' found in AI grading breakdown"
+                )
+
+        # Check for hallucinated/invented criteria
+        for crit_name in returned_criteria_counts:
+            if crit_name not in trusted_criteria_map:
+                raise AIGradingValidationError(
+                    f"AI grading invented unknown criterion '{crit_name}' not in trusted rubric"
+                )
+
+        # Check for missing criteria
+        for crit_name in trusted_criteria_map:
+            if crit_name not in returned_criteria_counts:
+                raise AIGradingValidationError(
+                    f"Missing required rubric criterion '{crit_name}' in AI grading breakdown"
+                )
+
+        # Validate each criterion's maximum marks and awarded bounds
+        for item in result.rubric_breakdown:
+            crit_name = item.criterion.strip()
+            trusted_max = trusted_criteria_map[crit_name]
+            if abs(item.max_marks - trusted_max) > 0.05:
+                raise AIGradingValidationError(
+                    f"Criterion '{crit_name}' max marks ({item.max_marks}) altered from trusted rubric ({trusted_max})"
+                )
+            item.max_marks = trusted_max
+
             if item.awarded_marks < 0:
                 raise AIGradingValidationError(
                     f"Invalid negative marks awarded on criterion '{item.criterion}': {item.awarded_marks}"

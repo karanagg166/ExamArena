@@ -36,10 +36,10 @@ def extract_document_content(
     norm_type = file_type.lower()
     if "pdf" in norm_type or filename.lower().endswith(".pdf"):
         doc = extract_pdf_document(file_bytes)
-        if doc.source_type == DocumentSourceType.PDF_SCANNED and not doc.text.strip():
+        if not doc.text.strip():
             raise DocumentExtractionError(
-                "The uploaded PDF appears to be a scanned document with no digital text layer. "
-                "Phase 1 requires a digital PDF with readable text."
+                "No readable text could be extracted from the uploaded scanned PDF document (even after OCR). "
+                "Please upload a clearer PDF or image."
             )
         return doc
     elif any(t in norm_type for t in ("image", "png", "jpeg", "jpg")) or any(
@@ -66,28 +66,55 @@ def _normalize_text_for_dedup(text: str) -> str:
     return cleaned.strip()
 
 
+def _build_dedup_key(q: ExtractedQuestion) -> str:
+    """Build a deterministic composite signature for deduplication without truncating question text."""
+    norm_text = _normalize_text_for_dedup(q.text)
+    q_type = (
+        q.question_type.value
+        if hasattr(q.question_type, "value")
+        else str(q.question_type)
+    )
+
+    # Options signature (sorted text of options to capture MCQ uniqueness)
+    opts = []
+    for opt in q.options or []:
+        opt_text = re.sub(r"\s+", " ", (opt.text or "").lower().strip())
+        opts.append(opt_text)
+    opts_sig = "|".join(sorted(opts)) if opts else ""
+
+    # Section / question number signature
+    sec = (q.section or "").strip().lower()
+    q_num = (q.question_number or "").strip().lower()
+
+    # If question text is very short (< 15 chars), also include question_number
+    if len(norm_text) <= 15 and q_num:
+        return f"{sec}::{q_num}::{norm_text}::{q_type}::{opts_sig}"
+
+    return f"{sec}::{norm_text}::{q_type}::{opts_sig}"
+
+
 def merge_and_deduplicate_questions(
     questions_list: list[ExtractedQuestion],
 ) -> list[ExtractedQuestion]:
     """Merges extracted questions from multiple chunks deterministically while eliminating boundary duplicates."""
-    seen_keys: set[str] = set()
+    seen_keys: dict[str, int] = {}
     deduped: list[ExtractedQuestion] = []
 
     for q in questions_list:
-        norm_text = _normalize_text_for_dedup(q.text)
-        # Create composite key using normalized text
-        # If question text is very short (< 15 chars), also include question_number
-        if len(norm_text) > 15:
-            dedup_key = norm_text[:120]
-        else:
-            q_num = (q.question_number or "").strip().lower()
-            dedup_key = f"{q_num}:{norm_text}"
+        dedup_key = _build_dedup_key(q)
 
         if dedup_key in seen_keys:
-            logger.info("Deduplicating question entry: '%s'", q.text[:50])
+            idx = seen_keys[dedup_key]
+            existing = deduped[idx]
+            # If the duplicate entry has richer metadata (e.g. marks or more options), retain the richer one
+            if (existing.marks is None and q.marks is not None) or (
+                len(q.options) > len(existing.options)
+            ):
+                deduped[idx] = q
+            logger.info("Deduplicating duplicate question entry: '%s'", q.text[:50])
             continue
 
-        seen_keys.add(dedup_key)
+        seen_keys[dedup_key] = len(deduped)
         deduped.append(q)
 
     return deduped

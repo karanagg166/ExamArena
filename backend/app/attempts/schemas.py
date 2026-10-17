@@ -184,3 +184,30 @@ class ProctoringViolationRequest(BaseModel):
 
     violationType: str
     details: dict | None = None
+
+
+class StudentDraftAnswerItem(BaseModel):
+    """Single question draft answer payload."""
+
+    id: str | None = None
+    questionId: str
+    textAnswer: str | None = None
+    selectedOptions: list[SelectedOptionCreate] | None = None
+
+
+class StudentExamDraftUpdate(BaseModel):
+    """Batched server-side draft autosave request with sequence tracking."""
+
+    clientSequence: int = 0
+    answers: list[StudentDraftAnswerItem]
+
+
+class StudentExamDraftResponse(BaseModel):
+    """Server acknowledgment of draft answer save."""
+
+    attemptId: str
+    savedCount: int
+    clientSequence: int
+    savedAt: datetime
+    timeRemainingSeconds: int | None = None
+

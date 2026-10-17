@@ -8,7 +8,10 @@ from sqlalchemy.orm import selectinload
 
 import app.core.database as db
 from app.attempts.schemas import (
+    StudentDraftAnswerItem,
     StudentExamCreate,
+    StudentExamDraftResponse,
+    StudentExamDraftUpdate,
     StudentExamResponse,
     StudentExamSubmit,
 )
@@ -23,6 +26,7 @@ from app.core.models import (
     StudentExamAnswer,
     StudentExamStatus,
 )
+from app.core.redis import redis_client
 
 AttemptStatus = StudentExamStatus
 from app.students.crud import get_student_by_user_id
@@ -31,6 +35,30 @@ STUDENT_EXAM_OPTIONS = [
     selectinload(StudentExam.exam),
     selectinload(StudentExam.answers).selectinload(StudentExamAnswer.selectedOptions),
 ]
+
+_IN_MEMORY_DRAFT_SEQS: dict[str, int] = {}
+
+
+async def _get_draft_sequence(attempt_id: str) -> int:
+    key = f"attempt_draft_seq:{attempt_id}"
+    try:
+        if redis_client:
+            val = await redis_client.get(key)
+            if val is not None:
+                return int(val)
+    except Exception:
+        pass
+    return _IN_MEMORY_DRAFT_SEQS.get(attempt_id, -1)
+
+
+async def _set_draft_sequence(attempt_id: str, sequence: int) -> None:
+    key = f"attempt_draft_seq:{attempt_id}"
+    _IN_MEMORY_DRAFT_SEQS[attempt_id] = sequence
+    try:
+        if redis_client:
+            await redis_client.set(key, str(sequence), ex=86400)
+    except Exception:
+        pass
 
 
 async def start_exam_attempt(
@@ -491,3 +519,161 @@ async def get_student_exam_history(
         return await _do_get(session)
     async with db.get_session() as s:
         return await _do_get(s)
+
+
+async def save_attempt_draft(
+    attempt_id: str,
+    draft_data: StudentExamDraftUpdate,
+    user_id: str,
+    session: AsyncSession | None = None,
+) -> StudentExamDraftResponse:
+    student = await get_student_by_user_id(user_id, session=session)
+    if not student:
+        raise ValueError("Only students can save drafts")
+
+    async def _do_save(s: AsyncSession) -> StudentExamDraftResponse:
+        attempt_stmt = (
+            select(StudentExam)
+            .where(StudentExam.id == attempt_id)
+            .options(
+                selectinload(StudentExam.exam)
+                .selectinload(Exam.questions)
+                .selectinload(Question.options),
+                selectinload(StudentExam.answers).selectinload(
+                    StudentExamAnswer.selectedOptions
+                ),
+            )
+        )
+        db_attempt = (await s.execute(attempt_stmt)).scalar_one_or_none()
+        if not db_attempt:
+            raise ValueError("Attempt not found")
+
+        if db_attempt.studentId != student.id:
+            raise ValueError("Not authorized to modify this attempt")
+
+        if db_attempt.status in (AttemptStatus.SUBMITTED, AttemptStatus.GRADED):
+            raise ValueError("Cannot modify answers for an already submitted attempt")
+
+        if db_attempt.status == AttemptStatus.EXPIRED:
+            raise ValueError("Exam time has expired")
+
+        exam = db_attempt.exam
+        now = datetime.now(UTC)
+
+        # Enforce server-side timing
+        duration_val = getattr(exam, "duration", None)
+        time_remaining: int | None = None
+        if (
+            exam
+            and isinstance(duration_val, (int, float))
+            and duration_val > 0
+            and getattr(db_attempt, "startedAt", None)
+            and isinstance(db_attempt.startedAt, datetime)
+        ):
+            started_at = (
+                db_attempt.startedAt
+                if db_attempt.startedAt.tzinfo
+                else db_attempt.startedAt.replace(tzinfo=UTC)
+            )
+            total_duration_secs = float(duration_val) * 60
+            elapsed_secs = (now - started_at).total_seconds()
+            time_remaining = max(0, int(total_duration_secs - elapsed_secs))
+
+            allowed_deadline = (
+                started_at
+                + timedelta(minutes=float(duration_val))
+                + timedelta(minutes=1)
+            )
+            if now > allowed_deadline:
+                db_attempt.status = StudentExamStatus.EXPIRED
+                await s.commit()
+                raise ValueError(
+                    "Exam submission time exceeded. The deadline for this exam has passed."
+                )
+
+        # Check sequence to prevent stale/out-of-order writes
+        if draft_data.clientSequence > 0:
+            last_seq = await _get_draft_sequence(attempt_id)
+            if last_seq >= draft_data.clientSequence:
+                # Out-of-order/stale save: acknowledge without overwriting newer state
+                return StudentExamDraftResponse(
+                    attemptId=attempt_id,
+                    savedCount=0,
+                    clientSequence=draft_data.clientSequence,
+                    savedAt=now,
+                    timeRemainingSeconds=time_remaining,
+                )
+
+        questions_by_id = {q.id: q for q in (exam.questions or [])}
+        db_answers_by_id = {ans.id: ans for ans in (db_attempt.answers or [])}
+        db_answers_by_qid = {ans.questionId: ans for ans in (db_attempt.answers or [])}
+
+        saved_count = 0
+        for draft_ans in draft_data.answers:
+            if draft_ans.questionId not in questions_by_id:
+                raise ValueError(
+                    f"Question {draft_ans.questionId} does not belong to this exam"
+                )
+
+            question = questions_by_id[draft_ans.questionId]
+            valid_option_ids = {opt.id for opt in (question.options or [])}
+
+            if draft_ans.selectedOptions:
+                selected_ids = {opt.optionId for opt in draft_ans.selectedOptions}
+                if not selected_ids.issubset(valid_option_ids):
+                    raise ValueError(
+                        f"Invalid option selection for question {draft_ans.questionId}"
+                    )
+
+            db_ans = None
+            if draft_ans.id and draft_ans.id in db_answers_by_id:
+                db_ans = db_answers_by_id[draft_ans.id]
+            elif draft_ans.questionId in db_answers_by_qid:
+                db_ans = db_answers_by_qid[draft_ans.questionId]
+
+            if not db_ans:
+                db_ans = StudentExamAnswer(
+                    studentExamId=db_attempt.id,
+                    questionId=draft_ans.questionId,
+                    questionType=question.type,
+                )
+                s.add(db_ans)
+                await s.flush()
+                db_answers_by_qid[draft_ans.questionId] = db_ans
+                db_answers_by_id[db_ans.id] = db_ans
+
+            db_ans.textAnswer = draft_ans.textAnswer
+            if draft_ans.selectedOptions is not None:
+                await s.execute(
+                    delete(SelectedOption).where(
+                        SelectedOption.studentExamAnswerId == db_ans.id
+                    )
+                )
+                for opt in draft_ans.selectedOptions:
+                    s.add(
+                        SelectedOption(
+                            studentExamAnswerId=db_ans.id, optionId=opt.optionId
+                        )
+                    )
+
+            saved_count += 1
+
+        db_attempt.updatedAt = now
+        await s.commit()
+
+        if draft_data.clientSequence > 0:
+            await _set_draft_sequence(attempt_id, draft_data.clientSequence)
+
+        return StudentExamDraftResponse(
+            attemptId=attempt_id,
+            savedCount=saved_count,
+            clientSequence=draft_data.clientSequence,
+            savedAt=now,
+            timeRemainingSeconds=time_remaining,
+        )
+
+    if session:
+        return await _do_save(session)
+    async with db.get_session() as s:
+        return await _do_save(s)
+

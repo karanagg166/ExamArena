@@ -135,3 +135,57 @@ class TestAttemptsApi:
 
         assert response.status_code == 422
         mock_attempts_db["submit_exam_attempt"].assert_not_awaited()
+
+    async def test_save_draft_success(self, client, override_auth, mock_attempts_db):
+        override_auth(role="STUDENT")
+        from datetime import datetime, UTC
+        from app.attempts.schemas import StudentExamDraftResponse
+
+        fake_resp = StudentExamDraftResponse(
+            attemptId="clxfake_se_001",
+            savedCount=1,
+            clientSequence=1,
+            savedAt=datetime.now(UTC),
+            timeRemainingSeconds=3500,
+        )
+        mock_attempts_db["save_attempt_draft"].return_value = fake_resp
+
+        payload = {
+            "clientSequence": 1,
+            "answers": [
+                {
+                    "id": "ans_001",
+                    "questionId": "q_001",
+                    "textAnswer": "Autosaved draft answer",
+                    "selectedOptions": [],
+                }
+            ],
+        }
+        response = await client.put("/api/v1/attempts/clxfake_se_001/draft", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["attemptId"] == "clxfake_se_001"
+        assert data["savedCount"] == 1
+        assert data["clientSequence"] == 1
+
+    async def test_save_draft_requires_student(
+        self, client, override_auth, mock_attempts_db
+    ):
+        override_auth(role="TEACHER")
+        payload = {"clientSequence": 1, "answers": []}
+        response = await client.put("/api/v1/attempts/clxfake_se_001/draft", json=payload)
+        assert response.status_code == 403
+        mock_attempts_db["save_attempt_draft"].assert_not_awaited()
+
+    async def test_save_draft_expired_or_submitted_rejected(
+        self, client, override_auth, mock_attempts_db
+    ):
+        override_auth(role="STUDENT")
+        mock_attempts_db["save_attempt_draft"].side_effect = ValueError(
+            "Cannot modify answers for an already submitted attempt"
+        )
+        payload = {"clientSequence": 1, "answers": []}
+        response = await client.put("/api/v1/attempts/clxfake_se_001/draft", json=payload)
+        assert response.status_code == 400
+        assert "Cannot modify answers" in response.json()["detail"]
+
