@@ -3,17 +3,18 @@ import { useCallback } from 'react';
 import { SelectedOptionCreate } from '@/types/attempt';
 
 export function useQuestionPalette() {
-  const store = useAttemptStore();
+  const setAnswerState = useAttemptStore((s) => s.setAnswerState);
+  const setAllState = useAttemptStore((s) => s.setAllState);
 
   const setActiveQuestion = useCallback((questionId: string) => {
     const currentAnswers = useAttemptStore.getState().answers;
     const currentQ = currentAnswers[questionId];
     // When setting active, if it's NOT_VISITED or uninitialized, it becomes VISITED_NOT_ANSWERED
     if (!currentQ || currentQ.status === "NOT_VISITED") {
-      store.setAnswerState(questionId, { status: "VISITED_NOT_ANSWERED" });
+      setAnswerState(questionId, { status: "VISITED_NOT_ANSWERED" }, false);
     }
-    store.setAllState({ activeQuestionId: questionId });
-  }, [store]);
+    setAllState({ activeQuestionId: questionId });
+  }, [setAnswerState, setAllState]);
 
   const updateAnswer = useCallback((questionId: string, textAnswer?: string, selectedOptions?: SelectedOptionCreate[]) => {
     const currentAnswers = useAttemptStore.getState().answers;
@@ -38,16 +39,16 @@ export function useQuestionPalette() {
       }
     }
 
-    store.setAnswerState(questionId, {
+    setAnswerState(questionId, {
       textAnswer: currentText,
       selectedOptions: currentOptions,
       status: newStatus,
     });
-  }, [store]);
+  }, [setAnswerState]);
 
   const markQuestionForReview = useCallback((questionId: string) => {
-    store.setAnswerState(questionId, { status: "MARKED_FOR_REVIEW" });
-  }, [store]);
+    setAnswerState(questionId, { status: "MARKED_FOR_REVIEW" });
+  }, [setAnswerState]);
 
   const unmarkQuestionForReview = useCallback((questionId: string) => {
     const currentAnswers = useAttemptStore.getState().answers;
@@ -55,11 +56,11 @@ export function useQuestionPalette() {
     if (q) {
       const hasAnswer = (q.textAnswer != null && q.textAnswer.trim() !== '') || 
                         (q.selectedOptions != null && q.selectedOptions.length > 0);
-      store.setAnswerState(questionId, {
+      setAnswerState(questionId, {
         status: hasAnswer ? "ANSWERED" : "VISITED_NOT_ANSWERED"
       });
     }
-  }, [store]);
+  }, [setAnswerState]);
 
   return {
     setActiveQuestion,

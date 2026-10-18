@@ -10,8 +10,11 @@ function generateRequestId(): string {
 
 // Base URL should NOT include /api — backend routes are /api/v1/...
 // NEXT_PUBLIC_API_URL should be set to http://localhost:8000 (or production URL)
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const normalizedBaseUrl = rawBaseUrl.replace(/\/api\/?$/, "").replace(/\/+$/, "");
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+  baseURL: normalizedBaseUrl,
   headers: {
     "content-type": "application/json",
   },

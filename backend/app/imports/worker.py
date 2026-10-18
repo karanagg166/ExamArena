@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from arq.connections import RedisSettings
+from arq.cron import cron
 
 from app.answer_keys.service import process_answer_key_import
 from app.core.config import settings
@@ -12,6 +13,16 @@ from app.imports.service import process_question_import
 logger = logging.getLogger(__name__)
 
 WORKER_HEARTBEAT_KEY = "arq:worker:heartbeat"
+
+
+async def refresh_heartbeat(ctx: dict[str, Any]) -> None:
+    """Cron task to refresh worker heartbeat in Redis periodically."""
+    redis = ctx.get("redis")
+    if redis:
+        try:
+            await redis.set(WORKER_HEARTBEAT_KEY, "healthy", ex=30)
+        except Exception as e:
+            logger.warning("Could not refresh worker heartbeat: %s", e)
 
 
 async def run_import_job(ctx: dict[str, Any], import_id: str) -> None:
@@ -108,6 +119,7 @@ class WorkerSettings:
     """ARQ worker configuration."""
 
     functions = [run_import_job, run_answer_key_job]
+    cron_jobs = [cron(refresh_heartbeat, second={0, 15, 30, 45})]
     redis_settings = get_redis_settings()
     max_jobs = 10
     job_timeout = 300

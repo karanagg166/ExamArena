@@ -266,6 +266,8 @@ def setup_test_db_infrastructure():
     app_db.engine = test_engine
     app_db.AsyncSessionLocal = TestAsyncSessionLocal
     app_redis.redis_client = app_redis.InMemoryRedisFallback()
+    from app.core.config import settings
+    settings.ALLOW_IN_PROCESS_IMPORT_FALLBACK = True
     yield
     asyncio.run(test_engine.dispose())
 

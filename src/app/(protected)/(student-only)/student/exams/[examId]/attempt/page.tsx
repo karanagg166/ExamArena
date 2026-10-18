@@ -48,7 +48,7 @@ export default function ExamAttemptPage() {
     const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle');
     const submittingRef = useRef(false);
     const draftSequenceRef = useRef(0);
-    const currentRevisionRef = useRef(0);
+    const currentRevisionRef = useRef(useAttemptStore.getState().draftRevision || 0);
     const inFlightRef = useRef(false);
     const retryCountRef = useRef(0);
     const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -65,14 +65,71 @@ export default function ExamAttemptPage() {
         if (submittingRef.current || status === 'SUBMITTED') {
             return;
         }
-        if (!attemptId || status !== 'IN_PROGRESS' || currentExamId !== examId) {
-             router.replace(`/student/exams/${examId}/start`);
-             return;
-        }
 
-        const fetchExamAndEnsureSync = async () => {
+        let isCancelled = false;
+
+        const ensureAndSyncAttempt = async () => {
+            let currentActiveAttemptId = attemptId;
+            let currentActiveExamId = currentExamId;
+            let currentActiveStatus: string = status;
+
+            // 1. If in-memory state is empty, wait briefly for Zustand localStorage hydration
+            if (!currentActiveAttemptId || currentActiveStatus !== 'IN_PROGRESS' || currentActiveExamId !== examId) {
+                if (typeof window !== 'undefined' && !useAttemptStore.persist.hasHydrated()) {
+                    await new Promise<void>((resolve) => {
+                        const unsub = useAttemptStore.persist.onFinishHydration(() => {
+                            unsub();
+                            resolve();
+                        });
+                        setTimeout(resolve, 500);
+                    });
+                    const refreshed = useAttemptStore.getState();
+                    currentActiveAttemptId = refreshed.attemptId;
+                    currentActiveExamId = refreshed.examId;
+                    currentActiveStatus = refreshed.status;
+                    if (typeof refreshed.draftRevision === 'number' && refreshed.draftRevision > currentRevisionRef.current) {
+                        currentRevisionRef.current = refreshed.draftRevision;
+                    }
+                }
+            }
+
+            // 2. If still unhydrated, recover active attempt directly from server
+            if (!currentActiveAttemptId || currentActiveStatus !== 'IN_PROGRESS' || currentActiveExamId !== examId) {
+                try {
+                    const studentExamsRes = await api.get('/api/v1/exams/student');
+                    if (Array.isArray(studentExamsRes.data)) {
+                        const match = studentExamsRes.data.find((e: { id: string }) => e.id === examId);
+                        if (match?.attemptId && match.studentStatus === 'IN_PROGRESS') {
+                            currentActiveAttemptId = match.attemptId;
+                            currentActiveExamId = examId;
+                            currentActiveStatus = 'IN_PROGRESS';
+                            useAttemptStore.getState().setAllState({
+                                examId,
+                                attemptId: match.attemptId,
+                                status: 'IN_PROGRESS',
+                            });
+                        } else if (match?.attemptId && (match.studentStatus === 'SUBMITTED' || match.studentStatus === 'GRADED')) {
+                            submitAttemptLocal();
+                            router.replace(`/student/exams/${examId}/result`);
+                            return;
+                        }
+                    }
+                } catch {
+                    // Ignore transient recovery error
+                }
+            }
+
+            if (isCancelled) return;
+
+            // 3. If no in-progress attempt exists on client or server, redirect to start
+            if (!currentActiveAttemptId || currentActiveStatus !== 'IN_PROGRESS' || currentActiveExamId !== examId) {
+                router.replace(`/student/exams/${examId}/start`);
+                return;
+            }
+
             try {
                 const res = await api.get(`/api/v1/exams/${examId}`);
+                if (isCancelled) return;
                 setExam(res.data);
 
                 // Ensure store timer and duration are properly synchronized
@@ -89,7 +146,8 @@ export default function ExamAttemptPage() {
 
                 // Verify attempt status and recover server draft answers on resume/refresh
                 try {
-                    const attemptRes = await api.get(`/api/v1/attempts/${attemptId}`);
+                    const attemptRes = await api.get(`/api/v1/attempts/${currentActiveAttemptId}`);
+                    if (isCancelled) return;
                     const serverAttempt = attemptRes.data;
                     if (serverAttempt?.status === 'SUBMITTED' || serverAttempt?.status === 'GRADED') {
                         submitAttemptLocal();
@@ -110,15 +168,19 @@ export default function ExamAttemptPage() {
                         const currentStoreAnswers = useAttemptStore.getState().answers;
                         serverAttempt.answers.forEach((srvAns: { id: string; questionId: string; textAnswer?: string; selectedOptions?: { optionId: string }[] }) => {
                             const local = currentStoreAnswers[srvAns.questionId];
-                            // If local answer has been modified locally (isDirty: true), preserve it (even if empty, representing intentional deletion)
+                            // If local answer has not been dirtied by active user input, restore server draft
                             if (!local || !local.isDirty) {
-                                const hasServerContent = Boolean(srvAns.textAnswer || (srvAns.selectedOptions && srvAns.selectedOptions.length > 0));
+                                const hasServerContent = Boolean(
+                                    (srvAns.textAnswer && srvAns.textAnswer.trim() !== '') ||
+                                    (srvAns.selectedOptions && srvAns.selectedOptions.length > 0)
+                                );
                                 useAttemptStore.getState().setAnswerState(srvAns.questionId, {
                                     id: srvAns.id,
                                     textAnswer: srvAns.textAnswer || '',
                                     selectedOptions: srvAns.selectedOptions || [],
                                     status: hasServerContent ? 'ANSWERED' : (local?.status ?? 'VISITED_NOT_ANSWERED'),
-                                });
+                                    isDirty: false,
+                                }, false);
                             }
                         });
                         // Mark initial server-hydrated state clean
@@ -128,13 +190,21 @@ export default function ExamAttemptPage() {
                     // Ignore non-fatal attempt status check during fetch
                 }
             } catch {
-                setError("Failed to load exam data. Check your connection.");
+                if (!isCancelled) {
+                    setError("Failed to load exam data. Check your connection.");
+                }
             } finally {
-                setLoading(false);
+                if (!isCancelled) {
+                    setLoading(false);
+                }
             }
         };
 
-        fetchExamAndEnsureSync();
+        ensureAndSyncAttempt();
+
+        return () => {
+            isCancelled = true;
+        };
     }, [examId, attemptId, status, currentExamId, router, submitAttemptLocal]);
 
     const handleSubmit = useCallback(async () => {
@@ -210,6 +280,7 @@ export default function ExamAttemptPage() {
 
         inFlightRef.current = true;
         setDraftStatus('saving');
+        const flushStartTime = Date.now();
 
         try {
             const seq = ++draftSequenceRef.current;
@@ -238,9 +309,16 @@ export default function ExamAttemptPage() {
             } else {
                 currentRevisionRef.current = data?.revision ?? (baseRevision + 1);
                 useAttemptStore.getState().setAllState({ draftRevision: currentRevisionRef.current });
-                useAttemptStore.getState().markAnswersSaved();
-                setDraftStatus('saved');
-                retryCountRef.current = 0;
+                useAttemptStore.getState().markAnswersSaved(flushStartTime);
+
+                const remainingDirty = Object.values(useAttemptStore.getState().answers).some(a => a.isDirty);
+                if (remainingDirty) {
+                    setDraftStatus('unsaved');
+                    queuedSaveRef.current = true;
+                } else {
+                    setDraftStatus('saved');
+                    retryCountRef.current = 0;
+                }
             }
         } catch (err: unknown) {
             console.warn("Draft autosave error:", err);
@@ -274,10 +352,19 @@ export default function ExamAttemptPage() {
             inFlightRef.current = false;
             if (queuedSaveRef.current) {
                 queuedSaveRef.current = false;
-                flushDraft(false);
+                if (draftTimerRef.current) {
+                    clearTimeout(draftTimerRef.current);
+                    draftTimerRef.current = null;
+                }
+                setTimeout(() => {
+                    flushDraft(false);
+                }, 100);
             }
         }
     }, [attemptId, status, examId, router, submitAttemptLocal, clearAttempt]);
+
+    const flushDraftRef = useRef(flushDraft);
+    flushDraftRef.current = flushDraft;
 
     // Debounced server-side draft autosave on local changes
     useEffect(() => {
@@ -294,7 +381,7 @@ export default function ExamAttemptPage() {
         }
 
         draftTimerRef.current = setTimeout(() => {
-            flushDraft(false);
+            flushDraftRef.current(false);
         }, 1500);
 
         return () => {
@@ -302,7 +389,7 @@ export default function ExamAttemptPage() {
                 clearTimeout(draftTimerRef.current);
             }
         };
-    }, [answers, attemptId, status, submitting, flushDraft]);
+    }, [answers, attemptId, status, submitting]);
 
     // Network online/offline event listeners
     useEffect(() => {

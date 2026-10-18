@@ -58,10 +58,11 @@ router = APIRouter(tags=["question-imports"])
 async def dispatch_import_job(
     import_id: str, background_tasks: BackgroundTasks
 ) -> str:
-    """Dispatches question paper import job to ARQ queue when an active worker is present,
+    """Dispatches question paper import job to ARQ queue when an active worker is present.
 
-    otherwise falls back to in-process background tasks with explicit operational logging.
-    Returns the dispatch mode: 'arq_worker' or 'in_process_background_task'.
+    If worker is unavailable:
+    - If ALLOW_IN_PROCESS_IMPORT_FALLBACK is enabled, falls back to ephemeral BackgroundTasks.
+    - Otherwise, marks the import as FAILED (WORKER_UNAVAILABLE) and raises HTTPException 503.
     """
     if settings.REDIS_URL:
         try:
@@ -83,21 +84,39 @@ async def dispatch_import_job(
                     return "arq_worker"
                 else:
                     logger.warning(
-                        "Redis reachable, but no active ARQ worker detected. "
-                        "Falling back to ephemeral BackgroundTasks for import %s. "
-                        "Note: In-process tasks will not survive container restarts.",
+                        "Redis reachable, but no active ARQ worker detected for QuestionImport %s.",
                         import_id,
                     )
             finally:
                 await pool.aclose()
         except Exception as e:
             logger.warning(
-                "Failed to enqueue to ARQ queue (%s). Falling back to background task.",
+                "Failed to enqueue QuestionImport to ARQ queue (%s).",
                 e,
             )
 
-    background_tasks.add_task(process_question_import, import_id)
-    return "in_process_background_task"
+    if settings.ALLOW_IN_PROCESS_IMPORT_FALLBACK:
+        logger.warning(
+            "ALLOW_IN_PROCESS_IMPORT_FALLBACK enabled: falling back to ephemeral BackgroundTasks for import %s. "
+            "Note: In-process tasks will not survive container restarts.",
+            import_id,
+        )
+        background_tasks.add_task(process_question_import, import_id)
+        return "in_process_background_task"
+
+    await crud.update_question_import_failure(
+        import_id,
+        error_category="WORKER_UNAVAILABLE",
+        error_message="Worker unavailable: No persistent background worker is active to process this import. The file has been preserved for retry.",
+    )
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "error": "WORKER_UNAVAILABLE",
+            "message": "Asynchronous processing worker is currently unavailable. Uploaded file preserved.",
+            "importId": import_id,
+        },
+    )
 
 
 @router.get("/api/v1/imports/worker-status")

@@ -48,7 +48,9 @@ engine = create_async_engine(
     echo=False,
     future=True,
     pool_pre_ping=True,
-    connect_args={"timeout": 10.0, "command_timeout": 10.0}
+    pool_size=10,
+    max_overflow=20,
+    connect_args={"timeout": 30.0, "command_timeout": 30.0}
     if "asyncpg" in DATABASE_URL
     else {},
 )
@@ -410,13 +412,13 @@ async def init_db() -> None:
         except Exception as err:
             print("DB Migration notice (class enrollment):", err)
 
-        try:
-            async with AsyncSessionLocal() as session:
-                from app.exams.crud import migrate_legacy_exam_passwords
+    try:
+        async with AsyncSessionLocal() as session:
+            from app.exams.crud import migrate_legacy_exam_passwords
 
-                await migrate_legacy_exam_passwords(session)
-        except Exception as err:
-            print("DB Migration notice (legacy exam passwords):", err)
+            await migrate_legacy_exam_passwords(session)
+    except Exception as err:
+        print("DB Migration notice (legacy exam passwords):", err)
 
 
 async def close_db() -> None:

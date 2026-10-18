@@ -17,7 +17,16 @@ export default defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
+      name: 'mocked-browser',
+      testDir: './e2e/mocked',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: process.env.CI ? undefined : 'chrome',
+      },
+    },
+    {
+      name: 'fullstack',
+      testDir: './e2e/fullstack',
       use: {
         ...devices['Desktop Chrome'],
         channel: process.env.CI ? undefined : 'chrome',
