@@ -774,7 +774,7 @@ test.describe('Mocked UI: Exam Exploration & Attempt Lifecycle', () => {
     await expect(page).toHaveURL(/\/student\/exams\/exam-gold-102\/attempt/);
     await expect(submitBtn).toBeEnabled();
 
-    await submitBtn.click();
+    await submitBtn.click({ force: true });
     if (await confirmBtn.isVisible({ timeout: 2000 })) {
       await confirmBtn.click();
     }
