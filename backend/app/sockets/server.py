@@ -98,16 +98,14 @@ async def authorize_exam_access(
         student = await get_student_by_user_id(user.id)
         if not student:
             return False, exam, None
-        # Enforce cross-school isolation
-        if (
-            exam.teacher
-            and exam.teacher.schoolId
-            and student.schoolId
-            and exam.teacher.schoolId != student.schoolId
-        ):
+        if not student.schoolId or not student.classId:
             return False, exam, student
         if not exam.isPublished:
             return False, exam, student
+        # Strict school isolation: student must belong to exam teacher's school
+        if exam.teacher and exam.teacher.schoolId:
+            if student.schoolId != exam.teacher.schoolId:
+                return False, exam, student
         return True, exam, student
 
     return False, exam, None
@@ -115,13 +113,22 @@ async def authorize_exam_access(
 
 @router.websocket("/ws")
 async def general_websocket_endpoint(websocket: WebSocket):
-    """General WebSocket connection for notifications and presence with mandatory authentication."""
+    """General WebSocket connection for notifications and presence with tenant-isolated rooms."""
     user = await authenticate_websocket(websocket)
     if not user:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
         return
 
-    room = "general"
+    # Derive school-scoped room for multi-tenant isolation
+    school_id = None
+    if user.role == Role.STUDENT:
+        student = await get_student_by_user_id(user.id)
+        school_id = student.schoolId if student else None
+    elif user.role in (Role.TEACHER, Role.PRINCIPAL):
+        teacher = await get_teacher_by_user_id(user.id)
+        school_id = teacher.schoolId if teacher else None
+
+    room = f"school_{school_id}" if school_id else f"user_{user.id}"
     await manager.connect(websocket, room)
     try:
         while True:
@@ -187,7 +194,7 @@ async def exam_websocket_endpoint(websocket: WebSocket, exam_id: str):
 
             elif event == "exam:submit":
                 student_id = profile.id if profile and user.role == Role.STUDENT else user.id
-                attempt_id = str(payload.get("attemptId", ""))
+                attempt_id = str(payload.get("attemptId", "")).strip()[:100]
                 evt = create_exam_submit_event(exam_id, student_id, attempt_id)
                 await manager.broadcast(room, evt, exclude=websocket)
 
@@ -205,7 +212,21 @@ async def exam_websocket_endpoint(websocket: WebSocket, exam_id: str):
                     )
                     continue
 
-                rem_seconds = int(payload.get("remainingSeconds", 0))
+                try:
+                    rem_seconds = int(payload.get("remainingSeconds", 0))
+                except (ValueError, TypeError):
+                    rem_seconds = 0
+
+                # Validate remaining seconds are non-negative and within reasonable bounds
+                duration_val = getattr(exam, "duration", None)
+                max_allowed = (duration_val * 60 + 3600) if duration_val else 86400
+                if rem_seconds < 0 or rem_seconds > max_allowed:
+                    await manager.send_personal_message(
+                        {"error": "Invalid remainingSeconds value", "event": "error"},
+                        websocket,
+                    )
+                    continue
+
                 evt = create_exam_time_sync_event(exam_id, rem_seconds)
                 await manager.broadcast(room, evt, exclude=websocket)
 
@@ -214,10 +235,14 @@ async def exam_websocket_endpoint(websocket: WebSocket, exam_id: str):
                 if user.role == Role.STUDENT:
                     student_id = profile.id if profile else user.id
                 else:
-                    student_id = str(payload.get("studentId", ""))
+                    student_id = str(payload.get("studentId", "")).strip()[:100]
 
-                count = int(payload.get("warningCount", 1))
-                reason = str(payload.get("reason", "Violation detected"))
+                try:
+                    count = int(payload.get("warningCount", 1))
+                except (ValueError, TypeError):
+                    count = 1
+                count = max(1, min(count, 100))
+                reason = str(payload.get("reason", "Violation detected"))[:255]
                 evt = create_proctoring_warning_event(
                     exam_id, student_id, count, reason
                 )
@@ -237,8 +262,15 @@ async def exam_websocket_endpoint(websocket: WebSocket, exam_id: str):
                     )
                     continue
 
-                student_id = str(payload.get("studentId", ""))
-                reason = str(payload.get("reason", "Maximum violations exceeded"))
+                student_id = str(payload.get("studentId", "")).strip()[:100]
+                if not student_id:
+                    await manager.send_personal_message(
+                        {"error": "studentId is required for termination", "event": "error"},
+                        websocket,
+                    )
+                    continue
+
+                reason = str(payload.get("reason", "Maximum violations exceeded"))[:255]
                 evt = create_proctoring_termination_event(exam_id, student_id, reason)
                 await manager.broadcast(room, evt)
 

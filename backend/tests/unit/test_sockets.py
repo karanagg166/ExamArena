@@ -3,7 +3,9 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from fastapi import WebSocketDisconnect
 
+from app.core.models import Role
 from app.sockets.events.chat import create_chat_message_event
 from app.sockets.events.exam import (
     create_exam_join_event,
@@ -26,6 +28,7 @@ from app.sockets.namespaces import (
     school_room,
     user_room,
 )
+from app.users.schemas import UserResponse
 
 
 def test_namespace_helpers():
@@ -332,6 +335,7 @@ async def test_websocket_exam_authorization_valid_student_and_teacher(mocker):
 async def test_websocket_exam_endpoint_lifecycle_and_security(mocker):
     """Test full WebSocket endpoint lifecycle: reject unauth, prevent spoofing & forged events."""
     from fastapi import WebSocketDisconnect
+
     from app.core.models import Role
     from app.sockets.server import exam_websocket_endpoint
 
@@ -400,4 +404,71 @@ async def test_websocket_exam_endpoint_lifecycle_and_security(mocker):
     # Verify proctoring:warning was sanitized to student's own ID
     warning_event = [c[0][1] for c in mock_broadcast.call_args_list if c[0][1]["event"] == "proctoring:warning"][0]
     assert warning_event["data"]["studentId"] == "stu-prof-real"
+
+
+@pytest.mark.asyncio
+async def test_authorize_exam_access_strict_school_isolation(mocker):
+    """Students cannot join WebSocket rooms for exams belonging to a different school or unpublished exams."""
+    from app.sockets.server import authorize_exam_access
+
+    mock_student_user = mocker.MagicMock(spec=UserResponse)
+    mock_student_user.id = "student-1"
+    mock_student_user.role = Role.STUDENT
+
+    mock_student_profile = mocker.MagicMock()
+    mock_student_profile.id = "stu-prof-1"
+    mock_student_profile.schoolId = "school-A"
+    mock_student_profile.classId = "class-1"
+    mocker.patch("app.sockets.server.get_student_by_user_id", return_value=mock_student_profile)
+
+    # Exam from school-B
+    mock_exam_diff_school = mocker.MagicMock()
+    mock_exam_diff_school.isPublished = True
+    mock_exam_diff_school.teacher = mocker.MagicMock(schoolId="school-B")
+    mocker.patch("app.sockets.server.get_exam_by_id", return_value=mock_exam_diff_school)
+
+    allowed, _, _ = await authorize_exam_access(mock_student_user, "exam-1")
+    assert allowed is False
+
+    # Exam from same school, but unpublished
+    mock_exam_unpublished = mocker.MagicMock()
+    mock_exam_unpublished.isPublished = False
+    mock_exam_unpublished.teacher = mocker.MagicMock(schoolId="school-A")
+    mocker.patch("app.sockets.server.get_exam_by_id", return_value=mock_exam_unpublished)
+
+    allowed, _, _ = await authorize_exam_access(mock_student_user, "exam-2")
+    assert allowed is False
+
+    # Exam from same school and published
+    mock_exam_valid = mocker.MagicMock()
+    mock_exam_valid.isPublished = True
+    mock_exam_valid.teacher = mocker.MagicMock(schoolId="school-A")
+    mocker.patch("app.sockets.server.get_exam_by_id", return_value=mock_exam_valid)
+
+    allowed, _, _ = await authorize_exam_access(mock_student_user, "exam-3")
+    assert allowed is True
+
+
+@pytest.mark.asyncio
+async def test_general_websocket_endpoint_school_room_scoping(mocker):
+    """Verify general /ws presence room is partitioned by schoolId for multi-tenant isolation."""
+    from app.sockets.server import general_websocket_endpoint
+
+    mock_student_user = mocker.MagicMock(spec=UserResponse)
+    mock_student_user.id = "stu-u1"
+    mock_student_user.role = Role.STUDENT
+
+    mock_student_profile = mocker.MagicMock()
+    mock_student_profile.schoolId = "school-xyz"
+    mocker.patch("app.sockets.server.authenticate_websocket", return_value=mock_student_user)
+    mocker.patch("app.sockets.server.get_student_by_user_id", return_value=mock_student_profile)
+
+    mock_connect = mocker.patch("app.sockets.manager.manager.connect", new_callable=AsyncMock)
+    mocker.patch("app.sockets.manager.manager.disconnect")
+
+    ws = AsyncMock()
+    ws.receive_json.side_effect = WebSocketDisconnect()
+
+    await general_websocket_endpoint(ws)
+    mock_connect.assert_awaited_once_with(ws, "school_school-xyz")
 
