@@ -770,10 +770,14 @@ test.describe('Mocked UI: Exam Exploration & Attempt Lifecycle', () => {
     await expect(page).toHaveURL(/\/student\/exams\/exam-gold-102\/attempt/);
     await expect(submitBtn).toBeEnabled();
 
-    // Dismiss error toast overlay so it does not intercept pointer clicks
+    // Dismiss any proctoring warning modal or toast overlays triggered by blur/focus in headless runner
+    const warningDismissBtn = page.getByRole('button', { name: /I Understand/i });
+    if (await warningDismissBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await warningDismissBtn.click();
+    }
     await page.evaluate(() => document.querySelectorAll('[data-sonner-toast]').forEach((el) => el.remove()));
 
-    await submitBtn.click();
+    await submitBtn.click({ force: true });
 
     await expect(page).toHaveURL(/\/student\/exams\/exam-gold-102\/result/, { timeout: 10000 });
     expect(submitAttempts).toBe(2);
