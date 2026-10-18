@@ -26,7 +26,10 @@ from app.core.models import (
     StudentExamAnswer,
     StudentExamStatus,
 )
-from tests.factories.attempt_factory import create_attempt_factory, create_attempt_answer_factory
+from tests.factories.attempt_factory import (
+    create_attempt_answer_factory,
+    create_attempt_factory,
+)
 from tests.factories.class_factory import create_class_factory
 from tests.factories.exam_factory import create_exam_factory, create_question_factory
 from tests.factories.school_factory import create_school_factory

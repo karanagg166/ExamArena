@@ -7,6 +7,7 @@ Invariants verified:
 """
 
 from unittest.mock import AsyncMock, patch
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError

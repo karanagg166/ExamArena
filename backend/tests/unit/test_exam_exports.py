@@ -1,7 +1,7 @@
 """Unit tests for Exam Results Excel and PDF export functions and sanitization."""
 
 import io
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import openpyxl
@@ -61,8 +61,8 @@ def test_generate_exam_results_excel_with_injection_and_unicode():
             "maxMarks": 100,
             "percentage": 95.0,
             "status": "SUBMITTED",
-            "startedAt": datetime(2026, 10, 15, 10, 0, tzinfo=timezone.utc),
-            "submittedAt": datetime(2026, 10, 15, 11, 30, tzinfo=timezone.utc),
+            "startedAt": datetime(2026, 10, 15, 10, 0, tzinfo=UTC),
+            "submittedAt": datetime(2026, 10, 15, 11, 30, tzinfo=UTC),
         },
         {
             "rank": 2,
@@ -74,8 +74,8 @@ def test_generate_exam_results_excel_with_injection_and_unicode():
             "maxMarks": 100,
             "percentage": 80.0,
             "status": "SUBMITTED",
-            "startedAt": datetime(2026, 10, 15, 10, 5, tzinfo=timezone.utc),
-            "submittedAt": datetime(2026, 10, 15, 11, 45, tzinfo=timezone.utc),
+            "startedAt": datetime(2026, 10, 15, 10, 5, tzinfo=UTC),
+            "submittedAt": datetime(2026, 10, 15, 11, 45, tzinfo=UTC),
         },
         {
             "rank": 3,
@@ -87,7 +87,7 @@ def test_generate_exam_results_excel_with_injection_and_unicode():
             "maxMarks": 100,
             "percentage": 0.0,
             "status": "IN_PROGRESS",              # In progress / unsubmitted
-            "startedAt": datetime(2026, 10, 15, 10, 10, tzinfo=timezone.utc),
+            "startedAt": datetime(2026, 10, 15, 10, 10, tzinfo=UTC),
             "submittedAt": None,                  # Missing submission date
         },
     ]
@@ -156,7 +156,7 @@ def test_generate_exam_results_pdf_with_injection_and_unicode():
             "maxMarks": 50,
             "percentage": 90.0,
             "status": "SUBMITTED",
-            "submittedAt": datetime(2026, 10, 15, 11, 0, tzinfo=timezone.utc),
+            "submittedAt": datetime(2026, 10, 15, 11, 0, tzinfo=UTC),
         },
         {
             "rank": 2,
@@ -220,9 +220,13 @@ def test_generate_exam_results_malformed_exam():
 @pytest.mark.asyncio
 async def test_export_endpoints_authorization(mocker):
     from fastapi import HTTPException
-    from app.exams.router import export_exam_results_excel_endpoint, export_exam_results_pdf_endpoint
-    from app.users.schemas import UserResponse
+
     from app.core.models import Role
+    from app.exams.router import (
+        export_exam_results_excel_endpoint,
+        export_exam_results_pdf_endpoint,
+    )
+    from app.users.schemas import UserResponse
 
     student_user = MagicMock(spec=UserResponse)
     student_user.id = "usr_student"
@@ -251,9 +255,12 @@ async def test_export_endpoints_authorization(mocker):
 
 @pytest.mark.asyncio
 async def test_export_endpoints_success(mocker):
-    from app.exams.router import export_exam_results_excel_endpoint, export_exam_results_pdf_endpoint
-    from app.users.schemas import UserResponse
     from app.core.models import Role
+    from app.exams.router import (
+        export_exam_results_excel_endpoint,
+        export_exam_results_pdf_endpoint,
+    )
+    from app.users.schemas import UserResponse
 
     teacher_user = MagicMock(spec=UserResponse)
     teacher_user.id = "usr_teacher_1"
@@ -279,7 +286,7 @@ async def test_export_endpoints_success(mocker):
                 "maxMarks": 100,
                 "percentage": 90.0,
                 "status": "SUBMITTED",
-                "submittedAt": datetime(2026, 10, 15, 12, 0, tzinfo=timezone.utc),
+                "submittedAt": datetime(2026, 10, 15, 12, 0, tzinfo=UTC),
             }
         ]),
     )

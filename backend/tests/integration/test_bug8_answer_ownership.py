@@ -13,7 +13,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models import QuestionOption, QuestionType, Role, StudentExamStatus
-from tests.factories.attempt_factory import create_attempt_factory, create_attempt_answer_factory
+from tests.factories.attempt_factory import (
+    create_attempt_answer_factory,
+    create_attempt_factory,
+)
 from tests.factories.class_factory import create_class_factory
 from tests.factories.exam_factory import create_exam_factory, create_question_factory
 from tests.factories.school_factory import create_school_factory
@@ -211,6 +214,7 @@ async def test_cross_attempt_answer_shell_idor_protection(
     - Attempt A remains IN_PROGRESS.
     """
     from sqlalchemy.orm import selectinload
+
     from app.core.models import StudentExam, StudentExamAnswer
     from tests.conftest import TestAsyncSessionLocal
 

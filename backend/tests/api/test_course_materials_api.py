@@ -11,8 +11,9 @@ Critical verifications:
 import io
 import json
 from pathlib import Path
-import pytest
+
 import httpx
+import pytest
 
 from app.core.config import settings
 from app.core.models import (
