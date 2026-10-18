@@ -169,7 +169,12 @@ async def log_proctoring_violation(
             "details": payload.details,
         },
     )
-    return {"message": "Proctoring violation recorded", "attemptId": attempt.id}
+    warning_count = await crud.increment_attempt_warning_count(attempt_id)
+    return {
+        "message": "Proctoring violation recorded",
+        "attemptId": attempt.id,
+        "warningCount": warning_count,
+    }
 
 
 @router.put("/{attempt_id}/draft", response_model=StudentExamDraftResponse)

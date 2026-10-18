@@ -81,5 +81,46 @@ describe('useAttemptStore', () => {
     expect(state.attemptId).toBeNull();
     expect(state.answers).toEqual({});
     expect(state.status).toBe('NOT_ATTEMPTED');
+    expect(state.draftRevision).toBe(0);
+    expect(state.warningCount).toBe(0);
+    expect(state.userId).toBeNull();
+  });
+
+  it('tracks isDirty and modifiedAt when setting answer state, and clears via markAnswersSaved', () => {
+    useAttemptStore.getState().setAnswerState('q-1', {
+      textAnswer: 'Initial Answer',
+      status: 'ANSWERED',
+    });
+
+    let ans = useAttemptStore.getState().answers['q-1'];
+    expect(ans.isDirty).toBe(true);
+    expect(typeof ans.modifiedAt).toBe('number');
+
+    // Mark clean
+    useAttemptStore.getState().markAnswersSaved();
+    ans = useAttemptStore.getState().answers['q-1'];
+    expect(ans.isDirty).toBe(false);
+
+    // Intentional clearing (e.g. user deletes answer) sets isDirty to true again
+    useAttemptStore.getState().setAnswerState('q-1', {
+      textAnswer: '',
+      status: 'VISITED_NOT_ANSWERED',
+    });
+    ans = useAttemptStore.getState().answers['q-1'];
+    expect(ans.textAnswer).toBe('');
+    expect(ans.isDirty).toBe(true);
+  });
+
+  it('tracks draftRevision and warningCount correctly', () => {
+    useAttemptStore.getState().setAllState({
+      draftRevision: 5,
+      warningCount: 2,
+      userId: 'usr_abc',
+    });
+
+    const state = useAttemptStore.getState();
+    expect(state.draftRevision).toBe(5);
+    expect(state.warningCount).toBe(2);
+    expect(state.userId).toBe('usr_abc');
   });
 });

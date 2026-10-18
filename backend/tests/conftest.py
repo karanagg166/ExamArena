@@ -244,8 +244,12 @@ async def init_test_db() -> None:
             await conn.execute(
                 text('CREATE INDEX IF NOT EXISTS "coursematerial_status_idx" ON "CourseMaterial" ("status");')
             )
+            # Phase 5 migrations: StudentExam draft revision and proctoring warning count
             await conn.execute(
-                text('CREATE INDEX IF NOT EXISTS "coursematerial_spheredocid_idx" ON "CourseMaterial" ("searchSphereDocumentId");')
+                text('ALTER TABLE "StudentExam" ADD COLUMN IF NOT EXISTS "draftRevision" INTEGER NOT NULL DEFAULT 0;')
+            )
+            await conn.execute(
+                text('ALTER TABLE "StudentExam" ADD COLUMN IF NOT EXISTS "warningCount" INTEGER NOT NULL DEFAULT 0;')
             )
         except Exception as e:
             print(f"Notice: column migration in test db: {e}")

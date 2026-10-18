@@ -133,6 +133,8 @@ class StudentExamResponse(BaseModel):
     submittedAt: datetime | None = None
     status: AttemptStatus = AttemptStatus.IN_PROGRESS
     isResultsReleased: bool = False
+    draftRevision: int = 0
+    warningCount: int = 0
     answers: list[StudentAnswerResponse] | None = None
 
     class Config:
@@ -196,9 +198,10 @@ class StudentDraftAnswerItem(BaseModel):
 
 
 class StudentExamDraftUpdate(BaseModel):
-    """Batched server-side draft autosave request with sequence tracking."""
+    """Batched server-side draft autosave request with durable revision and sequence tracking."""
 
     clientSequence: int = 0
+    baseRevision: int | None = None
     answers: list[StudentDraftAnswerItem]
 
 
@@ -208,6 +211,9 @@ class StudentExamDraftResponse(BaseModel):
     attemptId: str
     savedCount: int
     clientSequence: int
+    revision: int = 0
+    applied: bool = True
+    conflict: bool = False
     savedAt: datetime
     timeRemainingSeconds: int | None = None
 

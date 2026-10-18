@@ -786,6 +786,12 @@ class StudentExam(Base):
         default=StudentExamStatus.IN_PROGRESS,
         nullable=False,
     )
+    draftRevision: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    warningCount: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
 
     exam: Mapped["Exam"] = relationship("Exam", back_populates="studentExams")
     student: Mapped["Student"] = relationship("Student", back_populates="studentExams")

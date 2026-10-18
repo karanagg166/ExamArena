@@ -9,7 +9,7 @@ import { AttemptQuestion } from '@/components/attempt/AttemptQuestion';
 import { AttemptSummary } from '@/components/attempt/AttemptSummary';
 import { ExamTimer } from '@/components/attempt/ExamTimer';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronLeft, Send, AlertCircle, Maximize, PanelRightOpen, PanelRightClose, X, Check, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Send, AlertCircle, Maximize, PanelRightOpen, PanelRightClose, X, Check, Loader2, WifiOff } from 'lucide-react';
 import { GlassCard } from '@/components/ui/glass-card';
 import { useProctoring } from '@/hooks/useProctoring';
 import { ProctoringWarning } from '@/components/attempt/ProctoringWarning';
@@ -41,12 +41,18 @@ export default function ExamAttemptPage() {
     const [warningVisible, setWarningVisible] = useState(false);
     const [warningReason, setWarningReason] = useState("");
     const [warningDisplayCount, setWarningDisplayCount] = useState(0);
+    const [initialWarningCount, setInitialWarningCount] = useState(0);
 
     // Autosave state and tracking
-    const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    type DraftStatus = 'idle' | 'unsaved' | 'saving' | 'saved' | 'conflict' | 'offline' | 'error';
+    const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle');
     const submittingRef = useRef(false);
     const draftSequenceRef = useRef(0);
-    const lastAckSequenceRef = useRef(0);
+    const currentRevisionRef = useRef(0);
+    const inFlightRef = useRef(false);
+    const retryCountRef = useRef(0);
+    const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const queuedSaveRef = useRef(false);
     const draftTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const handleWarning = useCallback((count: number, reason: string) => {
@@ -56,6 +62,9 @@ export default function ExamAttemptPage() {
     }, []);
 
     useEffect(() => {
+        if (submittingRef.current || status === 'SUBMITTED') {
+            return;
+        }
         if (!attemptId || status !== 'IN_PROGRESS' || currentExamId !== examId) {
              router.replace(`/student/exams/${examId}/start`);
              return;
@@ -87,21 +96,33 @@ export default function ExamAttemptPage() {
                         router.replace(`/student/exams/${examId}/result`);
                         return;
                     }
+                    if (typeof serverAttempt?.draftRevision === 'number') {
+                        currentRevisionRef.current = serverAttempt.draftRevision;
+                        useAttemptStore.getState().setAllState({ draftRevision: serverAttempt.draftRevision });
+                    }
+                    if (typeof serverAttempt?.warningCount === 'number') {
+                        setInitialWarningCount(serverAttempt.warningCount);
+                    }
+                    if (serverAttempt?.studentId) {
+                        useAttemptStore.getState().setAllState({ userId: serverAttempt.studentId });
+                    }
                     if (serverAttempt?.answers && serverAttempt.answers.length > 0) {
                         const currentStoreAnswers = useAttemptStore.getState().answers;
                         serverAttempt.answers.forEach((srvAns: { id: string; questionId: string; textAnswer?: string; selectedOptions?: { optionId: string }[] }) => {
                             const local = currentStoreAnswers[srvAns.questionId];
-                            const hasLocalContent = local?.textAnswer || (local?.selectedOptions && local.selectedOptions.length > 0);
-                            const hasServerContent = srvAns.textAnswer || (srvAns.selectedOptions && srvAns.selectedOptions.length > 0);
-                            if (!hasLocalContent && hasServerContent) {
+                            // If local answer has been modified locally (isDirty: true), preserve it (even if empty, representing intentional deletion)
+                            if (!local || !local.isDirty) {
+                                const hasServerContent = Boolean(srvAns.textAnswer || (srvAns.selectedOptions && srvAns.selectedOptions.length > 0));
                                 useAttemptStore.getState().setAnswerState(srvAns.questionId, {
                                     id: srvAns.id,
-                                    textAnswer: srvAns.textAnswer,
-                                    selectedOptions: srvAns.selectedOptions,
-                                    status: 'ANSWERED',
+                                    textAnswer: srvAns.textAnswer || '',
+                                    selectedOptions: srvAns.selectedOptions || [],
+                                    status: hasServerContent ? 'ANSWERED' : (local?.status ?? 'VISITED_NOT_ANSWERED'),
                                 });
                             }
                         });
+                        // Mark initial server-hydrated state clean
+                        useAttemptStore.getState().markAnswersSaved();
                     }
                 } catch {
                     // Ignore non-fatal attempt status check during fetch
@@ -125,7 +146,7 @@ export default function ExamAttemptPage() {
             // Fresh read directly from store to guarantee latest answers are always submitted
             const freshAnswers = useAttemptStore.getState().answers;
             const formattedAnswers = Object.values(freshAnswers).map(ans => ({
-                id: ans.id,
+                id: ans.id || undefined,
                 textAnswer: ans.textAnswer,
                 selectedOptions: ans.selectedOptions
             }));
@@ -136,9 +157,8 @@ export default function ExamAttemptPage() {
                 answers: formattedAnswers
             });
 
-            // 2. Mark local attempt as submitted and clear local cache
+            // 2. Mark local attempt as submitted
             submitAttemptLocal();
-            clearAttempt();
 
             // 3. ONLY after successful attempt submission, exit fullscreen
             if (typeof document !== 'undefined' && document.fullscreenElement) {
@@ -153,46 +173,128 @@ export default function ExamAttemptPage() {
             router.replace(`/student/exams/${examId}/result`);
         } catch (err: unknown) {
             console.error("Submission failed", err);
-            submittingRef.current = false;
             const msg = getErrorMessage(err) || "Failed to submit exam. Please check your connection and try again.";
+            if (msg.includes("already been submitted") || msg.includes("already attempted")) {
+                submitAttemptLocal();
+                router.replace(`/student/exams/${examId}/result`);
+                return;
+            }
+            submittingRef.current = false;
             toast.error(msg);
             setSubmitting(false);
         }
-    }, [attemptId, submitAttemptLocal, clearAttempt, examId, router]);
+    }, [attemptId, submitAttemptLocal, examId, router]);
 
-    // Debounced server-side draft autosave
+    // Flushes draft answers to the backend
+    const flushDraft = useCallback(async (isManualRetry = false) => {
+        if (!attemptId || status !== 'IN_PROGRESS' || submittingRef.current) return;
+
+        if (isManualRetry) {
+            retryCountRef.current = 0;
+        }
+
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            setDraftStatus('offline');
+            return;
+        }
+
+        if (inFlightRef.current) {
+            queuedSaveRef.current = true;
+            return;
+        }
+
+        if (retryTimerRef.current) {
+            clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = null;
+        }
+
+        inFlightRef.current = true;
+        setDraftStatus('saving');
+
+        try {
+            const seq = ++draftSequenceRef.current;
+            const freshAnswers = useAttemptStore.getState().answers;
+            const formattedDraft = Object.values(freshAnswers).map(ans => ({
+                id: ans.id || undefined,
+                questionId: ans.questionId,
+                textAnswer: ans.textAnswer,
+                selectedOptions: ans.selectedOptions,
+            }));
+
+            const baseRevision = currentRevisionRef.current;
+            const res = await api.put(`/api/v1/attempts/${attemptId}/draft`, {
+                clientSequence: seq,
+                baseRevision,
+                answers: formattedDraft,
+            });
+
+            const data = res.data;
+            if (data?.conflict || !data?.applied) {
+                currentRevisionRef.current = data?.revision ?? currentRevisionRef.current;
+                useAttemptStore.getState().setAllState({ draftRevision: currentRevisionRef.current });
+                setDraftStatus('conflict');
+                retryCountRef.current = 0;
+                toast.error("Draft conflict: Answers were updated in another session. Please refresh or resolve before saving.");
+            } else {
+                currentRevisionRef.current = data?.revision ?? (baseRevision + 1);
+                useAttemptStore.getState().setAllState({ draftRevision: currentRevisionRef.current });
+                useAttemptStore.getState().markAnswersSaved();
+                setDraftStatus('saved');
+                retryCountRef.current = 0;
+            }
+        } catch (err: unknown) {
+            console.warn("Draft autosave error:", err);
+            const axiosErr = err as { response?: { status?: number } };
+            const statusCode = axiosErr?.response?.status;
+            if (statusCode && statusCode >= 400 && statusCode < 500) {
+                setDraftStatus('error');
+                retryCountRef.current = 0;
+                const msg = getErrorMessage(err);
+                if (msg.includes("already been submitted") || msg.includes("already attempted")) {
+                    submitAttemptLocal();
+                    clearAttempt();
+                    router.replace(`/student/exams/${examId}/result`);
+                    return;
+                }
+            } else {
+                if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                    setDraftStatus('offline');
+                } else {
+                    setDraftStatus('error');
+                }
+                if (retryCountRef.current < 3) {
+                    const delay = Math.min(1000 * Math.pow(2, retryCountRef.current), 8000);
+                    retryCountRef.current += 1;
+                    retryTimerRef.current = setTimeout(() => {
+                        flushDraft(false);
+                    }, delay);
+                }
+            }
+        } finally {
+            inFlightRef.current = false;
+            if (queuedSaveRef.current) {
+                queuedSaveRef.current = false;
+                flushDraft(false);
+            }
+        }
+    }, [attemptId, status, examId, router, submitAttemptLocal, clearAttempt]);
+
+    // Debounced server-side draft autosave on local changes
     useEffect(() => {
         if (!attemptId || status !== 'IN_PROGRESS' || submitting) return;
+
+        const storeAnswers = useAttemptStore.getState().answers;
+        const hasDirty = Object.values(storeAnswers).some(a => a.isDirty);
+        if (!hasDirty) return;
+
+        setDraftStatus('unsaved');
 
         if (draftTimerRef.current) {
             clearTimeout(draftTimerRef.current);
         }
 
-        draftTimerRef.current = setTimeout(async () => {
-            const seq = ++draftSequenceRef.current;
-            setDraftStatus('saving');
-            try {
-                const freshAnswers = useAttemptStore.getState().answers;
-                const formattedDraft = Object.values(freshAnswers).map(ans => ({
-                    id: ans.id || undefined,
-                    questionId: ans.questionId,
-                    textAnswer: ans.textAnswer,
-                    selectedOptions: ans.selectedOptions,
-                }));
-
-                const res = await api.put(`/api/v1/attempts/${attemptId}/draft`, {
-                    clientSequence: seq,
-                    answers: formattedDraft,
-                });
-
-                if (res.data?.clientSequence >= lastAckSequenceRef.current) {
-                    lastAckSequenceRef.current = res.data.clientSequence;
-                    setDraftStatus('saved');
-                }
-            } catch (err) {
-                console.warn("Draft autosave error:", err);
-                setDraftStatus('error');
-            }
+        draftTimerRef.current = setTimeout(() => {
+            flushDraft(false);
         }, 1500);
 
         return () => {
@@ -200,10 +302,34 @@ export default function ExamAttemptPage() {
                 clearTimeout(draftTimerRef.current);
             }
         };
-    }, [answers, attemptId, status, submitting]);
+    }, [answers, attemptId, status, submitting, flushDraft]);
+
+    // Network online/offline event listeners
+    useEffect(() => {
+        const handleOnline = () => {
+            if (status === 'IN_PROGRESS' && !submittingRef.current) {
+                toast.info("Connection restored. Syncing draft answers...");
+                flushDraft(true);
+            }
+        };
+
+        const handleOffline = () => {
+            setDraftStatus('offline');
+            toast.warning("You are currently offline. Answers will sync once reconnected.");
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, [status, flushDraft]);
 
     const proctoring = useProctoring({
         maxWarnings: 3,
+        initialWarningCount: initialWarningCount,
         attemptId: attemptId,
         onWarning: handleWarning,
         onAutoSubmit: handleSubmit,
@@ -325,10 +451,30 @@ export default function ExamAttemptPage() {
                                 Draft saved
                             </span>
                         )}
+                        {draftStatus === 'unsaved' && (
+                            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-amber-300 font-medium bg-amber-300/10 border border-amber-300/20 px-2 py-1 rounded-md">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                                Unsaved changes
+                            </span>
+                        )}
+                        {draftStatus === 'conflict' && (
+                            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-amber-500 font-medium bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-md">
+                                <AlertCircle className="w-3 h-3 text-amber-500" />
+                                Conflict
+                                <button onClick={() => flushDraft(true)} className="underline hover:text-white ml-1">Retry</button>
+                            </span>
+                        )}
+                        {draftStatus === 'offline' && (
+                            <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-yellow-400 font-medium bg-yellow-400/10 border border-yellow-400/20 px-2 py-1 rounded-md">
+                                <WifiOff className="w-3 h-3 text-yellow-400" />
+                                Offline (will sync)
+                            </span>
+                        )}
                         {draftStatus === 'error' && (
                             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-rose-400 font-medium bg-rose-400/10 border border-rose-400/20 px-2 py-1 rounded-md">
                                 <AlertCircle className="w-3 h-3 text-rose-400" />
-                                Save error (retrying...)
+                                Save failed
+                                <button onClick={() => flushDraft(true)} className="underline hover:text-white ml-1">Retry</button>
                             </span>
                         )}
 

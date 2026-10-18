@@ -264,6 +264,18 @@ async def init_db() -> None:
                 )
             )
 
+            # Phase 5 migrations: StudentExam draft revision and proctoring warning count
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExam" ADD COLUMN IF NOT EXISTS "draftRevision" INTEGER NOT NULL DEFAULT 0;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "StudentExam" ADD COLUMN IF NOT EXISTS "warningCount" INTEGER NOT NULL DEFAULT 0;'
+                )
+            )
+
             # Convert unique index on examCode to non-unique index if needed
             await conn.execute(text("DROP INDEX IF EXISTS exam_examcode_key;"))
             await conn.execute(

@@ -308,6 +308,8 @@ model StudentExam {
   marksObtained Int                 @default(0)
   startedAt     DateTime            @default(now())
   submittedAt   DateTime?
+  draftRevision Int                 @default(0)
+  warningCount  Int                 @default(0)
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   status        StudentExamStatus   @default(IN_PROGRESS)
