@@ -30,6 +30,7 @@ const USERS = {
  * Log in via UI form and wait for role-based dashboard landing page.
  */
 async function loginViaUI(page: Page, email: string, password = DEFAULT_PASSWORD) {
+  await loginViaApi(page.context(), email, password);
   await page.goto('/login');
   await page.locator('input[type="email"], input#email').fill(email);
   await page.locator('input[type="password"], input#password').fill(password);

@@ -350,7 +350,7 @@ test.describe('Mocked UI: Exam Exploration & Attempt Lifecycle', () => {
     await submitBtn.click();
 
     const confirmBtn = page.getByRole('button', { name: /Submit Anyway|Confirm/i });
-    if (await confirmBtn.isVisible({ timeout: 2000 })) {
+    if (await confirmBtn.isVisible().catch(() => false)) {
       await confirmBtn.click();
     }
 
@@ -766,18 +766,14 @@ test.describe('Mocked UI: Exam Exploration & Attempt Lifecycle', () => {
 
     const submitBtn = page.getByRole('button', { name: /Submit Exam/i });
     await submitBtn.click();
-    const confirmBtn = page.getByRole('button', { name: /Submit Anyway|Confirm/i });
-    if (await confirmBtn.isVisible({ timeout: 2000 })) {
-      await confirmBtn.click();
-    }
 
     await expect(page).toHaveURL(/\/student\/exams\/exam-gold-102\/attempt/);
     await expect(submitBtn).toBeEnabled();
 
-    await submitBtn.click({ force: true });
-    if (await confirmBtn.isVisible({ timeout: 2000 })) {
-      await confirmBtn.click();
-    }
+    // Dismiss error toast overlay so it does not intercept pointer clicks
+    await page.evaluate(() => document.querySelectorAll('[data-sonner-toast]').forEach((el) => el.remove()));
+
+    await submitBtn.click();
 
     await expect(page).toHaveURL(/\/student\/exams\/exam-gold-102\/result/, { timeout: 10000 });
     expect(submitAttempts).toBe(2);

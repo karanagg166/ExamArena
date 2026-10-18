@@ -141,7 +141,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       SECRET_KEY: ci-secret-key-for-testing-only-32-chars-long
       ENVIRONMENT: ci
-      NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+      NEXT_PUBLIC_API_URL: http://localhost:8000
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -184,9 +184,9 @@ jobs:
 
       - name: Start FastAPI Backend
         run: |
-          PYTHONPATH=backend uvicorn app.main:app --port 8000 &
+          PYTHONPATH=backend uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           for i in {1..30}; do
-            if curl -s http://127.0.0.1:8000/health | grep -q "healthy"; then
+            if curl -s http://localhost:8000/health | grep -q "healthy"; then
               echo "FastAPI backend is ready!"
               break
             fi
@@ -198,4 +198,4 @@ jobs:
         run: pnpm test:e2e:fullstack
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+          NEXT_PUBLIC_API_URL: http://localhost:8000
