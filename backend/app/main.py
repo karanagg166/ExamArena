@@ -110,5 +110,86 @@ def root():
 
 
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+@app.get("/health/live")
+@app.get("/api/health")
+@app.get("/api/health/live")
+async def health_live():
+    """Liveness probe: returns 200 if the FastAPI application process is alive."""
+    return {
+        "status": "ok",
+        "service": "exam-arena-api",
+        "environment": settings.ENVIRONMENT,
+    }
+
+
+@app.get("/health/ready")
+@app.get("/api/health/ready")
+async def health_ready():
+    """Readiness probe: validates connectivity to PostgreSQL and Redis.
+
+    Fails with HTTP 503 if any required dependency is unreachable.
+    """
+    from sqlalchemy import text
+
+    db_status = "unknown"
+    redis_status = "unknown"
+    errors: list[str] = []
+
+    # 1. Database check
+    try:
+        async with db.get_session() as session:
+            result = await session.execute(text("SELECT 1"))
+            if result.scalar() == 1:
+                db_status = "connected"
+            else:
+                db_status = "unhealthy"
+                errors.append("Database query returned unexpected scalar")
+    except Exception as exc:
+        db_status = "disconnected"
+        errors.append(f"Database error: {exc}")
+
+    # 2. Redis check
+    if settings.REDIS_URL:
+        try:
+            from app.core.redis import get_redis
+
+            r = get_redis()
+            if r:
+                pong = await r.ping()
+                redis_status = "connected" if pong else "unresponsive"
+            else:
+                redis_status = "not_initialized"
+                errors.append("Redis client not initialized")
+        except Exception as exc:
+            redis_status = "disconnected"
+            errors.append(f"Redis error: {exc}")
+    else:
+        redis_status = "not_configured"
+
+    is_ready = db_status == "connected" and (redis_status in ("connected", "not_configured"))
+    resp_code = 200 if is_ready else 503
+    return JSONResponse(
+        status_code=resp_code,
+        content={
+            "status": "ready" if is_ready else "unready",
+            "service": "exam-arena-api",
+            "database": db_status,
+            "redis": redis_status,
+            "environment": settings.ENVIRONMENT,
+            "errors": errors if errors else None,
+        },
+    )
+
+
+@app.get("/health/worker")
+@app.get("/api/health/worker")
+async def health_worker():
+    """Worker availability probe: validates ARQ worker heartbeat in Redis.
+
+    Returns 200 if worker is active, 503 if inactive or Redis unreachable.
+    """
+    from app.imports.worker import check_worker_availability
+
+    status_data = await check_worker_availability()
+    resp_code = 200 if status_data.get("worker_available") else 503
+    return JSONResponse(status_code=resp_code, content=status_data)

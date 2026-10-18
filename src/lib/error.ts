@@ -30,9 +30,12 @@ export function getErrorMessage(error: unknown): string {
           .join(" | ");
       }
 
-      // If detail is an object with a message
-      if (typeof data.detail === "object" && data.detail !== null && "msg" in data.detail) {
-        return (data.detail as { msg: string }).msg;
+      // If detail is an object with a message or msg
+      if (typeof data.detail === "object" && data.detail !== null) {
+        const detailObj = data.detail as Record<string, unknown>;
+        if (typeof detailObj.message === "string") return detailObj.message;
+        if (typeof detailObj.msg === "string") return detailObj.msg;
+        if (typeof detailObj.error === "string") return detailObj.error;
       }
       
       // Just stringify if it's an object we don't recognize

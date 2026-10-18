@@ -10,3 +10,12 @@ services:
     envVars:
       - key: PORT
         value: 8000
+
+  - type: worker
+    name: examarena-worker
+    runtime: docker
+    dockerfilePath: backend/worker.Dockerfile
+    dockerContext: .
+    branch: main
+    autoDeploy: true
+

@@ -102,6 +102,118 @@ class CohereClient:
             )
         return self._client
 
+    def _generate_stub_response(self, schema: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+        """Generates deterministic structured JSON for CI and integration tests without live provider calls."""
+        import json
+
+        props = schema.get("properties", {})
+        if "questions" in props or schema.get("title") == "ExtractedQuestionPaper":
+            stub_data: dict[str, Any] = {
+                "title": "Deterministic Test Examination",
+                "subject": "General Knowledge",
+                "total_marks": 7.0,
+                "duration_minutes": 60,
+                "questions": [
+                    {
+                        "question_number": "1",
+                        "question_type": "MULTIPLE_CHOICE",
+                        "text": "What is the capital of France?",
+                        "marks": 2.0,
+                        "options": [
+                            {"label": "A", "text": "Paris", "is_correct": True},
+                            {"label": "B", "text": "London", "is_correct": False},
+                            {"label": "C", "text": "Berlin", "is_correct": False},
+                            {"label": "D", "text": "Madrid", "is_correct": False},
+                        ],
+                        "section": "Section A",
+                        "confidence": "HIGH",
+                        "warnings": [],
+                    },
+                    {
+                        "question_number": "2",
+                        "question_type": "SHORT_ANSWER",
+                        "text": "Explain the purpose of database indexing.",
+                        "marks": 5.0,
+                        "options": [],
+                        "section": "Section B",
+                        "confidence": "HIGH",
+                        "warnings": [],
+                    },
+                ],
+                "warnings": [],
+            }
+        elif "answers" in props or schema.get("title") == "ExtractedAnswerKey":
+            stub_data = {
+                "title": "Deterministic Answer Key",
+                "exam_reference": "General Knowledge",
+                "total_marks": 7.0,
+                "answers": [
+                    {
+                        "question_reference": "1",
+                        "question_text_snippet": "What is the capital of France?",
+                        "selected_options": ["A"],
+                        "reference_answer": None,
+                        "explanation": "Paris is the capital of France.",
+                        "rubric": [],
+                        "marks": 2.0,
+                        "confidence": "HIGH",
+                        "warnings": [],
+                    },
+                    {
+                        "question_reference": "2",
+                        "question_text_snippet": "Explain the purpose of database indexing.",
+                        "selected_options": [],
+                        "reference_answer": "Indexes improve database search performance.",
+                        "explanation": "B-tree and hash indexes provide fast record retrieval.",
+                        "rubric": [
+                            {
+                                "criterion": "Defines indexing accurately",
+                                "marks": 3.0,
+                                "description": "Mentions search acceleration",
+                            },
+                            {
+                                "criterion": "Provides clear rationale",
+                                "marks": 2.0,
+                                "description": "Mentions tree/hash structures",
+                            },
+                        ],
+                        "marks": 5.0,
+                        "confidence": "HIGH",
+                        "warnings": [],
+                    },
+                ],
+                "warnings": [],
+            }
+        else:
+            stub_data = {
+                "suggested_marks": 4.5,
+                "confidence": "HIGH",
+                "feedback": "Accurate response with sound reasoning.",
+                "breakdown": [
+                    {
+                        "criterion": "Accuracy",
+                        "awarded_marks": 2.5,
+                        "max_marks": 3.0,
+                        "comment": "Accurate definition",
+                    },
+                    {
+                        "criterion": "Clarity",
+                        "awarded_marks": 2.0,
+                        "max_marks": 2.0,
+                        "comment": "Clear phrasing",
+                    },
+                ],
+                "warnings": [],
+            }
+
+        return json.dumps(stub_data), {
+            "model": "cohere-deterministic-stub",
+            "duration_ms": 2.0,
+            "retries": 0,
+            "input_tokens": 50,
+            "output_tokens": 100,
+        }
+
     async def extract_structured_json(
         self,
         messages: list[dict[str, str]],
@@ -113,6 +225,9 @@ class CohereClient:
         Returns:
             Tuple of (raw_json_string, usage_metrics)
         """
+        if getattr(settings, "COHERE_STUB_MODE", False):
+            return self._generate_stub_response(schema)
+
         client = self._get_client()
 
         response_format = {

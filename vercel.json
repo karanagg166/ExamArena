@@ -17,7 +17,19 @@
       "destination": "/api/index.py"
     },
     {
+      "source": "/api/health/:path*",
+      "destination": "/api/index.py"
+    },
+    {
       "source": "/api/health",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/health/:path*",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/health",
       "destination": "/api/index.py"
     }
   ]

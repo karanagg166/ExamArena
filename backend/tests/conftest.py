@@ -166,6 +166,36 @@ async def init_test_db() -> None:
                     'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "storageResourceType" VARCHAR;'
                 )
             )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "QuestionImport" ADD COLUMN IF NOT EXISTS "jobGeneration" INTEGER NOT NULL DEFAULT 1;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "AnswerKeyImport" ADD COLUMN IF NOT EXISTS "storageProvider" VARCHAR NOT NULL DEFAULT \'LOCAL\';'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "AnswerKeyImport" ADD COLUMN IF NOT EXISTS "storageKey" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "AnswerKeyImport" ADD COLUMN IF NOT EXISTS "storageUrl" VARCHAR;'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "AnswerKeyImport" ADD COLUMN IF NOT EXISTS "storageResourceType" VARCHAR DEFAULT \'raw\';'
+                )
+            )
+            await conn.execute(
+                text(
+                    'ALTER TABLE "AnswerKeyImport" ADD COLUMN IF NOT EXISTS "jobGeneration" INTEGER NOT NULL DEFAULT 1;'
+                )
+            )
             # Phase 3 migrations: StudentExamAnswer AI proposal and grading columns
             await conn.execute(
                 text(

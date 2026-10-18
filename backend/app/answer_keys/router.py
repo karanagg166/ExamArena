@@ -51,7 +51,7 @@ router = APIRouter(tags=["answer-key-imports"])
 
 
 async def dispatch_answer_key_job(
-    import_id: str, background_tasks: BackgroundTasks
+    import_id: str, background_tasks: BackgroundTasks, generation: int = 1
 ) -> str:
     """Dispatches answer key import job to ARQ queue if worker is active.
 
@@ -67,14 +67,22 @@ async def dispatch_answer_key_job(
             try:
                 health = await pool.get("arq:queue:health-check")
                 heartbeat = await pool.get(WORKER_HEARTBEAT_KEY)
-                if health or heartbeat:
-                    job = await pool.enqueue_job("run_answer_key_job", import_id)
-                    logger.info(
-                        "Enqueued AnswerKeyImport %s to ARQ worker (job_id: %s)",
-                        import_id,
-                        job.job_id if job else None,
-                    )
-                    return "arq_worker"
+                worker_active = bool(health or heartbeat)
+                if worker_active:
+                    job = await pool.enqueue_job("run_answer_key_job", import_id, generation=generation)
+                    if job:
+                        logger.info(
+                            "Enqueued AnswerKeyImport %s to ARQ worker (job_id: %s, gen: %d)",
+                            import_id,
+                            job.job_id,
+                            generation,
+                        )
+                        return "arq_worker"
+                    else:
+                        logger.warning(
+                            "ARQ pool returned None for job enqueue of AnswerKeyImport %s",
+                            import_id,
+                        )
                 else:
                     logger.warning(
                         "Redis reachable, but no active ARQ worker detected for answer key %s.",
@@ -90,7 +98,7 @@ async def dispatch_answer_key_job(
             "ALLOW_IN_PROCESS_IMPORT_FALLBACK enabled: falling back to ephemeral BackgroundTasks for answer key %s.",
             import_id,
         )
-        background_tasks.add_task(process_answer_key_import, import_id)
+        background_tasks.add_task(process_answer_key_import, import_id, generation=generation)
         return "in_process_background_task"
 
     await crud.update_answer_key_import_failure(
@@ -174,7 +182,11 @@ async def upload_answer_key(
         },
     )
 
-    await dispatch_answer_key_job(import_record.id, background_tasks)
+    await dispatch_answer_key_job(
+        import_record.id,
+        background_tasks,
+        generation=getattr(import_record, "jobGeneration", 1),
+    )
 
     return format_answer_key_response(import_record)
 
@@ -238,9 +250,34 @@ async def retry_answer_key_import(
             detail="Cannot retry an already completed answer key import.",
         )
 
+    if record.status == AnswerKeyImportStatus.NEEDS_REVIEW:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot retry an answer key import that is already awaiting review. Please confirm or edit the draft.",
+        )
+
+    if record.status == AnswerKeyImportStatus.PROCESSING and record.updatedAt:
+        now_ts = utc_now()
+        updated_ts = record.updatedAt if record.updatedAt.tzinfo else record.updatedAt.replace(tzinfo=now_ts.tzinfo)
+        elapsed = (now_ts - updated_ts).total_seconds()
+        if elapsed <= 300:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot retry an answer key import that is actively processing. Please wait for completion or timeout.",
+            )
+
     reset_record = await crud.reset_answer_key_import_for_retry(import_id)
-    await dispatch_answer_key_job(import_id, background_tasks)
-    return format_answer_key_response(reset_record or record)
+    if not reset_record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Answer key import cannot be reset for retry in its current state.",
+        )
+    await dispatch_answer_key_job(
+        import_id,
+        background_tasks,
+        generation=reset_record.jobGeneration,
+    )
+    return format_answer_key_response(reset_record)
 
 
 @router.get(

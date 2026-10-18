@@ -145,7 +145,7 @@ async def test_question_import_retry_succeeds_after_worker_recovery(
         retry_data = retry_res.json()
         assert retry_data["status"] == "UPLOADED"
         assert retry_data["errorCategory"] is None
-        mock_pool_recovered.enqueue_job.assert_awaited_once_with("run_import_job", failed_import.id)
+        mock_pool_recovered.enqueue_job.assert_awaited_once_with("run_import_job", failed_import.id, generation=2)
 
 
 @pytest.mark.asyncio

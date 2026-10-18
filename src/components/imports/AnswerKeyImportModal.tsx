@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import type { AxiosError } from "axios";
 import {
   AlertCircle,
   CheckCircle2,
   FileCheck,
   FileUp,
   Loader2,
+  RefreshCw,
   Upload,
   X,
 } from "lucide-react";
@@ -190,7 +192,35 @@ export function AnswerKeyImportModal({
       setActiveImportId(importId);
       setImportData(res.data);
       startPolling(importId);
-    } catch (err) {
+    } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{
+        detail?: { error?: string; message?: string; importId?: string };
+      }>;
+      const errorDetail = axiosErr?.response?.data?.detail;
+      if (
+        errorDetail &&
+        typeof errorDetail === "object" &&
+        errorDetail.importId
+      ) {
+        setActiveImportId(errorDetail.importId);
+      }
+      setUploadError(getErrorMessage(err));
+      setStep("UPLOAD");
+    }
+  };
+
+  const handleRetry = async () => {
+    if (!activeImportId) return;
+    setUploadError(null);
+    setStep("PROCESSING");
+
+    try {
+      const res = await api.post<AnswerKeyImport>(
+        `/api/v1/answer-key-imports/${activeImportId}/retry`
+      );
+      setImportData(res.data);
+      startPolling(activeImportId);
+    } catch (err: unknown) {
       setUploadError(getErrorMessage(err));
       setStep("UPLOAD");
     }
@@ -333,9 +363,28 @@ export function AnswerKeyImportModal({
               </div>
 
               {uploadError && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 rounded-lg flex items-start gap-2 text-xs text-rose-700 dark:text-rose-300">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{uploadError}</span>
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 rounded-lg flex flex-col gap-2 text-xs text-rose-700 dark:text-rose-300">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{uploadError}</span>
+                  </div>
+                  {activeImportId && (
+                    <div className="flex items-center justify-between pt-2 border-t border-rose-200 dark:border-rose-800/40">
+                      <span className="text-[11px] text-rose-600 dark:text-rose-400">
+                        Uploaded answer key is preserved on server.
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRetry}
+                        className="text-xs h-7 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/30"
+                      >
+                        <RefreshCw className="w-3 h-3 mr-1" />
+                        Retry Processing
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 

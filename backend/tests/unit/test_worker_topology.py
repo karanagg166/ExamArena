@@ -91,7 +91,7 @@ async def test_dispatch_import_job_routes_to_worker_when_available():
         with patch("arq.create_pool", return_value=mock_pool):
             mode = await dispatch_import_job("import_abc", mock_bg)
             assert mode == "arq_worker"
-            mock_pool.enqueue_job.assert_awaited_once_with("run_import_job", "import_abc")
+            mock_pool.enqueue_job.assert_awaited_once_with("run_import_job", "import_abc", generation=1)
             mock_bg.add_task.assert_not_called()
 
 
@@ -126,4 +126,4 @@ async def test_dispatch_answer_key_job_routes_correctly():
         with patch("arq.create_pool", return_value=mock_pool):
             mode = await dispatch_answer_key_job("ak_123", mock_bg)
             assert mode == "arq_worker"
-            mock_pool.enqueue_job.assert_awaited_once_with("run_answer_key_job", "ak_123")
+            mock_pool.enqueue_job.assert_awaited_once_with("run_answer_key_job", "ak_123", generation=1)

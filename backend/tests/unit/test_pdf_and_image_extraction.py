@@ -61,13 +61,19 @@ def test_extract_scanned_pdf_detection():
 
 
 def test_extract_scanned_pdf_content_raises_safe_error():
-    fixture_path = os.path.join(FIXTURES_DIR, "scanned_sample.pdf")
-    with open(fixture_path, "rb") as f:
-        pdf_bytes = f.read()
+    from unittest.mock import patch
 
-    with pytest.raises(DocumentExtractionError) as exc_info:
-        extract_document_content(pdf_bytes, file_type="application/pdf", filename="scanned.pdf")
-    assert "scanned" in str(exc_info.value).lower()
+    from app.ai.extraction.document import ExtractedDocument
+
+    blank_doc = ExtractedDocument(
+        text="",
+        source_type=DocumentSourceType.PDF_SCANNED,
+        page_count=1,
+    )
+    with patch("app.ai.extraction.question_paper.extract_pdf_document", return_value=blank_doc):
+        with pytest.raises(DocumentExtractionError) as exc_info:
+            extract_document_content(b"%PDF-1.4\nblank", file_type="application/pdf", filename="scanned.pdf")
+        assert "scanned" in str(exc_info.value).lower()
 
 
 def test_extract_valid_image():

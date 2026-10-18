@@ -111,12 +111,49 @@ def format_answer_key_response(record: AnswerKeyImport) -> AnswerKeyImportRespon
     )
 
 
+async def _is_answer_key_stale_or_resolved(
+    import_id: str, generation: int | None
+) -> bool:
+    fresh = await crud.get_answer_key_import_by_id(import_id)
+    if not fresh:
+        return True
+    if fresh.status in (
+        AnswerKeyImportStatus.NEEDS_REVIEW,
+        AnswerKeyImportStatus.COMPLETED,
+    ):
+        return True
+    if generation is not None and getattr(fresh, "jobGeneration", 1) != generation:
+        return True
+    return False
+
+
+async def _safe_record_answer_key_failure(
+    import_id: str,
+    category: str,
+    message: str,
+    generation: int | None,
+) -> None:
+    if await _is_answer_key_stale_or_resolved(import_id, generation):
+        logger.warning(
+            "AnswerKeyImport %s execution stale or resolved. Discarding late failure (%s).",
+            import_id,
+            category,
+        )
+        return
+    await crud.update_answer_key_import_failure(
+        import_id,
+        error_category=category,
+        error_message=message,
+    )
+
+
 async def process_answer_key_import(
     import_id: str,
     cohere_client: CohereClient | None = None,
+    generation: int | None = None,
 ) -> None:
     """Background task processing uploaded answer key, extracting structure, and matching against exam questions."""
-    logger.info("Starting background processing for AnswerKeyImport %s", import_id)
+    logger.info("Starting background processing for AnswerKeyImport %s (gen: %s)", import_id, generation)
     record = await crud.get_answer_key_import_by_id(import_id)
     if not record:
         logger.error("AnswerKeyImport record %s not found for processing", import_id)
@@ -124,13 +161,23 @@ async def process_answer_key_import(
 
     # Check status
     if record.status in (
+        AnswerKeyImportStatus.NEEDS_REVIEW,
         AnswerKeyImportStatus.COMPLETED,
         AnswerKeyImportStatus.CANCELLED,
     ):
         logger.info(
-            "AnswerKeyImport %s is in terminal state '%s', aborting",
+            "AnswerKeyImport %s is in state '%s', aborting",
             import_id,
             record.status,
+        )
+        return
+
+    if generation is not None and getattr(record, "jobGeneration", 1) != generation:
+        logger.warning(
+            "AnswerKeyImport %s generation %s is stale (current: %s). Discarding execution.",
+            import_id,
+            generation,
+            getattr(record, "jobGeneration", 1),
         )
         return
 
@@ -175,7 +222,7 @@ async def process_answer_key_import(
                     f"Exam {record.examId} not found for answer key matching."
                 )
             exam_questions = list(exam.questions or [])
-            exam_title = exam.title
+            exam_title = getattr(exam, "title", None) or getattr(exam, "name", "Exam")
 
         # 4. Cohere structured answer key extraction
         extracted_key, metrics = await extract_answer_key_from_document(
@@ -198,6 +245,13 @@ async def process_answer_key_import(
         )
 
         # 6. Save draft in database
+        if await _is_answer_key_stale_or_resolved(import_id, generation):
+            logger.warning(
+                "AnswerKeyImport %s execution stale or resolved. Discarding late success.",
+                import_id,
+            )
+            return
+
         raw_dict = extracted_key.model_dump()
         val_dict = matched_key.model_dump()
         await crud.update_answer_key_import_success(
@@ -218,58 +272,55 @@ async def process_answer_key_import(
 
     except StorageReadError as e:
         logger.warning("Storage read failed for answer key %s", import_id)
-        await crud.update_answer_key_import_failure(
-            import_id,
-            error_category="STORAGE_READ",
-            error_message=str(e),
-        )
+        await _safe_record_answer_key_failure(import_id, "STORAGE_READ", str(e), generation)
 
     except DocumentExtractionError as e:
         logger.warning("Document extraction failed for answer key %s: %s", import_id, e)
-        await crud.update_answer_key_import_failure(
-            import_id,
-            error_category="DOCUMENT_PARSING",
-            error_message=str(e),
-        )
+        await _safe_record_answer_key_failure(import_id, "DOCUMENT_PARSING", str(e), generation)
 
     except CohereConfigurationError as e:
         logger.error("Cohere configuration error for answer key %s: %s", import_id, e)
-        await crud.update_answer_key_import_failure(
+        await _safe_record_answer_key_failure(
             import_id,
-            error_category="CONFIGURATION",
-            error_message="AI extraction service is not configured. Please contact administrator.",
+            "CONFIGURATION",
+            "AI extraction service is not configured. Please contact administrator.",
+            generation,
         )
 
     except CohereRateLimitError as e:
         logger.warning("Cohere rate limit for answer key %s: %s", import_id, e)
-        await crud.update_answer_key_import_failure(
+        await _safe_record_answer_key_failure(
             import_id,
-            error_category="RATE_LIMIT",
-            error_message="AI service rate limit exceeded. Please try importing again shortly.",
+            "RATE_LIMIT",
+            "AI service rate limit exceeded. Please try importing again shortly.",
+            generation,
         )
 
     except CohereTimeoutError as e:
         logger.warning("Cohere timeout for answer key %s: %s", import_id, e)
-        await crud.update_answer_key_import_failure(
+        await _safe_record_answer_key_failure(
             import_id,
-            error_category="TIMEOUT",
-            error_message="AI service timed out while analyzing the answer key. Please try again.",
+            "TIMEOUT",
+            "AI service timed out while analyzing the answer key. Please try again.",
+            generation,
         )
 
     except CohereAPIError as e:
         logger.error("Cohere API error for answer key %s: %s", import_id, e)
-        await crud.update_answer_key_import_failure(
+        await _safe_record_answer_key_failure(
             import_id,
-            error_category="PROVIDER_ERROR",
-            error_message="AI service encountered an issue processing the answer key. Please try again.",
+            "PROVIDER_ERROR",
+            "AI service encountered an issue processing the answer key. Please try again.",
+            generation,
         )
 
     except Exception as e:
         logger.exception("Unexpected error processing answer key %s: %s", import_id, e)
-        await crud.update_answer_key_import_failure(
+        await _safe_record_answer_key_failure(
             import_id,
-            error_category="INTERNAL_ERROR",
-            error_message="An unexpected internal error occurred while processing the answer key. Please try again.",
+            "INTERNAL_ERROR",
+            "An unexpected internal error occurred while processing the answer key. Please try again.",
+            generation,
         )
 
 

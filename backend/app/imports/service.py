@@ -110,12 +110,49 @@ def format_import_response(record: QuestionImport) -> QuestionImportResponse:
     )
 
 
+async def _is_execution_stale_or_resolved(
+    import_id: str, generation: int | None
+) -> bool:
+    fresh = await crud.get_question_import_by_id(import_id)
+    if not fresh:
+        return True
+    if fresh.status in (
+        QuestionImportStatus.NEEDS_REVIEW,
+        QuestionImportStatus.COMPLETED,
+    ):
+        return True
+    if generation is not None and getattr(fresh, "jobGeneration", 1) != generation:
+        return True
+    return False
+
+
+async def _safe_record_failure(
+    import_id: str,
+    category: str,
+    message: str,
+    generation: int | None,
+) -> None:
+    if await _is_execution_stale_or_resolved(import_id, generation):
+        logger.warning(
+            "QuestionImport %s execution stale or resolved. Discarding late failure (%s).",
+            import_id,
+            category,
+        )
+        return
+    await crud.update_question_import_failure(
+        import_id,
+        error_category=category,
+        error_message=message,
+    )
+
+
 async def process_question_import(
     import_id: str,
     cohere_client: CohereClient | None = None,
+    generation: int | None = None,
 ) -> None:
     """Asynchronous background worker job for parsing and extracting a question paper."""
-    logger.info("Starting background processing for QuestionImport %s", import_id)
+    logger.info("Starting background processing for QuestionImport %s (gen: %s)", import_id, generation)
     record = await crud.get_question_import_by_id(import_id)
     if not record:
         logger.error("QuestionImport %s not found in database", import_id)
@@ -130,6 +167,15 @@ async def process_question_import(
             "QuestionImport %s is already in state %s. Skipping duplicate processing.",
             import_id,
             record.status,
+        )
+        return
+
+    if generation is not None and getattr(record, "jobGeneration", 1) != generation:
+        logger.warning(
+            "QuestionImport %s generation %s is stale (current: %s). Discarding execution.",
+            import_id,
+            generation,
+            getattr(record, "jobGeneration", 1),
         )
         return
 
@@ -174,6 +220,13 @@ async def process_question_import(
             )
 
         # 4. Save validated draft and transition to NEEDS_REVIEW
+        if await _is_execution_stale_or_resolved(import_id, generation):
+            logger.warning(
+                "QuestionImport %s execution stale or resolved. Discarding late success.",
+                import_id,
+            )
+            return
+
         paper_dict = extracted_paper.model_dump()
         await crud.update_question_import_success(
             import_id=import_id,
@@ -190,58 +243,55 @@ async def process_question_import(
 
     except StorageReadError as e:
         logger.warning("Storage read failed for question import %s", import_id)
-        await crud.update_question_import_failure(
-            import_id,
-            error_category="STORAGE_READ",
-            error_message=str(e),
-        )
+        await _safe_record_failure(import_id, "STORAGE_READ", str(e), generation)
 
     except DocumentExtractionError as e:
         logger.warning("Document extraction failed for import %s: %s", import_id, e)
-        await crud.update_question_import_failure(
-            import_id,
-            error_category="DOCUMENT_PARSING",
-            error_message=str(e),
-        )
+        await _safe_record_failure(import_id, "DOCUMENT_PARSING", str(e), generation)
 
     except CohereConfigurationError as e:
         logger.error("Cohere configuration error for import %s: %s", import_id, e)
-        await crud.update_question_import_failure(
+        await _safe_record_failure(
             import_id,
-            error_category="CONFIGURATION",
-            error_message="AI extraction service is not configured. Please contact administrator.",
+            "CONFIGURATION",
+            "AI extraction service is not configured. Please contact administrator.",
+            generation,
         )
 
     except CohereRateLimitError as e:
         logger.warning("Cohere rate limit for import %s: %s", import_id, e)
-        await crud.update_question_import_failure(
+        await _safe_record_failure(
             import_id,
-            error_category="RATE_LIMIT",
-            error_message="AI service rate limit exceeded. Please try importing again shortly.",
+            "RATE_LIMIT",
+            "AI service rate limit exceeded. Please try importing again shortly.",
+            generation,
         )
 
     except CohereTimeoutError as e:
         logger.warning("Cohere timeout for import %s: %s", import_id, e)
-        await crud.update_question_import_failure(
+        await _safe_record_failure(
             import_id,
-            error_category="TIMEOUT",
-            error_message="AI service timed out while analyzing the question paper. Please try again.",
+            "TIMEOUT",
+            "AI service timed out while analyzing the question paper. Please try again.",
+            generation,
         )
 
     except CohereAPIError as e:
         logger.error("Cohere API error for import %s: %s", import_id, e)
-        await crud.update_question_import_failure(
+        await _safe_record_failure(
             import_id,
-            error_category="PROVIDER_ERROR",
-            error_message="AI service encountered an issue processing the paper. Please try again.",
+            "PROVIDER_ERROR",
+            "AI service encountered an issue processing the paper. Please try again.",
+            generation,
         )
 
     except Exception as e:
         logger.exception("Unexpected error processing import %s: %s", import_id, e)
-        await crud.update_question_import_failure(
+        await _safe_record_failure(
             import_id,
-            error_category="INTERNAL_ERROR",
-            error_message="An unexpected error occurred while processing the question paper.",
+            "INTERNAL_ERROR",
+            "An unexpected error occurred while processing the question paper.",
+            generation,
         )
 
 

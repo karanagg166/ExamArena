@@ -20,13 +20,14 @@ This document defines the complete technology stack for Exam Arena, covering:
 - API framework: FastAPI (Python 3.11)
 - App server: Uvicorn (ASGI)
 - Data validation/settings: Pydantic v2 + pydantic-settings
-- ORM/DB client: Prisma Client Python
+- ORM/DB client: SQLAlchemy 2.0 (asyncpg)
 - Authentication: JWT-based flow with role-based authorization
 - Realtime: python-socketio (for websocket/event features)
+- Background worker: ARQ + Redis queue (`arq:queue`)
 
 ### Database and Data Model
 - Database: PostgreSQL
-- Schema and migrations: Prisma schema + migrations
+- Schema and models: SQLAlchemy declarative models (`backend/app/core/models.py`)
 
 ### DevEx and Tooling
 - Package manager: pnpm

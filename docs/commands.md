@@ -361,6 +361,40 @@ View your project structure (excluding noise folders):
 tree -I 'node_modules|.next|__pycache__|.git|.venv|*.pyc|postgres_data|generated' --dirsfirst
 ```
 
+## 13. Persistent ARQ Worker & Health Probes
 
+### Topology
+`Vercel API -> Shared Redis Queue ('arq:queue') -> Persistent ARQ Worker -> PostgreSQL & Shared Storage`
 
+### Worker Commands
 
+Start worker in Docker:
+```bash
+docker compose up -d worker
+```
+
+Run worker locally:
+```bash
+python -m arq app.imports.worker.WorkerSettings
+```
+
+### Health & Readiness Probes
+
+| Endpoint | Method | Scope | Success | Failure |
+|---|---|---|---|---|
+| `/health/live` (`/api/health/live`) | GET | Process Liveness | `200 {"status": "ok"}` | 500 |
+| `/health/ready` (`/api/health/ready`) | GET | DB & Redis Connectivity | `200 {"status": "ready"}` | `503` with error details |
+| `/health/worker` (`/api/health/worker`) | GET | ARQ Worker Heartbeat | `200 {"worker_available": true}` | `503` with heartbeat age / error |
+
+### Worker Integration Tests
+
+Run dedicated worker integration test suites:
+```bash
+PYTHONPATH=backend REDIS_URL=redis://localhost:6379/0 pytest backend/tests/integration/test_worker_queue_lifecycle.py backend/tests/integration/test_worker_recovery_and_idempotency.py backend/tests/integration/test_both_document_paths.py
+```
+
+### Production Hosting Status & Dispatch Policy
+
+- The web API runs on Vercel Serverless. Because serverless runtimes terminate upon request resolution, persistent workers must run on container infrastructure (Docker Compose locally, GitHub Actions CI, or Railway / Render in cloud).
+- When a worker heartbeat is missing or stale (>60s) in production, document imports fail-fast with HTTP 503 `WORKER_UNAVAILABLE` with an actionable message and retry affordance in the UI.
+- Deploying the persistent worker to cloud container infrastructure (e.g. Railway or Render) requires valid cloud authentication credentials.
