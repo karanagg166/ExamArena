@@ -25,16 +25,16 @@ async def refresh_heartbeat(ctx: dict[str, Any]) -> None:
             logger.warning("Could not refresh worker heartbeat: %s", e)
 
 
-async def run_import_job(ctx: dict[str, Any], import_id: str) -> None:
+async def run_import_job(ctx: dict[str, Any], import_id: str, generation: int = 1) -> None:
     """ARQ job entry point for processing a question paper import."""
-    logger.info("ARQ executing import job for import_id: %s", import_id)
-    await process_question_import(import_id)
+    logger.info("ARQ executing import job for import_id: %s (generation: %d)", import_id, generation)
+    await process_question_import(import_id, generation=generation)
 
 
-async def run_answer_key_job(ctx: dict[str, Any], import_id: str) -> None:
+async def run_answer_key_job(ctx: dict[str, Any], import_id: str, generation: int = 1) -> None:
     """ARQ job entry point for processing an answer key import."""
-    logger.info("ARQ executing answer key job for import_id: %s", import_id)
-    await process_answer_key_import(import_id)
+    logger.info("ARQ executing answer key job for import_id: %s (generation: %d)", import_id, generation)
+    await process_answer_key_import(import_id, generation=generation)
 
 
 async def startup(ctx: dict[str, Any]) -> None:
@@ -79,6 +79,8 @@ async def check_worker_availability() -> dict[str, Any]:
     """Inspects Redis connection and determines if an active ARQ worker is consuming jobs."""
     if not settings.REDIS_URL:
         return {
+            "service": settings.WORKER_SERVICE_NAME,
+            "queue": "arq:queue",
             "redis_configured": False,
             "redis_connected": False,
             "worker_available": False,
@@ -94,10 +96,13 @@ async def check_worker_availability() -> dict[str, Any]:
             heartbeat = await pool.get(WORKER_HEARTBEAT_KEY)
             is_alive = bool(health or heartbeat)
             return {
+                "service": settings.WORKER_SERVICE_NAME,
+                "queue": "arq:queue",
                 "redis_configured": True,
                 "redis_connected": True,
                 "worker_available": is_alive,
                 "health_check": health.decode() if isinstance(health, bytes) else health,
+                "heartbeat": heartbeat.decode() if isinstance(heartbeat, bytes) else heartbeat,
                 "detail": (
                     "Worker is active and consuming jobs."
                     if is_alive
@@ -108,6 +113,8 @@ async def check_worker_availability() -> dict[str, Any]:
             await pool.aclose()
     except Exception as e:
         return {
+            "service": settings.WORKER_SERVICE_NAME,
+            "queue": "arq:queue",
             "redis_configured": True,
             "redis_connected": False,
             "worker_available": False,

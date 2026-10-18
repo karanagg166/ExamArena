@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import type { AxiosError } from "axios";
 import {
   AlertCircle,
   CheckCircle2,
   FileUp,
   Loader2,
+  RefreshCw,
   Upload,
   X,
 } from "lucide-react";
@@ -181,6 +183,35 @@ export function QuestionImportModal({
       // Start status polling
       startPolling(newImport.id);
     } catch (err: unknown) {
+      const axiosErr = err as AxiosError<{
+        detail?: { error?: string; message?: string; importId?: string };
+      }>;
+      const errorDetail = axiosErr?.response?.data?.detail;
+      if (
+        errorDetail &&
+        typeof errorDetail === "object" &&
+        errorDetail.importId
+      ) {
+        setActiveImportId(errorDetail.importId);
+      }
+      setUploadError(getErrorMessage(err));
+      setStep("UPLOAD");
+    }
+  };
+
+  // ── Retry Processing ─────────────────────────────────────────────────────
+  const handleRetry = async () => {
+    if (!activeImportId) return;
+    setUploadError(null);
+    setStep("PROCESSING");
+
+    try {
+      const res = await api.post<QuestionImport>(
+        `/api/v1/question-imports/${activeImportId}/retry`
+      );
+      setImportData(res.data);
+      startPolling(activeImportId);
+    } catch (err: unknown) {
       setUploadError(getErrorMessage(err));
       setStep("UPLOAD");
     }
@@ -277,9 +308,28 @@ export function QuestionImportModal({
           {step === "UPLOAD" && (
             <div className="space-y-6">
               {uploadError && (
-                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{uploadError}</span>
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex flex-col gap-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{uploadError}</span>
+                  </div>
+                  {activeImportId && (
+                    <div className="flex items-center justify-between pt-2 border-t border-red-500/20">
+                      <span className="text-xs text-red-300">
+                        File is saved on the server. You can retry processing directly.
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRetry}
+                        className="text-xs h-8 border-red-500/30 text-red-300 hover:bg-red-500/20"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                        Retry Processing
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 

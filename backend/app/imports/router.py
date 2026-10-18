@@ -56,7 +56,7 @@ router = APIRouter(tags=["question-imports"])
 
 
 async def dispatch_import_job(
-    import_id: str, background_tasks: BackgroundTasks
+    import_id: str, background_tasks: BackgroundTasks, generation: int = 1
 ) -> str:
     """Dispatches question paper import job to ARQ queue when an active worker is present.
 
@@ -75,13 +75,20 @@ async def dispatch_import_job(
                 worker_active = bool(health or heartbeat)
 
                 if worker_active:
-                    job = await pool.enqueue_job("run_import_job", import_id)
-                    logger.info(
-                        "Enqueued QuestionImport %s to active ARQ worker (job_id: %s)",
-                        import_id,
-                        job.job_id if job else None,
-                    )
-                    return "arq_worker"
+                    job = await pool.enqueue_job("run_import_job", import_id, generation=generation)
+                    if job:
+                        logger.info(
+                            "Enqueued QuestionImport %s to active ARQ worker (job_id: %s, gen: %d)",
+                            import_id,
+                            job.job_id,
+                            generation,
+                        )
+                        return "arq_worker"
+                    else:
+                        logger.warning(
+                            "ARQ pool returned None for job enqueue of QuestionImport %s",
+                            import_id,
+                        )
                 else:
                     logger.warning(
                         "Redis reachable, but no active ARQ worker detected for QuestionImport %s.",
@@ -101,7 +108,7 @@ async def dispatch_import_job(
             "Note: In-process tasks will not survive container restarts.",
             import_id,
         )
-        background_tasks.add_task(process_question_import, import_id)
+        background_tasks.add_task(process_question_import, import_id, generation=generation)
         return "in_process_background_task"
 
     await crud.update_question_import_failure(
@@ -199,7 +206,11 @@ async def upload_question_paper(
     )
 
     # Dispatch asynchronous worker (durable ARQ if available, background task fallback)
-    await dispatch_import_job(import_record.id, background_tasks)
+    await dispatch_import_job(
+        import_record.id,
+        background_tasks,
+        generation=getattr(import_record, "jobGeneration", 1),
+    )
 
     return format_import_response(import_record)
 
@@ -264,9 +275,34 @@ async def retry_question_import(
             detail="Cannot retry an already completed import.",
         )
 
+    if record.status == QuestionImportStatus.NEEDS_REVIEW:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot retry an import that is already awaiting review. Please confirm or edit the draft.",
+        )
+
+    if record.status == QuestionImportStatus.PROCESSING and record.updatedAt:
+        now_ts = utc_now()
+        updated_ts = record.updatedAt if record.updatedAt.tzinfo else record.updatedAt.replace(tzinfo=now_ts.tzinfo)
+        elapsed = (now_ts - updated_ts).total_seconds()
+        if elapsed <= 300:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot retry an import that is actively processing. Please wait for completion or timeout.",
+            )
+
     reset_record = await crud.reset_question_import_for_retry(import_id)
-    await dispatch_import_job(import_id, background_tasks)
-    return format_import_response(reset_record or record)
+    if not reset_record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Import cannot be reset for retry in its current state.",
+        )
+    await dispatch_import_job(
+        import_id,
+        background_tasks,
+        generation=reset_record.jobGeneration,
+    )
+    return format_import_response(reset_record)
 
 
 @router.get(

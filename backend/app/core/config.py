@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     ANSWER_KEY_IMPORT_MAX_RETRIES: int = 3
     ANSWER_KEY_IMPORT_TIMEOUT_SECONDS: float = 60.0
     ALLOW_IN_PROCESS_IMPORT_FALLBACK: bool = False
+    COHERE_STUB_MODE: bool = False
+    WORKER_SERVICE_NAME: str = "exam-arena-worker"
 
     # Search-Sphere RAG Microservice Integration
     SEARCH_SPHERE_URL: str = "http://localhost:8000"

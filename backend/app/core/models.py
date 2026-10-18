@@ -988,6 +988,7 @@ class QuestionImport(Base):
     validatedExtraction: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
     errorMessage: Mapped[str | None] = mapped_column(String, nullable=True)
     errorCategory: Mapped[str | None] = mapped_column(String, nullable=True)
+    jobGeneration: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     createdAt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )
@@ -1048,6 +1049,7 @@ class AnswerKeyImport(Base):
     matchedExtraction: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
     errorMessage: Mapped[str | None] = mapped_column(String, nullable=True)
     errorCategory: Mapped[str | None] = mapped_column(String, nullable=True)
+    jobGeneration: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     createdAt: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, nullable=False
     )

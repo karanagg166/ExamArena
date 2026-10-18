@@ -240,9 +240,15 @@ async def reset_answer_key_import_for_retry(
         res = await s.execute(stmt)
         record = res.scalar_one_or_none()
         if record:
+            if record.status in (
+                AnswerKeyImportStatus.COMPLETED,
+                AnswerKeyImportStatus.NEEDS_REVIEW,
+            ):
+                return None
             record.status = AnswerKeyImportStatus.UPLOADED
             record.errorMessage = None
             record.errorCategory = None
+            record.jobGeneration = (getattr(record, "jobGeneration", 1) or 1) + 1
             record.updatedAt = utc_now()
             await s.commit()
             await s.refresh(record)

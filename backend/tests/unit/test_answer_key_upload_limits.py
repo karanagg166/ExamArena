@@ -33,6 +33,7 @@ async def test_answer_key_upload_uses_its_own_size_limit(
 ):
     monkeypatch.setattr(settings, "QUESTION_IMPORT_MAX_FILE_MB", question_limit)
     monkeypatch.setattr(settings, "ANSWER_KEY_IMPORT_MAX_FILE_MB", answer_key_limit)
+    monkeypatch.setattr(settings, "REDIS_URL", "")
     monkeypatch.setattr(
         answer_key_router,
         "require_exam_answer_key_access",
@@ -61,6 +62,7 @@ async def test_answer_key_upload_uses_its_own_size_limit(
         filePath="synthetic/key.pdf",
         status=AnswerKeyImportStatus.UPLOADED,
         sourceType=AnswerKeyImportSourceType.PDF_TEXT,
+        jobGeneration=1,
         createdAt=now,
         updatedAt=now,
     )
@@ -98,4 +100,4 @@ async def test_answer_key_upload_uses_its_own_size_limit(
         assert response.json()["fileSize"] == file_size
         storage.save_file.assert_awaited_once()
         create.assert_awaited_once()
-        process.assert_awaited_once_with(record.id)
+        process.assert_awaited_once_with(record.id, generation=1)
