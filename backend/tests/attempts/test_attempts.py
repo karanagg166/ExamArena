@@ -138,7 +138,8 @@ class TestAttemptsApi:
 
     async def test_save_draft_success(self, client, override_auth, mock_attempts_db):
         override_auth(role="STUDENT")
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
+
         from app.attempts.schemas import StudentExamDraftResponse
 
         fake_resp = StudentExamDraftResponse(

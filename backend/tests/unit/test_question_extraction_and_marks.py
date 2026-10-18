@@ -1,21 +1,23 @@
 import io
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from fastapi import HTTPException
-from unittest.mock import AsyncMock, MagicMock
+
+from app.ai.extraction.document import DocumentExtractionError, DocumentSourceType
+from app.ai.extraction.pdf import MAX_PDF_PAGES, extract_pdf_document
 from app.ai.extraction.question_paper import (
     merge_and_deduplicate_questions,
 )
-from app.ai.extraction.pdf import extract_pdf_document, MAX_PDF_PAGES
-from app.ai.extraction.document import DocumentExtractionError, DocumentSourceType
 from app.ai.schemas.question_paper import (
     ExtractedOption,
     ExtractedQuestion,
     ExtractedQuestionPaper,
     ExtractedQuestionType,
 )
+from app.core.models import Role
 from app.imports.service import confirm_question_import
 from app.users.schemas import UserResponse
-from app.core.models import Role
 
 
 def test_merge_and_deduplicate_preserves_distinct_questions_with_long_prefix():

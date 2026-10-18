@@ -38,6 +38,12 @@ jobs:
       - name: Production Build
         run: pnpm build
 
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Playwright E2E Tests
+        run: pnpm test:e2e
+
   backend:
     name: Backend (Ruff, Pytest Unit Tests)
     runs-on: ubuntu-latest
@@ -97,8 +103,8 @@ jobs:
 
       - name: Ruff Lint Check
         run: |
-          ruff check backend/app
+          ruff check backend/app backend/tests
 
-      - name: Pytest Unit Tests
+      - name: Pytest Test Suite
         run: |
-          pytest backend/tests/unit
+          pytest backend/tests

@@ -13,9 +13,12 @@ export interface QuestionAttemptState {
   status: ExtendedQuestionStatus;
   textAnswer?: string;
   selectedOptions?: SelectedOptionCreate[]; // Changed to match schema
+  isDirty?: boolean;
+  modifiedAt?: number;
 }
 
 export interface AttemptStoreState {
+  userId: string | null;
   examId: string | null;
   attemptId: string | null;
   answers: Record<string, QuestionAttemptState>; // Indexed by questionId
@@ -24,16 +27,20 @@ export interface AttemptStoreState {
   durationSeconds: number | null;
   activeQuestionId: string | null;
   timeRemainingSeconds: number | null;
+  draftRevision: number;
+  warningCount: number;
   
   // Actions
   setAllState: (state: Partial<AttemptStoreState>) => void;
   setAnswerState: (questionId: string, state: Partial<QuestionAttemptState>) => void;
+  markAnswersSaved: () => void;
   clearAttempt: () => void;
 }
 
 export const useAttemptStore = create<AttemptStoreState>()(
   persist(
     (set) => ({
+      userId: null,
       examId: null,
       attemptId: null,
       answers: {},
@@ -42,13 +49,21 @@ export const useAttemptStore = create<AttemptStoreState>()(
       durationSeconds: null,
       activeQuestionId: null,
       timeRemainingSeconds: null,
+      draftRevision: 0,
+      warningCount: 0,
 
       setAllState: (newState) => set((state) => ({ ...state, ...newState })),
       
       setAnswerState: (questionId, newQState) => set((state) => {
         const answers = { ...state.answers };
+        const now = Date.now();
         if (answers[questionId]) {
-          answers[questionId] = { ...answers[questionId], ...newQState };
+          answers[questionId] = {
+            ...answers[questionId],
+            ...newQState,
+            isDirty: true,
+            modifiedAt: now,
+          };
         } else {
           answers[questionId] = {
             id: '',
@@ -56,12 +71,25 @@ export const useAttemptStore = create<AttemptStoreState>()(
             questionType: 'MULTIPLE_CHOICE',
             status: 'NOT_VISITED',
             ...newQState,
+            isDirty: true,
+            modifiedAt: now,
           } as QuestionAttemptState;
         }
         return { answers };
       }),
 
+      markAnswersSaved: () => set((state) => {
+        const answers = { ...state.answers };
+        for (const qId in answers) {
+          if (answers[qId].isDirty) {
+            answers[qId] = { ...answers[qId], isDirty: false };
+          }
+        }
+        return { answers };
+      }),
+
       clearAttempt: () => set(() => ({
+        userId: null,
         examId: null,
         attemptId: null,
         answers: {},
@@ -70,6 +98,8 @@ export const useAttemptStore = create<AttemptStoreState>()(
         durationSeconds: null,
         activeQuestionId: null,
         timeRemainingSeconds: null,
+        draftRevision: 0,
+        warningCount: 0,
       })),
     }),
     {

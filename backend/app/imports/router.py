@@ -27,6 +27,7 @@ from app.core.config import settings
 from app.core.models import (
     QuestionImportSourceType,
     QuestionImportStatus,
+    utc_now,
 )
 from app.imports import crud
 from app.imports.permissions import require_exam_import_access
@@ -41,6 +42,11 @@ from app.imports.service import (
     format_import_response,
     process_question_import,
 )
+from app.imports.worker import (
+    WORKER_HEARTBEAT_KEY,
+    check_worker_availability,
+    get_redis_settings,
+)
 from app.storage.service import get_storage_provider
 from app.users.schemas import UserResponse
 
@@ -51,20 +57,39 @@ router = APIRouter(tags=["question-imports"])
 
 async def dispatch_import_job(
     import_id: str, background_tasks: BackgroundTasks
-) -> None:
-    """Dispatches question paper import job to ARQ queue when configured, falling back to background tasks."""
+) -> str:
+    """Dispatches question paper import job to ARQ queue when an active worker is present,
+
+    otherwise falls back to in-process background tasks with explicit operational logging.
+    Returns the dispatch mode: 'arq_worker' or 'in_process_background_task'.
+    """
     if settings.REDIS_URL:
         try:
             from arq import create_pool
-            from arq.connections import RedisSettings
 
-            pool = await create_pool(RedisSettings.from_dsn(settings.REDIS_URL))
-            await pool.enqueue_job("run_import_job", import_id)
-            await pool.aclose()
-            logger.info(
-                "Successfully enqueued QuestionImport %s to ARQ queue", import_id
-            )
-            return
+            pool = await create_pool(get_redis_settings())
+            try:
+                health = await pool.get("arq:queue:health-check")
+                heartbeat = await pool.get(WORKER_HEARTBEAT_KEY)
+                worker_active = bool(health or heartbeat)
+
+                if worker_active:
+                    job = await pool.enqueue_job("run_import_job", import_id)
+                    logger.info(
+                        "Enqueued QuestionImport %s to active ARQ worker (job_id: %s)",
+                        import_id,
+                        job.job_id if job else None,
+                    )
+                    return "arq_worker"
+                else:
+                    logger.warning(
+                        "Redis reachable, but no active ARQ worker detected. "
+                        "Falling back to ephemeral BackgroundTasks for import %s. "
+                        "Note: In-process tasks will not survive container restarts.",
+                        import_id,
+                    )
+            finally:
+                await pool.aclose()
         except Exception as e:
             logger.warning(
                 "Failed to enqueue to ARQ queue (%s). Falling back to background task.",
@@ -72,6 +97,15 @@ async def dispatch_import_job(
             )
 
     background_tasks.add_task(process_question_import, import_id)
+    return "in_process_background_task"
+
+
+@router.get("/api/v1/imports/worker-status")
+async def get_worker_status(
+    current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
+):
+    """Diagnostic endpoint to inspect background worker availability and queue health."""
+    return await check_worker_availability()
 
 
 @router.post(
@@ -170,7 +204,50 @@ async def get_import_status(
     # Ensure access to the associated exam
     await require_exam_import_access(current_user, record.examId)
 
+    # Recover stuck PROCESSING jobs (> 300 seconds)
+    if record.status == QuestionImportStatus.PROCESSING and record.updatedAt:
+        now_ts = utc_now()
+        updated_ts = record.updatedAt if record.updatedAt.tzinfo else record.updatedAt.replace(tzinfo=now_ts.tzinfo)
+        elapsed = (now_ts - updated_ts).total_seconds()
+        if elapsed > 300:
+            logger.warning("Import %s stuck in PROCESSING for %.1fs. Transitioning to TIMEOUT failure.", import_id, elapsed)
+            record = await crud.update_question_import_failure(
+                import_id,
+                error_category="TIMEOUT",
+                error_message="Import processing timed out after 300 seconds. You may retry the import.",
+            )
+
     return format_import_response(record)
+
+
+@router.post(
+    "/api/v1/question-imports/{import_id}/retry",
+    response_model=QuestionImportResponse,
+)
+async def retry_question_import(
+    import_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
+):
+    """Retry an import job that failed, timed out, or got stuck."""
+    record = await crud.get_question_import_by_id(import_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question import not found",
+        )
+
+    await require_exam_import_access(current_user, record.examId)
+
+    if record.status == QuestionImportStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot retry an already completed import.",
+        )
+
+    reset_record = await crud.reset_question_import_for_retry(import_id)
+    await dispatch_import_job(import_id, background_tasks)
+    return format_import_response(reset_record or record)
 
 
 @router.get(

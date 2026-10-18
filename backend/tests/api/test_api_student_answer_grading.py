@@ -15,7 +15,6 @@ Covers:
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -326,7 +325,9 @@ async def test_ai_grade_idempotency_overwrites_proposal(
         suggested_marks=2.0,
         max_marks=5.0,
         rubric_breakdown=[
-            RubricGrade(criterion="Criterion 1", max_marks=5.0, awarded_marks=2.0, justification="Partial")
+            RubricGrade(criterion="Defines process", max_marks=2.0, awarded_marks=1.0, justification="Partial"),
+            RubricGrade(criterion="Provides chemical equation", max_marks=2.0, awarded_marks=1.0, justification="Partial equation"),
+            RubricGrade(criterion="Mentions products/reactants", max_marks=1.0, awarded_marks=0.0, justification="Missing"),
         ],
         feedback="V1 feedback",
         confidence=GradingConfidence.MEDIUM,
@@ -336,7 +337,9 @@ async def test_ai_grade_idempotency_overwrites_proposal(
         suggested_marks=4.5,
         max_marks=5.0,
         rubric_breakdown=[
-            RubricGrade(criterion="Criterion 1", max_marks=5.0, awarded_marks=4.5, justification="Almost full")
+            RubricGrade(criterion="Defines process", max_marks=2.0, awarded_marks=2.0, justification="Full"),
+            RubricGrade(criterion="Provides chemical equation", max_marks=2.0, awarded_marks=1.5, justification="Almost full"),
+            RubricGrade(criterion="Mentions products/reactants", max_marks=1.0, awarded_marks=1.0, justification="Full"),
         ],
         feedback="V2 feedback",
         confidence=GradingConfidence.HIGH,

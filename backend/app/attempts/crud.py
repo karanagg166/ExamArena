@@ -231,6 +231,7 @@ async def submit_exam_attempt(
         attempt_stmt = (
             select(StudentExam)
             .where(StudentExam.id == submit_data.id)
+            .with_for_update()
             .options(
                 selectinload(StudentExam.exam)
                 .selectinload(Exam.questions)
@@ -521,6 +522,28 @@ async def get_student_exam_history(
         return await _do_get(s)
 
 
+async def increment_attempt_warning_count(
+    attempt_id: str, session: AsyncSession | None = None
+) -> int:
+    async def _do(s: AsyncSession) -> int:
+        stmt = (
+            select(StudentExam)
+            .where(StudentExam.id == attempt_id)
+            .with_for_update()
+        )
+        att = (await s.execute(stmt)).scalar_one_or_none()
+        if att:
+            att.warningCount = (att.warningCount or 0) + 1
+            await s.commit()
+            return att.warningCount
+        return 0
+
+    if session:
+        return await _do(session)
+    async with db.get_session() as s:
+        return await _do(s)
+
+
 async def save_attempt_draft(
     attempt_id: str,
     draft_data: StudentExamDraftUpdate,
@@ -535,6 +558,7 @@ async def save_attempt_draft(
         attempt_stmt = (
             select(StudentExam)
             .where(StudentExam.id == attempt_id)
+            .with_for_update()
             .options(
                 selectinload(StudentExam.exam)
                 .selectinload(Exam.questions)
@@ -591,15 +615,33 @@ async def save_attempt_draft(
                     "Exam submission time exceeded. The deadline for this exam has passed."
                 )
 
-        # Check sequence to prevent stale/out-of-order writes
-        if draft_data.clientSequence > 0:
-            last_seq = await _get_draft_sequence(attempt_id)
-            if last_seq >= draft_data.clientSequence:
-                # Out-of-order/stale save: acknowledge without overwriting newer state
+        current_rev = db_attempt.draftRevision or 0
+
+        # Concurrency control: durable server-authoritative revision check
+        if draft_data.baseRevision is not None:
+            if draft_data.baseRevision != current_rev:
+                # Conflict / stale base revision: do not overwrite newer work
                 return StudentExamDraftResponse(
                     attemptId=attempt_id,
                     savedCount=0,
                     clientSequence=draft_data.clientSequence,
+                    revision=current_rev,
+                    applied=False,
+                    conflict=True,
+                    savedAt=now,
+                    timeRemainingSeconds=time_remaining,
+                )
+        elif draft_data.clientSequence > 0:
+            last_seq = await _get_draft_sequence(attempt_id)
+            if last_seq >= draft_data.clientSequence:
+                # Out-of-order/stale save: reject without overwriting newer state
+                return StudentExamDraftResponse(
+                    attemptId=attempt_id,
+                    savedCount=0,
+                    clientSequence=draft_data.clientSequence,
+                    revision=current_rev,
+                    applied=False,
+                    conflict=True,
                     savedAt=now,
                     timeRemainingSeconds=time_remaining,
                 )
@@ -626,16 +668,30 @@ async def save_attempt_draft(
                     )
 
             db_ans = None
-            if draft_ans.id and draft_ans.id in db_answers_by_id:
-                db_ans = db_answers_by_id[draft_ans.id]
+            if draft_ans.id:
+                if draft_ans.id not in db_answers_by_id:
+                    raise ValueError(
+                        f"Answer {draft_ans.id} does not belong to this attempt"
+                    )
+                existing_ans = db_answers_by_id[draft_ans.id]
+                if existing_ans.questionId != draft_ans.questionId:
+                    raise ValueError(
+                        f"Answer ID {draft_ans.id} belongs to question {existing_ans.questionId}, not {draft_ans.questionId}"
+                    )
+                db_ans = existing_ans
             elif draft_ans.questionId in db_answers_by_qid:
                 db_ans = db_answers_by_qid[draft_ans.questionId]
 
             if not db_ans:
+                q_type = getattr(
+                    question,
+                    "type",
+                    getattr(question, "questionType", QuestionType.MULTIPLE_CHOICE),
+                )
                 db_ans = StudentExamAnswer(
                     studentExamId=db_attempt.id,
                     questionId=draft_ans.questionId,
-                    questionType=question.type,
+                    questionType=q_type,
                 )
                 s.add(db_ans)
                 await s.flush()
@@ -658,6 +714,8 @@ async def save_attempt_draft(
 
             saved_count += 1
 
+        next_rev = current_rev + 1
+        db_attempt.draftRevision = next_rev
         db_attempt.updatedAt = now
         await s.commit()
 
@@ -668,6 +726,9 @@ async def save_attempt_draft(
             attemptId=attempt_id,
             savedCount=saved_count,
             clientSequence=draft_data.clientSequence,
+            revision=next_rev,
+            applied=True,
+            conflict=False,
             savedAt=now,
             timeRemainingSeconds=time_remaining,
         )

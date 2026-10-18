@@ -269,7 +269,7 @@ async def process_answer_key_import(
         await crud.update_answer_key_import_failure(
             import_id,
             error_category="INTERNAL_ERROR",
-            error_message=f"An unexpected internal error occurred: {str(e)}",
+            error_message="An unexpected internal error occurred while processing the answer key. Please try again.",
         )
 
 
@@ -338,6 +338,29 @@ async def confirm_answer_key_import(
 
     async with db.get_session() as session:
         async with session.begin():
+            # Acquire row lock to prevent concurrent double confirmation
+            lock_stmt = (
+                select(AnswerKeyImport)
+                .where(AnswerKeyImport.id == import_id)
+                .with_for_update()
+            )
+            import_locked = (await session.execute(lock_stmt)).scalar_one_or_none()
+            if not import_locked:
+                raise HTTPException(status_code=404, detail="Answer key import job not found")
+
+            if import_locked.status == AnswerKeyImportStatus.COMPLETED:
+                logger.info(
+                    "AnswerKeyImport %s already COMPLETED (concurrent confirmation prevented).",
+                    import_id,
+                )
+                return AnswerKeyImportConfirmResponse(
+                    id=record.id,
+                    examId=record.examId,
+                    status=import_locked.status,
+                    updatedQuestionsCount=0,
+                    confirmedAt=import_locked.confirmedAt or now,
+                )
+
             # Check exam
             exam_stmt = select(Exam).where(Exam.id == record.examId)
             exam = (await session.execute(exam_stmt)).scalar_one_or_none()

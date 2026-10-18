@@ -33,11 +33,23 @@ function createMockUser(id: string, role: UserRole): User {
 describe("RoleGuard UX Guard Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useAuthStore.setState({ user: null, loading: false, error: null });
+    useAuthStore.setState({ user: null, loading: false, initialized: true, error: null });
   });
 
   it("shows loading indicator while authorization is checking", () => {
-    useAuthStore.setState({ user: null, loading: true });
+    useAuthStore.setState({ user: null, loading: true, initialized: false });
+    render(
+      <RoleGuard allowedRoles={["TEACHER"]}>
+        <div>Protected Content</div>
+      </RoleGuard>
+    );
+
+    expect(screen.getByText("Loading authorization...")).toBeDefined();
+    expect(screen.queryByText("Protected Content")).toBeNull();
+  });
+
+  it("shows loading indicator when not yet initialized", () => {
+    useAuthStore.setState({ user: null, loading: false, initialized: false });
     render(
       <RoleGuard allowedRoles={["TEACHER"]}>
         <div>Protected Content</div>
@@ -49,7 +61,7 @@ describe("RoleGuard UX Guard Component", () => {
   });
 
   it("redirects unauthenticated users to /login", () => {
-    useAuthStore.setState({ user: null, loading: false });
+    useAuthStore.setState({ user: null, loading: false, initialized: true });
     render(
       <RoleGuard allowedRoles={["TEACHER"]}>
         <div>Protected Content</div>
@@ -64,6 +76,7 @@ describe("RoleGuard UX Guard Component", () => {
     useAuthStore.setState({
       user: createMockUser("u_student", "STUDENT"),
       loading: false,
+      initialized: true,
     });
 
     render(
@@ -80,6 +93,7 @@ describe("RoleGuard UX Guard Component", () => {
     useAuthStore.setState({
       user: createMockUser("u_teacher", "TEACHER"),
       loading: false,
+      initialized: true,
     });
 
     render(

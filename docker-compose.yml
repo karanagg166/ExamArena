@@ -50,6 +50,31 @@ services:
       redis:
         condition: service_healthy
 
+  worker:
+    build:
+      context: .
+      dockerfile: backend/backend.Dockerfile
+      target: dev
+    container_name: exam_arena_worker
+    init: true
+    restart: unless-stopped
+    command: ["python", "-m", "arq", "app.imports.worker.WorkerSettings"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://postgres:postgres@db:5432/exam_arena}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   frontend:
     build:
       context: .

@@ -17,19 +17,19 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
   redirectUrl = "/dashboard",
 }) => {
   const router = useRouter();
-  const { user, loading } = useAuthStore();
+  const { user, loading, initialized } = useAuthStore();
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && initialized) {
       if (!user) {
         router.replace("/login");
       } else if (!allowedRoles.includes(user.role)) {
         router.replace(redirectUrl);
       }
     }
-  }, [user, loading, allowedRoles, redirectUrl, router]);
+  }, [user, loading, initialized, allowedRoles, redirectUrl, router]);
 
-  if (loading) {
+  if (loading || !initialized) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-muted-foreground text-sm">Loading authorization...</div>

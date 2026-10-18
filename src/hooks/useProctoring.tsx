@@ -97,6 +97,7 @@ export const useProctoring = ({
         }
 
         if (newCount >= maxWarningsRef.current) {
+            enabledRef.current = false
             onAutoSubmitRef.current?.()
         }
     }, [])
