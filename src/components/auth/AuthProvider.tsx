@@ -5,7 +5,7 @@ import { useAuthStore } from "@/stores";
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { loading, fetchMe } = useAuthStore();
+  const { loading, initialized, fetchMe } = useAuthStore();
   const [isPublicPage, setIsPublicPage] = React.useState(false);
 
   React.useEffect(() => {
@@ -17,8 +17,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchMe();
   }, [fetchMe]);
 
-  if (loading && !isPublicPage) {
-    return <div>Loading...</div>;
+  if ((loading || !initialized) && !isPublicPage) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-muted-foreground text-sm animate-pulse">Loading authorization...</div>
+      </div>
+    );
   }
 
   return <>{children}</>;
