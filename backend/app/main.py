@@ -122,6 +122,19 @@ async def health_live():
     }
 
 
+_db_schema_ready = False
+
+
+async def ensure_db_schema_ready() -> None:
+    global _db_schema_ready
+    if not _db_schema_ready:
+        try:
+            await db.init_db()
+            _db_schema_ready = True
+        except Exception as exc:
+            logger.warning("Schema readiness migration execution failed: %s", exc)
+
+
 @app.get("/health/ready")
 @app.get("/api/health/ready")
 async def health_ready():
@@ -130,6 +143,8 @@ async def health_ready():
     Fails with HTTP 503 if any required dependency is unreachable.
     """
     from sqlalchemy import text
+
+    await ensure_db_schema_ready()
 
     db_status = "unknown"
     redis_status = "unknown"

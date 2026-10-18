@@ -156,6 +156,10 @@ async def upload_answer_key(
         else AnswerKeyImportSourceType.IMAGE
     )
 
+    from app.main import ensure_db_schema_ready
+
+    await ensure_db_schema_ready()
+
     import_record = await crud.create_answer_key_import(
         exam_id=exam_id,
         teacher_id=teacher_id,

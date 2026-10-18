@@ -178,6 +178,11 @@ async def upload_question_paper(
         else QuestionImportSourceType.IMAGE
     )
 
+    # Ensure schema migrations have run (especially on serverless runtimes)
+    from app.main import ensure_db_schema_ready
+
+    await ensure_db_schema_ready()
+
     # Create QuestionImport database record
     import_record = await crud.create_question_import(
         exam_id=exam_id,
