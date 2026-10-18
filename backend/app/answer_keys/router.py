@@ -53,7 +53,12 @@ router = APIRouter(tags=["answer-key-imports"])
 async def dispatch_answer_key_job(
     import_id: str, background_tasks: BackgroundTasks
 ) -> str:
-    """Dispatches answer key import job to ARQ queue if worker is active, otherwise falls back to BackgroundTasks."""
+    """Dispatches answer key import job to ARQ queue if worker is active.
+
+    If worker is unavailable:
+    - If ALLOW_IN_PROCESS_IMPORT_FALLBACK is enabled, falls back to ephemeral BackgroundTasks.
+    - Otherwise, marks the answer key import as FAILED (WORKER_UNAVAILABLE) and raises HTTPException 503.
+    """
     if settings.REDIS_URL:
         try:
             from arq import create_pool
@@ -72,8 +77,7 @@ async def dispatch_answer_key_job(
                     return "arq_worker"
                 else:
                     logger.warning(
-                        "Redis reachable, but no active ARQ worker detected. "
-                        "Falling back to ephemeral BackgroundTasks for answer key %s.",
+                        "Redis reachable, but no active ARQ worker detected for answer key %s.",
                         import_id,
                     )
             finally:
@@ -81,8 +85,27 @@ async def dispatch_answer_key_job(
         except Exception as e:
             logger.warning("Failed to enqueue answer key to ARQ: %s", e)
 
-    background_tasks.add_task(process_answer_key_import, import_id)
-    return "in_process_background_task"
+    if settings.ALLOW_IN_PROCESS_IMPORT_FALLBACK:
+        logger.warning(
+            "ALLOW_IN_PROCESS_IMPORT_FALLBACK enabled: falling back to ephemeral BackgroundTasks for answer key %s.",
+            import_id,
+        )
+        background_tasks.add_task(process_answer_key_import, import_id)
+        return "in_process_background_task"
+
+    await crud.update_answer_key_import_failure(
+        import_id,
+        error_category="WORKER_UNAVAILABLE",
+        error_message="Worker unavailable: No persistent background worker is active to process this answer key. The file has been preserved for retry.",
+    )
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "error": "WORKER_UNAVAILABLE",
+            "message": "Asynchronous processing worker is currently unavailable. Uploaded file preserved.",
+            "importId": import_id,
+        },
+    )
 
 
 @router.post(

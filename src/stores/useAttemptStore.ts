@@ -32,8 +32,8 @@ export interface AttemptStoreState {
   
   // Actions
   setAllState: (state: Partial<AttemptStoreState>) => void;
-  setAnswerState: (questionId: string, state: Partial<QuestionAttemptState>) => void;
-  markAnswersSaved: () => void;
+  setAnswerState: (questionId: string, state: Partial<QuestionAttemptState>, markDirty?: boolean) => void;
+  markAnswersSaved: (savedBeforeTimestamp?: number) => void;
   clearAttempt: () => void;
 }
 
@@ -54,15 +54,15 @@ export const useAttemptStore = create<AttemptStoreState>()(
 
       setAllState: (newState) => set((state) => ({ ...state, ...newState })),
       
-      setAnswerState: (questionId, newQState) => set((state) => {
+      setAnswerState: (questionId, newQState, markDirty = true) => set((state) => {
         const answers = { ...state.answers };
         const now = Date.now();
         if (answers[questionId]) {
           answers[questionId] = {
             ...answers[questionId],
             ...newQState,
-            isDirty: true,
-            modifiedAt: now,
+            isDirty: markDirty ? true : (newQState.isDirty ?? answers[questionId].isDirty ?? false),
+            modifiedAt: markDirty ? now : answers[questionId].modifiedAt,
           };
         } else {
           answers[questionId] = {
@@ -71,18 +71,20 @@ export const useAttemptStore = create<AttemptStoreState>()(
             questionType: 'MULTIPLE_CHOICE',
             status: 'NOT_VISITED',
             ...newQState,
-            isDirty: true,
-            modifiedAt: now,
+            isDirty: markDirty ? true : (newQState.isDirty ?? false),
+            modifiedAt: markDirty ? now : undefined,
           } as QuestionAttemptState;
         }
         return { answers };
       }),
 
-      markAnswersSaved: () => set((state) => {
+      markAnswersSaved: (savedBeforeTimestamp?: number) => set((state) => {
         const answers = { ...state.answers };
         for (const qId in answers) {
           if (answers[qId].isDirty) {
-            answers[qId] = { ...answers[qId], isDirty: false };
+            if (!savedBeforeTimestamp || (answers[qId].modifiedAt && answers[qId].modifiedAt <= savedBeforeTimestamp)) {
+              answers[qId] = { ...answers[qId], isDirty: false };
+            }
           }
         }
         return { answers };

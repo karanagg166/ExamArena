@@ -133,13 +133,13 @@ export default function ExamStartPage() {
     );
   }
 
-  if (error || !exam) {
+  if (!exam) {
     return (
       <div className="page-shell">
         <GlassCard className="max-w-2xl mx-auto p-12 text-center space-y-6">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
           <h2 className="text-2xl font-bold text-white">Oops</h2>
-          <p className="text-[var(--text-muted)]">{error}</p>
+          <p className="text-[var(--text-muted)]">{error || "Failed to load exam details. It may not exist or not be published."}</p>
           <Button onClick={() => router.push('/student/exams')}>Back to Exams</Button>
         </GlassCard>
       </div>

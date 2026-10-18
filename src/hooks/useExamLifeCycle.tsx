@@ -3,14 +3,15 @@ import { useAttemptStore, QuestionAttemptState } from '@/stores/useAttemptStore'
 import type { QuestionType } from '@/types';
 
 export function useExamLifeCycle() {
-  const store = useAttemptStore();
+  const setAllState = useAttemptStore((s) => s.setAllState);
+  const clearAttempt = useAttemptStore((s) => s.clearAttempt);
 
   const initializeAttempt = useCallback((examId: string, attemptId: string, initialAnswers: { id: string; questionId: string; questionType: QuestionType; textAnswer?: string; selectedOptions?: { optionId: string }[] }[], startedAt: string, defaultTimeLimitSeconds?: number) => {
     const currentState = useAttemptStore.getState();
     // Only initialize if we're starting a new attempt or forcing a refresh of the SAME attempt.
     if (currentState.attemptId === attemptId && Object.keys(currentState.answers).length > 0) {
       if ((!currentState.durationSeconds || currentState.timeRemainingSeconds === null) && defaultTimeLimitSeconds) {
-        store.setAllState({
+        setAllState({
           durationSeconds: defaultTimeLimitSeconds,
           timeRemainingSeconds: currentState.timeRemainingSeconds ?? defaultTimeLimitSeconds,
           startedAt: currentState.startedAt || startedAt,
@@ -39,7 +40,7 @@ export function useExamLifeCycle() {
         newAnswers[firstQ].status = "VISITED_NOT_ANSWERED";
     }
 
-    store.setAllState({
+    setAllState({
       examId,
       attemptId,
       answers: newAnswers,
@@ -49,15 +50,15 @@ export function useExamLifeCycle() {
       activeQuestionId: firstQ,
       timeRemainingSeconds: defaultTimeLimitSeconds || null,
     });
-  }, [store]);
+  }, [setAllState]);
 
   const submitAttemptLocal = useCallback(() => {
-    store.setAllState({ status: "SUBMITTED" });
-  }, [store]);
+    setAllState({ status: "SUBMITTED" });
+  }, [setAllState]);
 
   const clearAttemptLocal = useCallback(() => {
-    store.clearAttempt();
-  }, [store]);
+    clearAttempt();
+  }, [clearAttempt]);
 
   return {
     initializeAttempt,

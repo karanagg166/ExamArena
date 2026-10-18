@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     ANSWER_KEY_IMPORT_STORAGE_PATH: str = "uploads/answer_key_imports"
     ANSWER_KEY_IMPORT_MAX_RETRIES: int = 3
     ANSWER_KEY_IMPORT_TIMEOUT_SECONDS: float = 60.0
+    ALLOW_IN_PROCESS_IMPORT_FALLBACK: bool = False
 
     # Search-Sphere RAG Microservice Integration
     SEARCH_SPHERE_URL: str = "http://localhost:8000"

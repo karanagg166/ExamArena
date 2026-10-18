@@ -134,6 +134,7 @@ export const AttemptQuestion = ({ question, questionIndex, totalQuestions }: Att
                     <input 
                       type={question.questionType === 'MULTIPLE_SELECT' ? 'checkbox' : 'radio'}
                       name={`question-${question.id}`}
+                      value={option.id}
                       className="w-5 h-5 accent-indigo-500 cursor-pointer"
                       checked={selectedOptionsList.includes(option.id)}
                       onChange={() => handleOptionToggle(option.id)}

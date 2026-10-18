@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     ffmpeg libsm6 libxext6 \
     tesseract-ocr \
+    tesseract-ocr-eng \
     libtesseract-dev \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./backend/requirements.txt ./requirements.txt
@@ -36,3 +38,9 @@ ENV DATABASE_URL=$DATABASE_URL
 
 EXPOSE 8000
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+
+# ── Worker Stage ───────────────────────────────────────────────
+FROM base AS worker
+COPY ./backend .
+
+CMD ["python", "-m", "arq", "app.imports.worker.WorkerSettings"]
