@@ -355,6 +355,29 @@ async def confirm_question_import(
 
     async with db.get_session() as session:
         async with session.begin():
+            # Acquire row lock on import record to prevent concurrent confirmation races
+            lock_stmt = (
+                select(QuestionImport)
+                .where(QuestionImport.id == import_id)
+                .with_for_update()
+            )
+            import_locked = (await session.execute(lock_stmt)).scalar_one_or_none()
+            if not import_locked:
+                raise HTTPException(status_code=404, detail="Question import not found")
+
+            if import_locked.status == QuestionImportStatus.COMPLETED:
+                logger.info(
+                    "QuestionImport %s is already COMPLETED (concurrent confirmation prevented). Returning idempotent response.",
+                    import_id,
+                )
+                return QuestionImportConfirmResponse(
+                    id=record.id,
+                    examId=record.examId,
+                    status=QuestionImportStatus.COMPLETED,
+                    createdQuestionsCount=0,
+                    confirmedAt=import_locked.confirmedAt or now,
+                )
+
             # Check exam exists
             exam_stmt = select(Exam).where(Exam.id == record.examId)
             exam = (await session.execute(exam_stmt)).scalar_one_or_none()

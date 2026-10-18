@@ -39,13 +39,50 @@ from app.core.config import settings
 from app.core.models import (
     AnswerKeyImportSourceType,
     AnswerKeyImportStatus,
+    utc_now,
 )
+from app.imports.worker import WORKER_HEARTBEAT_KEY, get_redis_settings
 from app.storage.service import get_storage_provider
 from app.users.schemas import UserResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["answer-key-imports"])
+
+
+async def dispatch_answer_key_job(
+    import_id: str, background_tasks: BackgroundTasks
+) -> str:
+    """Dispatches answer key import job to ARQ queue if worker is active, otherwise falls back to BackgroundTasks."""
+    if settings.REDIS_URL:
+        try:
+            from arq import create_pool
+
+            pool = await create_pool(get_redis_settings())
+            try:
+                health = await pool.get("arq:queue:health-check")
+                heartbeat = await pool.get(WORKER_HEARTBEAT_KEY)
+                if health or heartbeat:
+                    job = await pool.enqueue_job("run_answer_key_job", import_id)
+                    logger.info(
+                        "Enqueued AnswerKeyImport %s to ARQ worker (job_id: %s)",
+                        import_id,
+                        job.job_id if job else None,
+                    )
+                    return "arq_worker"
+                else:
+                    logger.warning(
+                        "Redis reachable, but no active ARQ worker detected. "
+                        "Falling back to ephemeral BackgroundTasks for answer key %s.",
+                        import_id,
+                    )
+            finally:
+                await pool.aclose()
+        except Exception as e:
+            logger.warning("Failed to enqueue answer key to ARQ: %s", e)
+
+    background_tasks.add_task(process_answer_key_import, import_id)
+    return "in_process_background_task"
 
 
 @router.post(
@@ -114,7 +151,7 @@ async def upload_answer_key(
         },
     )
 
-    background_tasks.add_task(process_answer_key_import, import_record.id)
+    await dispatch_answer_key_job(import_record.id, background_tasks)
 
     return format_answer_key_response(import_record)
 
@@ -136,7 +173,51 @@ async def get_answer_key_import(
         )
 
     await require_exam_answer_key_access(current_user, record.examId)
+
+    # Recover stuck PROCESSING jobs (> 300 seconds)
+    if record.status == AnswerKeyImportStatus.PROCESSING and record.updatedAt:
+        now_ts = utc_now()
+        updated_ts = record.updatedAt if record.updatedAt.tzinfo else record.updatedAt.replace(tzinfo=now_ts.tzinfo)
+        elapsed = (now_ts - updated_ts).total_seconds()
+        if elapsed > 300:
+            logger.warning("AnswerKey %s stuck in PROCESSING for %.1fs. Transitioning to TIMEOUT.", import_id, elapsed)
+            record = await crud.update_answer_key_import_failure(
+                import_id,
+                error_category="TIMEOUT",
+                error_message="Answer key processing timed out after 300 seconds. You may retry the import.",
+            )
+
     return format_answer_key_response(record)
+
+
+@router.post(
+    "/api/v1/answer-key-imports/{import_id}/retry",
+    response_model=AnswerKeyImportResponse,
+)
+async def retry_answer_key_import(
+    import_id: str,
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
+):
+    """Retry a failed or stuck answer key import job."""
+    record = await crud.get_answer_key_import_by_id(import_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Answer key import job not found",
+        )
+
+    await require_exam_answer_key_access(current_user, record.examId)
+
+    if record.status == AnswerKeyImportStatus.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot retry an already completed answer key import.",
+        )
+
+    reset_record = await crud.reset_answer_key_import_for_retry(import_id)
+    await dispatch_answer_key_job(import_id, background_tasks)
+    return format_answer_key_response(reset_record or record)
 
 
 @router.get(

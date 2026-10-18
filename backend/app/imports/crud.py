@@ -222,3 +222,32 @@ async def mark_question_import_completed(
         return await _do(session)
     async with db.get_session() as s:
         return await _do(s)
+
+
+async def reset_question_import_for_retry(
+    import_id: str,
+    session: AsyncSession | None = None,
+) -> QuestionImport | None:
+    """Resets a failed or stuck import back to UPLOADED so it can be re-dispatched."""
+
+    async def _do(s: AsyncSession):
+        stmt = (
+            select(QuestionImport)
+            .where(QuestionImport.id == import_id)
+            .with_for_update()
+        )
+        res = await s.execute(stmt)
+        record = res.scalar_one_or_none()
+        if record:
+            record.status = QuestionImportStatus.UPLOADED
+            record.errorMessage = None
+            record.errorCategory = None
+            record.updatedAt = utc_now()
+            await s.commit()
+            await s.refresh(record)
+        return record
+
+    if session:
+        return await _do(session)
+    async with db.get_session() as s:
+        return await _do(s)
