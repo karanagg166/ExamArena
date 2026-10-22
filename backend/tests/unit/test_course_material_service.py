@@ -24,7 +24,10 @@ from app.integrations.search_sphere.exceptions import (
 def test_validate_material_file():
     # Valid PDF
     valid_pdf = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj"
-    assert validate_material_file(valid_pdf, "book.pdf", "application/pdf") == "application/pdf"
+    assert (
+        validate_material_file(valid_pdf, "book.pdf", "application/pdf")
+        == "application/pdf"
+    )
 
     # Empty file
     with pytest.raises(HTTPException) as exc:
@@ -42,9 +45,15 @@ def test_validate_material_file():
 @pytest.mark.asyncio
 async def test_upload_course_material_success(mocker):
     mock_ss = MagicMock(spec=SearchSphereClient)
-    mock_ss.ensure_collection = AsyncMock(return_value={"collection_id": "subject_science"})
+    mock_ss.ensure_collection = AsyncMock(
+        return_value={"collection_id": "subject_science"}
+    )
     mock_ss.upload_file = AsyncMock(
-        return_value={"storage_key": "storage/path/notes.pdf", "mime_type": "application/pdf", "file_size": 100}
+        return_value={
+            "storage_key": "storage/path/notes.pdf",
+            "mime_type": "application/pdf",
+            "file_size": 100,
+        }
     )
     mock_ss.register_document = AsyncMock(
         return_value={"id": "ss_doc_123", "status": "PROCESSING"}
@@ -116,8 +125,12 @@ async def test_upload_course_material_success(mocker):
 @pytest.mark.asyncio
 async def test_upload_course_material_failure_compensation(mocker):
     mock_ss = MagicMock(spec=SearchSphereClient)
-    mock_ss.ensure_collection = AsyncMock(return_value={"collection_id": "subject_maths"})
-    mock_ss.upload_file = AsyncMock(side_effect=SearchSphereError("Network failure uploading file"))
+    mock_ss.ensure_collection = AsyncMock(
+        return_value={"collection_id": "subject_maths"}
+    )
+    mock_ss.upload_file = AsyncMock(
+        side_effect=SearchSphereError("Network failure uploading file")
+    )
 
     mock_session = AsyncMock()
     mock_created = MagicMock(spec=CourseMaterial)
@@ -147,7 +160,10 @@ async def test_upload_course_material_failure_compensation(mocker):
         )
 
     assert exc_info.value.status_code == 502
-    assert "Search-Sphere" in exc_info.value.detail or "ingestion failed" in exc_info.value.detail
+    assert (
+        "Search-Sphere" in exc_info.value.detail
+        or "ingestion failed" in exc_info.value.detail
+    )
 
     # Verify failure compensation updated row status to FAILED
     mock_update.assert_awaited_once()
@@ -233,7 +249,9 @@ async def test_delete_course_material(mocker):
 @pytest.mark.asyncio
 async def test_delete_course_material_upstream_failure_preserves_local_record(mocker):
     mock_ss = MagicMock(spec=SearchSphereClient)
-    mock_ss.delete_document = AsyncMock(side_effect=SearchSphereError("Search-Sphere 500 error"))
+    mock_ss.delete_document = AsyncMock(
+        side_effect=SearchSphereError("Search-Sphere 500 error")
+    )
 
     mock_material = MagicMock(spec=CourseMaterial)
     mock_material.id = "mat_del_fail"
@@ -473,3 +491,48 @@ async def test_answer_question_with_search_sphere_internal_doc_id(mocker):
     assert res.citations[0].file_name == "cell_biology.pdf"
     assert res.citations[0].document_type == "TEACHER_NOTES"
 
+
+@pytest.mark.asyncio
+async def test_answer_question_discards_cross_school_unverified_citation(mocker):
+    """Enforces multi-tenant isolation: any citations referencing verified documents of a different school are discarded."""
+    mock_ss = AsyncMock()
+    mock_ss.generate_answer = AsyncMock(
+        return_value={
+            "answer": "Rogue answer containing cross-school data. [1]",
+            "citations": [
+                {
+                    "citation_number": 1,
+                    "chunk_id": "chk_rogue_1",
+                    "document_id": "doc_other_school_secret",
+                    "file_name": "other_school_confidential.pdf",
+                    "page_number": 5,
+                    "text_snippet": "Confidential other school financial report",
+                }
+            ],
+            "retrieved_chunk_count": 1,
+            "duration_ms": 15.0,
+        }
+    )
+
+    mock_session = AsyncMock()
+    # CRUD returns a document that belongs to sch_beta (cross-school mismatch)
+    other_school_mat = MagicMock()
+    other_school_mat.id = "doc_other_school_secret"
+    other_school_mat.searchSphereDocumentId = "doc_other_school_secret"
+    other_school_mat.schoolId = "sch_beta"
+
+    mocker.patch(
+        "app.course_materials.crud.get_course_materials_by_ids",
+        AsyncMock(return_value=[other_school_mat]),
+    )
+
+    service = CourseMaterialService(search_sphere_client=mock_ss)
+    res = await service.answer_question(
+        session=mock_session,
+        school_id="sch_alpha",
+        query="What is the budget?",
+        subject=Subject.SCIENCE,
+    )
+
+    # Cross-school citation was discarded
+    assert len(res.citations) == 0

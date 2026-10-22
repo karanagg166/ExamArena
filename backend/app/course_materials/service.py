@@ -404,6 +404,7 @@ class CourseMaterialService:
                 c.get("document_id") for c in raw_citations if c.get("document_id")
             ]
             material_map = {}
+            cross_school_ids = set()
             if doc_ids:
                 materials = await crud.get_course_materials_by_ids(session, doc_ids)
                 for m in materials:
@@ -411,10 +412,22 @@ class CourseMaterialService:
                         material_map[m.id] = m
                         if m.searchSphereDocumentId:
                             material_map[m.searchSphereDocumentId] = m
+                    else:
+                        cross_school_ids.add(m.id)
+                        if m.searchSphereDocumentId:
+                            cross_school_ids.add(m.searchSphereDocumentId)
 
             citations: list[CourseMaterialAnswerCitation] = []
             for c in raw_citations:
                 doc_id = c.get("document_id")
+                # Multi-tenant security isolation: strictly reject citations belonging to a different school
+                if doc_id and doc_id in cross_school_ids:
+                    logger.warning(
+                        "Search-Sphere citation %s discarded: belongs to a different school (school_id mismatch)",
+                        doc_id,
+                    )
+                    continue
+
                 mat = material_map.get(doc_id)
                 citations.append(
                     CourseMaterialAnswerCitation(
