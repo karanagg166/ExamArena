@@ -1,5 +1,7 @@
 """Storage service factory."""
 
+import logging
+import os
 from functools import lru_cache
 
 from app.core.config import settings
@@ -9,6 +11,8 @@ from app.storage.base import (
     StorageReadError,
 )
 from app.storage.local import LocalStorageProvider
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_storage_resource_type(resource_type: str | None, file_type: str) -> str:
@@ -37,9 +41,35 @@ def get_storage_provider() -> StorageProvider:
     - 'local': Local filesystem storage with traversal protection.
     - 'cloudinary': Cloudinary cloud asset storage.
 
+    On serverless environments (e.g. Vercel, AWS Lambda), if Cloudinary credentials
+    are provided, automatically use Cloudinary to ensure durable shared storage across
+    API and worker instances.
+
     Raises StorageConfigurationError for unknown or misconfigured providers.
     """
+    is_serverless = bool(
+        os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    )
     provider = (settings.FILE_STORAGE_PROVIDER or "local").lower().strip()
+
+    if is_serverless:
+        if (
+            settings.CLOUDINARY_APIKEY
+            and settings.CLOUDINARY_APISECRET
+            and settings.CLOUDINARY_CLOUDNAME
+        ):
+            logger.info(
+                "Serverless execution environment detected with Cloudinary configured: "
+                "selecting durable CloudinaryStorageProvider."
+            )
+            from app.storage.cloudinary import CloudinaryStorageProvider
+
+            return CloudinaryStorageProvider()
+        else:
+            logger.warning(
+                "Running in serverless environment with LocalStorageProvider. "
+                "Warning: ephemeral /tmp storage is not shared across worker and serverless instances."
+            )
 
     if provider == "local":
         return LocalStorageProvider()

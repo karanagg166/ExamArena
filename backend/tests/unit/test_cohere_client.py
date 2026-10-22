@@ -27,7 +27,9 @@ async def test_cohere_extract_structured_json_success():
     client = CohereClient(api_key="fake-test-key", max_retries=2)
 
     mock_chat_response = MagicMock()
-    mock_chat_response.message.content = [MagicMock(text='{"title": "Test Paper", "questions": []}')]
+    mock_chat_response.message.content = [
+        MagicMock(text='{"title": "Test Paper", "questions": []}')
+    ]
     mock_chat_response.usage.tokens.input_tokens = 100
     mock_chat_response.usage.tokens.output_tokens = 50
 
@@ -51,7 +53,9 @@ async def test_cohere_rate_limit_retry_then_success():
     client = CohereClient(api_key="fake-test-key", max_retries=3)
 
     mock_chat_response = MagicMock()
-    mock_chat_response.message.content = [MagicMock(text='{"title": "Success After Retry"}')]
+    mock_chat_response.message.content = [
+        MagicMock(text='{"title": "Success After Retry"}')
+    ]
     mock_chat_response.usage.tokens.input_tokens = 50
     mock_chat_response.usage.tokens.output_tokens = 20
 
@@ -132,3 +136,33 @@ async def test_cohere_non_retryable_400_bad_request_fails_immediately():
         # Verify no sleeps/retries were performed for a 400 error
         mock_sleep.assert_not_called()
 
+
+@pytest.mark.asyncio
+async def test_cohere_strips_markdown_code_fences_from_response():
+    from app.ai.clients.cohere_client import clean_and_extract_json
+
+    # Test helper directly
+    wrapped = '```json\n{"title": "Extracted Paper", "questions": []}\n```'
+    assert (
+        clean_and_extract_json(wrapped)
+        == '{"title": "Extracted Paper", "questions": []}'
+    )
+
+    # Test via extract_structured_json
+    client = CohereClient(api_key="fake-test-key", max_retries=1)
+    mock_chat_response = MagicMock()
+    mock_chat_response.message.content = [MagicMock(text=wrapped)]
+    mock_chat_response.usage.tokens.input_tokens = 50
+    mock_chat_response.usage.tokens.output_tokens = 25
+
+    mock_co_instance = MagicMock()
+    mock_co_instance.chat.return_value = mock_chat_response
+    client._client = mock_co_instance
+
+    res_text, metrics = await client.extract_structured_json(
+        messages=[{"role": "user", "content": "extract"}],
+        schema={"type": "object"},
+    )
+    assert not res_text.startswith("```")
+    assert not res_text.endswith("```")
+    assert '{"title": "Extracted Paper"' in res_text

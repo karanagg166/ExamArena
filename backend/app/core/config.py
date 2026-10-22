@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +43,18 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore"
     )
+
+    @field_validator("REDIS_URL", mode="before")
+    @classmethod
+    def normalize_redis_url(cls, v: str | None) -> str | None:
+        if not v:
+            return v
+        v_str = str(v).strip()
+        if not v_str:
+            return v_str
+        if not v_str.startswith(("redis://", "rediss://", "unix://")):
+            return f"redis://{v_str}"
+        return v_str
 
 
 settings = Settings()

@@ -68,6 +68,19 @@ def _sanitize_schema_for_cohere(schema: dict[str, Any]) -> dict[str, Any]:
     return clean
 
 
+def clean_and_extract_json(raw_text: str) -> str:
+    """Strip markdown code blocks, preamble, and extract valid JSON string."""
+    text = (raw_text or "").strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    return text
+
+
 class CohereClient:
     """Wrapper client for Cohere ClientV2 with structured JSON outputs and retry resiliency."""
 
@@ -102,7 +115,9 @@ class CohereClient:
             )
         return self._client
 
-    def _generate_stub_response(self, schema: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    def _generate_stub_response(
+        self, schema: dict[str, Any]
+    ) -> tuple[str, dict[str, Any]]:
         """Generates deterministic structured JSON for CI and integration tests without live provider calls."""
         import json
 
@@ -267,7 +282,8 @@ class CohereClient:
                     and response.message.content
                     and len(response.message.content) > 0
                 ):
-                    text_content = response.message.content[0].text
+                    raw_text = response.message.content[0].text
+                    text_content = clean_and_extract_json(raw_text)
                 else:
                     raise CohereAPIError("Cohere returned an empty response message")
 
