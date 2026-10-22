@@ -101,39 +101,38 @@ async def test_full_worker_queue_lifecycle_question_paper_and_answer_key(
     test_db_url = get_test_database_url()
     backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-    shared_storage_dir = tempfile.mkdtemp(prefix="shared_exam_storage_")
-    monkeypatch.setattr(settings, "QUESTION_IMPORT_STORAGE_PATH", shared_storage_dir)
-    get_storage_provider.cache_clear()
-
     existing_pythonpath = os.environ.get("PYTHONPATH", "")
     full_pythonpath = (
         f"{backend_dir}:{existing_pythonpath}" if existing_pythonpath else backend_dir
     )
 
-    worker_env = {
-        **os.environ,
-        "PYTHONPATH": full_pythonpath,
-        "REDIS_URL": redis_url,
-        "DATABASE_URL": test_db_url,
-        "COHERE_STUB_MODE": "true",
-        "ALLOW_IN_PROCESS_IMPORT_FALLBACK": "false",
-        "FILE_STORAGE_PROVIDER": "local",
-        "QUESTION_IMPORT_STORAGE_PATH": shared_storage_dir,
-    }
+    worker_proc = None
+    existing_hb = await r.get(WORKER_HEARTBEAT_KEY)
 
-    # 1. Start real ARQ worker subprocess
-    worker_proc = subprocess.Popen(
-        [sys.executable, "-m", "arq", "app.imports.worker.WorkerSettings"],
-        cwd=backend_dir,
-        env=worker_env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    if existing_hb:
+        worker_started = True
+    else:
+        worker_env = {
+            **os.environ,
+            "PYTHONPATH": full_pythonpath,
+            "REDIS_URL": redis_url,
+            "DATABASE_URL": test_db_url,
+            "COHERE_STUB_MODE": "true",
+            "ALLOW_IN_PROCESS_IMPORT_FALLBACK": "false",
+            "FILE_STORAGE_PROVIDER": "local",
+        }
 
-    worker_started = False
+        # 1. Start real ARQ worker subprocess
+        worker_proc = subprocess.Popen(
+            [sys.executable, "-m", "arq", "app.imports.worker.WorkerSettings"],
+            cwd=backend_dir,
+            env=worker_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
 
-    try:
+        worker_started = False
         # 2. Wait for fresh worker heartbeat (up to 15s)
         for _ in range(30):
             hb = await r.get(WORKER_HEARTBEAT_KEY)
@@ -142,10 +141,9 @@ async def test_full_worker_queue_lifecycle_question_paper_and_answer_key(
                 break
             await asyncio.sleep(0.5)
 
-        assert worker_started, (
-            "ARQ worker subprocess failed to publish heartbeat to Redis"
-        )
+    assert worker_started, "ARQ worker subprocess failed to publish heartbeat to Redis"
 
+    try:
         # 3. Setup test exam and teacher
         principal = await create_user_factory(
             db_session, role=Role.PRINCIPAL, email="p_q_life@dev.local"
@@ -225,20 +223,19 @@ async def test_full_worker_queue_lifecycle_question_paper_and_answer_key(
 
     finally:
         get_storage_provider.cache_clear()
-        if "shared_storage_dir" in locals() and shared_storage_dir:
-            shutil.rmtree(shared_storage_dir, ignore_errors=True)
 
-        # Cleanly terminate worker subprocess and capture logs
-        worker_proc.terminate()
-        try:
-            stdout, stderr = worker_proc.communicate(timeout=5)
-        except subprocess.TimeoutExpired:
-            worker_proc.kill()
-            stdout, stderr = worker_proc.communicate()
+        # Cleanly terminate worker subprocess if spawned
+        if worker_proc:
+            worker_proc.terminate()
+            try:
+                stdout, stderr = worker_proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                worker_proc.kill()
+                stdout, stderr = worker_proc.communicate()
+
+            # Log worker output on failure
+            if worker_proc.returncode not in (0, -15, 15):
+                print(f"\n--- Worker Subprocess STDOUT ---\n{stdout}")
+                print(f"\n--- Worker Subprocess STDERR ---\n{stderr}")
 
         await r.aclose()
-
-        # Log worker output on failure
-        if worker_proc.returncode not in (0, -15, 15):
-            print(f"\n--- Worker Subprocess STDOUT ---\n{stdout}")
-            print(f"\n--- Worker Subprocess STDERR ---\n{stderr}")
