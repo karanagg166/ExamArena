@@ -494,7 +494,7 @@ async def test_answer_question_with_search_sphere_internal_doc_id(mocker):
 
 @pytest.mark.asyncio
 async def test_answer_question_discards_cross_school_unverified_citation(mocker):
-    """Enforces multi-tenant isolation: any citations referencing unverified or cross-school documents are discarded."""
+    """Enforces multi-tenant isolation: any citations referencing verified documents of a different school are discarded."""
     mock_ss = AsyncMock()
     mock_ss.generate_answer = AsyncMock(
         return_value={
@@ -515,10 +515,15 @@ async def test_answer_question_discards_cross_school_unverified_citation(mocker)
     )
 
     mock_session = AsyncMock()
-    # CRUD returns no documents matching school_id="sch_alpha"
+    # CRUD returns a document that belongs to sch_beta (cross-school mismatch)
+    other_school_mat = MagicMock()
+    other_school_mat.id = "doc_other_school_secret"
+    other_school_mat.searchSphereDocumentId = "doc_other_school_secret"
+    other_school_mat.schoolId = "sch_beta"
+
     mocker.patch(
         "app.course_materials.crud.get_course_materials_by_ids",
-        AsyncMock(return_value=[]),
+        AsyncMock(return_value=[other_school_mat]),
     )
 
     service = CourseMaterialService(search_sphere_client=mock_ss)
