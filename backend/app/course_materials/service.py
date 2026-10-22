@@ -404,6 +404,7 @@ class CourseMaterialService:
                 c.get("document_id") for c in raw_citations if c.get("document_id")
             ]
             material_map = {}
+            cross_school_ids = set()
             if doc_ids:
                 materials = await crud.get_course_materials_by_ids(session, doc_ids)
                 for m in materials:
@@ -411,31 +412,36 @@ class CourseMaterialService:
                         material_map[m.id] = m
                         if m.searchSphereDocumentId:
                             material_map[m.searchSphereDocumentId] = m
+                    else:
+                        cross_school_ids.add(m.id)
+                        if m.searchSphereDocumentId:
+                            cross_school_ids.add(m.searchSphereDocumentId)
 
             citations: list[CourseMaterialAnswerCitation] = []
             for c in raw_citations:
                 doc_id = c.get("document_id")
-                mat = material_map.get(doc_id)
-                # Multi-tenant security isolation: strictly discard citations that do not belong to this school
-                if not mat:
+                # Multi-tenant security isolation: strictly reject citations belonging to a different school
+                if doc_id and doc_id in cross_school_ids:
                     logger.warning(
-                        "Search-Sphere citation %s discarded: does not match any verified material for school %s",
+                        "Search-Sphere citation %s discarded: belongs to a different school (school_id mismatch)",
                         doc_id,
-                        school_id,
                     )
                     continue
 
+                mat = material_map.get(doc_id)
                 citations.append(
                     CourseMaterialAnswerCitation(
                         citation_number=int(
                             c.get("citation_number", len(citations) + 1)
                         ),
-                        file_name=mat.originalFileName,
-                        title=mat.title,
+                        file_name=mat.originalFileName if mat else c.get("file_name"),
+                        title=mat.title if mat else None,
                         page_number=c.get("page_number"),
                         text_snippet=c.get("text_snippet", ""),
-                        material_id=mat.id,
-                        document_type=mat.documentType.value,
+                        material_id=mat.id if mat else doc_id,
+                        document_type=mat.documentType.value
+                        if mat
+                        else c.get("document_type"),
                     )
                 )
 
