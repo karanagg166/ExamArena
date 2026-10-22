@@ -17,8 +17,17 @@ from app.storage.base import (
 class LocalStorageProvider(StorageProvider):
     def __init__(self, base_dir: str | None = None, base_path: str | None = None):
         target_dir = base_dir or base_path or settings.QUESTION_IMPORT_STORAGE_PATH
-        if (os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")) and not base_dir and not base_path:
+        if (
+            (os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+            and not base_dir
+            and not base_path
+        ):
             target_dir = os.path.join("/tmp", target_dir)
+        elif not os.path.isabs(target_dir):
+            backend_root = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..")
+            )
+            target_dir = os.path.join(backend_root, target_dir)
         self.base_dir = os.path.abspath(target_dir)
         try:
             os.makedirs(self.base_dir, exist_ok=True)

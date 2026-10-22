@@ -10,8 +10,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"))
 
 from sqlalchemy import text
-from app.core.models import Base
+
 import app.core.database as db
+from app.core.models import Base
 from seeds.e2e_fullstack import seed_fullstack_e2e_fixtures
 
 

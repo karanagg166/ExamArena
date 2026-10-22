@@ -10,8 +10,10 @@ from external live-provider verification.
 import asyncio
 import io
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 import pytest
@@ -29,6 +31,7 @@ from app.core.models import (
     Role,
 )
 from app.imports.worker import WORKER_HEARTBEAT_KEY
+from app.storage.service import get_storage_provider
 from tests.db_safety import get_test_database_url
 from tests.factories.exam_factory import create_exam_factory
 from tests.factories.school_factory import create_school_factory
@@ -96,20 +99,32 @@ async def test_full_worker_queue_lifecycle_question_paper_and_answer_key(
         pytest.skip(f"Redis server is not reachable at {redis_url}: {exc}")
 
     test_db_url = get_test_database_url()
+    backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+    shared_storage_dir = tempfile.mkdtemp(prefix="shared_exam_storage_")
+    monkeypatch.setattr(settings, "QUESTION_IMPORT_STORAGE_PATH", shared_storage_dir)
+    get_storage_provider.cache_clear()
+
+    existing_pythonpath = os.environ.get("PYTHONPATH", "")
+    full_pythonpath = (
+        f"{backend_dir}:{existing_pythonpath}" if existing_pythonpath else backend_dir
+    )
 
     worker_env = {
         **os.environ,
-        "PYTHONPATH": "backend",
+        "PYTHONPATH": full_pythonpath,
         "REDIS_URL": redis_url,
         "DATABASE_URL": test_db_url,
         "COHERE_STUB_MODE": "true",
         "ALLOW_IN_PROCESS_IMPORT_FALLBACK": "false",
         "FILE_STORAGE_PROVIDER": "local",
+        "QUESTION_IMPORT_STORAGE_PATH": shared_storage_dir,
     }
 
     # 1. Start real ARQ worker subprocess
     worker_proc = subprocess.Popen(
         [sys.executable, "-m", "arq", "app.imports.worker.WorkerSettings"],
+        cwd=backend_dir,
         env=worker_env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -209,6 +224,10 @@ async def test_full_worker_queue_lifecycle_question_paper_and_answer_key(
         assert opt_count > 0
 
     finally:
+        get_storage_provider.cache_clear()
+        if "shared_storage_dir" in locals() and shared_storage_dir:
+            shutil.rmtree(shared_storage_dir, ignore_errors=True)
+
         # Cleanly terminate worker subprocess and capture logs
         worker_proc.terminate()
         try:
