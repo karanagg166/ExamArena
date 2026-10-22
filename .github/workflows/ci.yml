@@ -82,8 +82,8 @@ jobs:
 
       - name: Install System Dependencies (Tesseract OCR)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+          sudo apt-get update -o Acquire::Retries=3 || true
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -147,8 +147,8 @@ jobs:
 
       - name: Install System Dependencies (Tesseract OCR)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+          sudo apt-get update -o Acquire::Retries=3 || true
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
 
       - name: Setup Python
         uses: actions/setup-python@v5
