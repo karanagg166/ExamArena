@@ -9,7 +9,7 @@ on:
 jobs:
   frontend:
     name: Frontend (Lint, Typecheck, Test, Build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
 
   backend:
     name: Backend (Ruff, Pytest Unit Tests)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16-alpine
@@ -107,7 +107,7 @@ jobs:
 
   worker-integration:
     name: Worker & Queue Integration (ARQ + Redis + PostgreSQL)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [backend]
     services:
       postgres:
@@ -220,7 +220,7 @@ jobs:
 
   fullstack:
     name: Full-Stack E2E (Real Services)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [frontend, backend, worker-integration]
     services:
       postgres:
