@@ -37,6 +37,15 @@ async def connect_with_retry(attempts: int = 5, base_delay: int = 2) -> None:
             await asyncio.sleep(wait)
 
 
+async def ensure_db_schema_ready() -> None:
+    """Ensure database connection and schema tables are initialized if needed."""
+    if not os.getenv("VERCEL"):
+        try:
+            await connect_with_retry(attempts=1)
+        except Exception as exc:
+            logger.warning("ensure_db_schema_ready encountered error: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown logic."""
@@ -111,70 +120,61 @@ def root():
 
 @app.get("/health")
 @app.get("/health/live")
+@app.get("/ready")
 @app.get("/api/health")
 @app.get("/api/health/live")
+@app.get("/api/ready")
 async def health_live():
     """Liveness probe: returns 200 if the FastAPI application process is alive."""
     return {
         "status": "ok",
         "service": "exam-arena-api",
         "environment": settings.ENVIRONMENT,
+        "git_commit": os.getenv("VERCEL_GIT_COMMIT_SHA", os.getenv("GIT_COMMIT", "6af5a6b")),
     }
-
-
-_db_schema_ready = False
-
-
-async def ensure_db_schema_ready() -> None:
-    global _db_schema_ready
-    if not _db_schema_ready:
-        try:
-            await db.init_db()
-            _db_schema_ready = True
-        except Exception as exc:
-            logger.warning("Schema readiness migration execution failed: %s", exc)
 
 
 @app.get("/health/ready")
 @app.get("/api/health/ready")
 async def health_ready():
-    """Readiness probe: validates connectivity to PostgreSQL and Redis.
+    """Readiness probe: validates connectivity to PostgreSQL and Redis without side-effects.
 
+    Bounded to 3.0s timeout to prevent serverless function hangs.
     Fails with HTTP 503 if any required dependency is unreachable.
     """
     from sqlalchemy import text
-
-    await ensure_db_schema_ready()
 
     db_status = "unknown"
     redis_status = "unknown"
     errors: list[str] = []
 
-    # 1. Database check
+    # 1. Bounded Database check (SELECT 1 only; no DDL schema mutations)
     try:
-        async with db.get_session() as session:
-            result = await session.execute(text("SELECT 1"))
-            if result.scalar() == 1:
-                db_status = "connected"
-            else:
-                db_status = "unhealthy"
-                errors.append("Database query returned unexpected scalar")
+        async with asyncio.timeout(3.0):
+            async with db.get_session() as session:
+                result = await session.execute(text("SELECT 1"))
+                if result.scalar() == 1:
+                    db_status = "connected"
+                else:
+                    db_status = "unhealthy"
+                    errors.append("Database query returned unexpected scalar")
     except Exception as exc:
         db_status = "disconnected"
         errors.append(f"Database error: {exc}")
 
-    # 2. Redis check
+    # 2. Bounded Redis check
     if settings.REDIS_URL:
         try:
             from app.core.redis import get_redis
 
-            r = get_redis()
-            if r:
-                pong = await r.ping()
-                redis_status = "connected" if pong else "unresponsive"
-            else:
-                redis_status = "not_initialized"
-                errors.append("Redis client not initialized")
+            async with asyncio.timeout(2.0):
+                r = get_redis()
+                if r:
+                    pong = await r.ping()
+                    redis_status = "connected" if pong else "unresponsive"
+                else:
+                    redis_status = "not_initialized"
+                    errors.append("Redis client not initialized")
         except Exception as exc:
             redis_status = "disconnected"
             errors.append(f"Redis error: {exc}")

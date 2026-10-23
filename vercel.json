@@ -31,6 +31,14 @@
     {
       "source": "/health",
       "destination": "/api/index.py"
+    },
+    {
+      "source": "/ready",
+      "destination": "/api/index.py"
+    },
+    {
+      "source": "/api/ready",
+      "destination": "/api/index.py"
     }
   ]
 }
