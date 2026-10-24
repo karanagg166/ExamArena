@@ -1,6 +1,7 @@
 """Worker settings and ARQ job definitions for question paper and answer key imports."""
 
 import logging
+import urllib.parse
 from typing import Any
 
 from arq.connections import RedisSettings
@@ -60,19 +61,73 @@ async def shutdown(ctx: dict[str, Any]) -> None:
             pass
 
 
+def sanitize_redis_url(url: str | None) -> str:
+    """Mask credentials in a Redis URL for safe logging and error reporting."""
+    if not url:
+        return ""
+    raw = str(url).strip()
+    try:
+        parsed = urllib.parse.urlsplit(raw)
+        netloc = parsed.netloc
+        if "@" in netloc:
+            auth, host_port = netloc.split("@", 1)
+            if auth.startswith(":"):
+                sanitized_auth = ":***"
+            elif ":" in auth:
+                sanitized_auth = "***:***"
+            else:
+                sanitized_auth = "***"
+            netloc = f"{sanitized_auth}@{host_port}"
+        return urllib.parse.urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
+    except Exception:
+        return "[SANITIZED_REDIS_URL]"
+
+
 def get_redis_settings(url: str | None = None) -> RedisSettings:
-    """Safely constructs an ARQ RedisSettings instance, normalizing missing scheme prefixes."""
-    raw_url = url or settings.REDIS_URL
-    if not raw_url:
+    """Safely constructs an ARQ RedisSettings instance, normalizing missing scheme prefixes.
+
+    Guarantees:
+    - Never logs raw Redis DSNs, passwords, usernames, or credentials.
+    - Accurately parses rediss:// and redis:// URLs with SSL/TLS parameters.
+    - Fails securely on malformed DSNs instead of silently falling back to localhost.
+    - Rejects localhost fallbacks in production environments.
+    """
+    raw_url = url if url is not None else settings.REDIS_URL
+    is_prod = str(settings.ENVIRONMENT).lower() == "production"
+
+    if not raw_url or not str(raw_url).strip():
+        if is_prod:
+            raise ValueError(
+                "Production configuration failure: REDIS_URL must be configured with a valid non-empty DSN."
+            )
         return RedisSettings()
+
     clean_url = str(raw_url).strip()
     if not clean_url.startswith(("redis://", "rediss://", "unix://")):
         clean_url = f"redis://{clean_url}"
+
+    sanitized = sanitize_redis_url(clean_url)
+
+    if is_prod:
+        try:
+            parsed = urllib.parse.urlsplit(clean_url)
+            host = (parsed.hostname or "").lower()
+            if host in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
+                raise ValueError(
+                    f"Production configuration failure: Localhost Redis ({sanitized}) is not permitted in production."
+                )
+        except ValueError:
+            raise
+        except Exception as exc:
+            raise ValueError(f"Production configuration failure: Malformed Redis DSN ({sanitized}): {exc}") from exc
+
     try:
         return RedisSettings.from_dsn(clean_url)
-    except Exception as e:
-        logger.warning("Could not parse Redis DSN %s: %s", clean_url, e)
-        return RedisSettings()
+    except Exception as exc:
+        logger.error("Could not parse Redis DSN %s: %s", sanitized, exc)
+        raise ValueError(
+            f"Failed to parse Redis DSN ({sanitized}): {exc}"
+        ) from exc
 
 
 async def check_worker_availability() -> dict[str, Any]:
