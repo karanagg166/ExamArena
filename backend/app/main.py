@@ -120,10 +120,8 @@ def root():
 
 @app.get("/health")
 @app.get("/health/live")
-@app.get("/ready")
 @app.get("/api/health")
 @app.get("/api/health/live")
-@app.get("/api/ready")
 async def health_live():
     """Liveness probe: returns 200 if the FastAPI application process is alive."""
     return {
@@ -135,11 +133,13 @@ async def health_live():
 
 
 @app.get("/health/ready")
+@app.get("/ready")
 @app.get("/api/health/ready")
+@app.get("/api/ready")
 async def health_ready():
     """Readiness probe: validates connectivity to PostgreSQL and Redis without side-effects.
 
-    Bounded to 3.0s timeout to prevent serverless function hangs.
+    Bounded to 7.0s timeout to allow Neon scale-to-zero wake-up over TLS.
     Fails with HTTP 503 if any required dependency is unreachable.
     """
     from sqlalchemy import text
@@ -150,7 +150,7 @@ async def health_ready():
 
     # 1. Bounded Database check (SELECT 1 only; no DDL schema mutations)
     try:
-        async with asyncio.timeout(3.0):
+        async with asyncio.timeout(7.0):
             async with db.get_session() as session:
                 result = await session.execute(text("SELECT 1"))
                 if result.scalar() == 1:
@@ -158,9 +158,13 @@ async def health_ready():
                 else:
                     db_status = "unhealthy"
                     errors.append("Database query returned unexpected scalar")
+    except TimeoutError:
+        db_status = "disconnected"
+        errors.append("Database connection timed out (Neon compute cold-start latency exceeded 7.0s)")
     except Exception as exc:
         db_status = "disconnected"
-        errors.append(f"Database error: {exc}")
+        err_msg = str(exc) or type(exc).__name__
+        errors.append(f"Database error: {err_msg}")
 
     # 2. Bounded Redis check
     if settings.REDIS_URL:
