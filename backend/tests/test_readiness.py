@@ -58,7 +58,26 @@ async def test_health_ready_database_timeout_returns_503():
             assert data["status"] == "unready"
             assert data["database"] == "disconnected"
             assert "errors" in data
-            assert any("timed out" in err.lower() for err in data["errors"])
+            assert "DATABASE_TIMEOUT" in data["errors"]
+
+
+@pytest.mark.asyncio
+async def test_health_ready_raw_database_error_is_redacted():
+    with patch("app.core.database.get_session") as mock_get_session:
+        mock_get_session.side_effect = Exception("password authentication failed for user 'neondb_owner' at ep-steep-glade.neon.tech")
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/health/ready")
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] == "unready"
+            assert data["database"] == "disconnected"
+            assert data["errors"] == ["DATABASE_UNAVAILABLE"]
+            assert data["request_id"] is not None
+            # Verify no credentials or internal host leaked in payload
+            assert "neondb_owner" not in str(data)
+            assert "ep-steep-glade.neon.tech" not in str(data)
 
 
 @pytest.mark.asyncio

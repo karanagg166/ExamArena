@@ -176,9 +176,26 @@ export function BackendAvailabilityProvider({ children }: { children: ReactNode 
           cache: "no-store",
         });
 
+        // Classify 401/403/404 as configuration/auth errors rather than perpetual scale-to-zero
+        if (res.status === 401 || res.status === 403 || res.status === 404) {
+          if (isMountedRef.current) {
+            stopElapsedTracking();
+            clearTimers();
+            setStatus("degraded");
+            setErrorMessage(
+              `Configuration/Authentication error (${res.status}). Verify API endpoint and permissions.`
+            );
+          }
+          return false;
+        }
+
         const data = await res.json().catch(() => ({}));
         const isDbConnected = data?.database === "connected";
-        const isRedisOk = data?.redis === "connected" || data?.redis === "not_configured";
+        const isRedisOk =
+          data?.redis === "connected" ||
+          data?.redis === "not_configured" ||
+          data?.redis === "in_memory" ||
+          data?.redis === "degraded";
 
         if (isMountedRef.current) {
           setDatabaseStatus(isDbConnected ? "connected" : "disconnected");
@@ -309,8 +326,11 @@ export function BackendAvailabilityProvider({ children }: { children: ReactNode 
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        const isStale = lastChecked && Date.now() - lastChecked > AVAILABILITY_CONFIG.STALE_THRESHOLD_MS;
-        if (isStale || statusRef.current !== "ready") {
+        const isStale = !lastChecked || (Date.now() - lastChecked > AVAILABILITY_CONFIG.STALE_THRESHOLD_MS);
+        if (isStale) {
+          // Tab resumed after inactivity: force a fresh verification probe
+          checkAvailability(true);
+        } else if (statusRef.current !== "ready") {
           checkAvailability(false);
         }
       }
