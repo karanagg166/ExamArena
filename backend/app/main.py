@@ -120,10 +120,8 @@ def root():
 
 @app.get("/health")
 @app.get("/health/live")
-@app.get("/ready")
 @app.get("/api/health")
 @app.get("/api/health/live")
-@app.get("/api/ready")
 async def health_live():
     """Liveness probe: returns 200 if the FastAPI application process is alive."""
     return {
@@ -135,53 +133,65 @@ async def health_live():
 
 
 @app.get("/health/ready")
+@app.get("/ready")
 @app.get("/api/health/ready")
+@app.get("/api/ready")
 async def health_ready():
     """Readiness probe: validates connectivity to PostgreSQL and Redis without side-effects.
 
-    Bounded to 3.0s timeout to prevent serverless function hangs.
+    Bounded to 7.0s timeout to allow Neon scale-to-zero wake-up over TLS.
     Fails with HTTP 503 if any required dependency is unreachable.
     """
+    import uuid
+
     from sqlalchemy import text
 
+    req_id = str(uuid.uuid4())[:8]
     db_status = "unknown"
     redis_status = "unknown"
     errors: list[str] = []
 
     # 1. Bounded Database check (SELECT 1 only; no DDL schema mutations)
     try:
-        async with asyncio.timeout(3.0):
+        async with asyncio.timeout(7.0):
             async with db.get_session() as session:
                 result = await session.execute(text("SELECT 1"))
                 if result.scalar() == 1:
                     db_status = "connected"
                 else:
                     db_status = "unhealthy"
-                    errors.append("Database query returned unexpected scalar")
+                    errors.append("DATABASE_UNEXPECTED_RESULT")
+    except TimeoutError:
+        db_status = "disconnected"
+        errors.append("DATABASE_TIMEOUT")
     except Exception as exc:
         db_status = "disconnected"
-        errors.append(f"Database error: {exc}")
+        print(f"[/health/ready][{req_id}] Database check failed: {exc}")
+        errors.append("DATABASE_UNAVAILABLE")
 
-    # 2. Bounded Redis check
-    if settings.REDIS_URL:
+    # 2. Bounded Redis check (non-blocking for serverless availability)
+    has_redis_cfg = bool(
+        (settings.UPSTASH_REDIS_REST_URL and settings.UPSTASH_REDIS_REST_TOKEN)
+        or (settings.REDIS_URL and not (settings.ENVIRONMENT == "production" and "localhost" in settings.REDIS_URL))
+    )
+    if has_redis_cfg:
         try:
-            from app.core.redis import get_redis
+            from app.core.redis import connect_redis, get_redis, redis_client
 
+            if redis_client is None:
+                await connect_redis()
+            r = get_redis()
             async with asyncio.timeout(2.0):
-                r = get_redis()
-                if r:
-                    pong = await r.ping()
-                    redis_status = "connected" if pong else "unresponsive"
-                else:
-                    redis_status = "not_initialized"
-                    errors.append("Redis client not initialized")
+                pong = await r.ping()
+                redis_status = "connected" if pong else "unresponsive"
         except Exception as exc:
-            redis_status = "disconnected"
-            errors.append(f"Redis error: {exc}")
+            print(f"[/health/ready][{req_id}] Redis check failed: {exc}")
+            redis_status = "degraded"
     else:
         redis_status = "not_configured"
 
-    is_ready = db_status == "connected" and (redis_status in ("connected", "not_configured"))
+    # Database is the primary readiness prerequisite; Redis degraded/not_configured does not prevent core exam usage
+    is_ready = db_status == "connected"
     resp_code = 200 if is_ready else 503
     return JSONResponse(
         status_code=resp_code,
@@ -190,6 +200,7 @@ async def health_ready():
             "service": "exam-arena-api",
             "database": db_status,
             "redis": redis_status,
+            "request_id": req_id,
             "environment": settings.ENVIRONMENT,
             "errors": errors if errors else None,
         },

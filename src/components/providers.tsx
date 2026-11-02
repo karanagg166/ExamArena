@@ -3,12 +3,17 @@
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { AbilityProvider } from "@/lib/casl";
+import { BackendAvailabilityProvider } from "@/context/backend-availability-context";
+import { BackendStatusBanner } from "@/components/ui/BackendStatusBanner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
       <AbilityProvider>
-        {children}
+        <BackendAvailabilityProvider>
+          {children}
+          <BackendStatusBanner />
+        </BackendAvailabilityProvider>
         <Toaster
           richColors
           closeButton

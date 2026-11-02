@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.models import Base
 
@@ -43,17 +44,30 @@ def get_database_url() -> str:
 
 DATABASE_URL = get_database_url()
 
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,
-    future=True,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    connect_args={"timeout": 30.0, "command_timeout": 30.0}
+is_serverless = bool(
+    os.getenv("VERCEL")
+    or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+    or os.getenv("SERVERLESS")
+)
+
+engine_kwargs: dict = {
+    "echo": False,
+    "future": True,
+    "pool_pre_ping": True,
+    "connect_args": {"timeout": 15.0, "command_timeout": 15.0}
     if "asyncpg" in DATABASE_URL
     else {},
-)
+}
+
+if is_serverless:
+    # Serverless runtime: disable persistent pooled connections across frozen containers
+    engine_kwargs["poolclass"] = NullPool
+else:
+    engine_kwargs["pool_size"] = int(os.getenv("DB_POOL_SIZE", "5"))
+    engine_kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+    engine_kwargs["pool_recycle"] = 300
+
+engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
