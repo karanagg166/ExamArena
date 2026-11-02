@@ -243,9 +243,9 @@ export function BackendAvailabilityProvider({ children }: { children: ReactNode 
         }
 
         return false;
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!isMountedRef.current) return false;
-        if (err.name === "AbortError") return false;
+        if (err instanceof Error && err.name === "AbortError") return false;
 
         const currentElapsed = wakeStartTimeRef.current ? Date.now() - wakeStartTimeRef.current : 0;
         if (currentElapsed >= AVAILABILITY_CONFIG.TOTAL_STARTUP_DEADLINE_MS) {

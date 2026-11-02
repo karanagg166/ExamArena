@@ -66,7 +66,7 @@ describe("ExamArena BackendAvailabilityProvider & Banner", () => {
   });
 
   it("transitions to waking when backend is warming from cold start", async () => {
-    let resolveReady: (value: any) => void;
+    let resolveReady: (value: unknown) => void;
     const readyPromise = new Promise((res) => {
       resolveReady = res;
     });
