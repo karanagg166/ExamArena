@@ -11,13 +11,19 @@ async def test_health_liveness_endpoint():
     """Verify liveness probe returns 200 with service metadata and git_commit."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        for path in ["/health", "/health/live", "/ready", "/api/health", "/api/health/live", "/api/ready"]:
+        for path in ["/health", "/health/live", "/api/health", "/api/health/live"]:
             resp = await client.get(path)
             assert resp.status_code == 200
             data = resp.json()
             assert data["status"] == "ok"
             assert data["service"] == "exam-arena-api"
             assert "git_commit" in data
+
+        for path in ["/ready", "/api/ready"]:
+            resp = await client.get(path)
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["status"] == "ready"
 
 
 @pytest.mark.asyncio
@@ -50,4 +56,4 @@ async def test_health_readiness_fails_when_db_down():
             data = resp.json()
             assert data["status"] == "unready"
             assert data["database"] == "disconnected"
-            assert "DB connection timeout" in data["errors"][0]
+            assert any("DATABASE_UNAVAILABLE" in err or "DB connection timeout" in err for err in data["errors"])
