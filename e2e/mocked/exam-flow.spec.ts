@@ -69,6 +69,14 @@ test.describe('Mocked UI: Exam Exploration & Attempt Lifecycle', () => {
   };
 
   async function setupMockAttemptEnvironment(page: any, customAttemptData = mockAttemptData) {
+    await page.route(/.*(ready|health\/ready).*/, async (route: any) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'ready', database: 'connected' }),
+      });
+    });
+
     await page.route('**/api/v1/auth/me', async (route: any) => {
       await route.fulfill({
         status: 200,

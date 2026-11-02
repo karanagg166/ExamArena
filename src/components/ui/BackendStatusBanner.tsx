@@ -22,9 +22,9 @@ export function BackendStatusBanner() {
   return (
     <aside
       aria-label="Server connectivity status"
-      className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border bg-background/95 p-3.5 shadow-lg backdrop-blur-sm transition-all animate-in fade-in slide-in-from-bottom-2 dark:border-border"
+      className="fixed bottom-4 right-4 z-50 max-w-sm rounded-lg border bg-background/95 p-3.5 shadow-lg backdrop-blur-sm transition-all animate-in fade-in slide-in-from-bottom-2 dark:border-border pointer-events-none"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 pointer-events-auto">
         {isWaking && (
           <div className="mt-0.5 rounded-full bg-amber-500/10 p-1 text-amber-600 dark:text-amber-400">
             <Loader2 className="h-4 w-4 animate-spin" />
