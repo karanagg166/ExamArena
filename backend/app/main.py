@@ -143,6 +143,7 @@ async def health_ready():
     Fails with HTTP 503 if any required dependency is unreachable.
     """
     import uuid
+
     from sqlalchemy import text
 
     req_id = str(uuid.uuid4())[:8]
