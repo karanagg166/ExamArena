@@ -43,7 +43,16 @@ def test_validate_material_file():
 
 
 @pytest.mark.asyncio
-async def test_upload_course_material_success(mocker):
+@pytest.mark.parametrize(
+    "upstream_state, expected_state",
+    [
+        ("QUEUED", CourseMaterialStatus.UPLOADED),
+        ("PROCESSING", CourseMaterialStatus.PROCESSING),
+        ("READY", CourseMaterialStatus.READY),
+        ("FAILED", CourseMaterialStatus.FAILED),
+    ],
+)
+async def test_upload_course_material_success(mocker, upstream_state, expected_state):
     mock_ss = MagicMock(spec=SearchSphereClient)
     mock_ss.ensure_collection = AsyncMock(
         return_value={"collection_id": "subject_science"}
@@ -56,7 +65,7 @@ async def test_upload_course_material_success(mocker):
         }
     )
     mock_ss.register_document = AsyncMock(
-        return_value={"id": "ss_doc_123", "status": "PROCESSING"}
+        return_value={"id": "ss_doc_123", "status": upstream_state}
     )
 
     mock_session = AsyncMock()
@@ -77,7 +86,7 @@ async def test_upload_course_material_success(mocker):
     mock_updated_material.documentType = CourseMaterialDocumentType.TEXTBOOK
     mock_updated_material.searchSphereDocumentId = "ss_doc_123"
     mock_updated_material.searchSphereCollectionId = "subject_science"
-    mock_updated_material.status = CourseMaterialStatus.PROCESSING
+    mock_updated_material.status = expected_state
     mock_updated_material.processingError = None
     mock_updated_material.createdAt = "2026-10-07T12:00:00Z"
     mock_updated_material.updatedAt = "2026-10-07T12:00:00Z"
@@ -86,7 +95,7 @@ async def test_upload_course_material_success(mocker):
         "app.course_materials.crud.create_course_material",
         AsyncMock(return_value=mock_created_material),
     )
-    mocker.patch(
+    crud_update = mocker.patch(
         "app.course_materials.crud.update_course_material_status",
         AsyncMock(return_value=mock_updated_material),
     )
@@ -109,7 +118,8 @@ async def test_upload_course_material_success(mocker):
 
     assert res.id == "mat_abc"
     assert res.search_sphere_document_id == "ss_doc_123"
-    assert res.status == CourseMaterialStatus.PROCESSING
+    assert res.status == expected_state
+    assert crud_update.await_args.kwargs["status"] == expected_state
 
     # Verify Search-Sphere interactions
     mock_ss.ensure_collection.assert_awaited_once_with(
@@ -536,3 +546,34 @@ async def test_answer_question_discards_cross_school_unverified_citation(mocker)
 
     # Cross-school citation was discarded
     assert len(res.citations) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "upstream", [None, "UNKNOWN", SearchSphereError("upstream timeout")]
+)
+async def test_status_outage_or_invalid_state_is_not_reported_as_success(
+    mocker, upstream
+):
+    client = MagicMock(spec=SearchSphereClient)
+    client.get_document = (
+        AsyncMock(side_effect=upstream)
+        if isinstance(upstream, Exception)
+        else AsyncMock(return_value={"status": upstream})
+    )
+    material = MagicMock(spec=CourseMaterial)
+    material.id = "synthetic-material"
+    material.schoolId = "synthetic-school"
+    material.searchSphereDocumentId = "synthetic-upstream"
+    mocker.patch(
+        "app.course_materials.crud.get_course_material_by_id",
+        AsyncMock(return_value=material),
+    )
+    update = mocker.patch(
+        "app.course_materials.crud.update_course_material_status", AsyncMock()
+    )
+    service = CourseMaterialService(search_sphere_client=client)
+    with pytest.raises(HTTPException) as error:
+        await service.refresh_status(AsyncMock(), material.id, material.schoolId)
+    assert error.value.status_code == 503
+    update.assert_not_awaited()

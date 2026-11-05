@@ -15,6 +15,7 @@ from app.core.models import (
     Subject,
 )
 from app.course_materials import crud
+from app.course_materials.processing_state import processing_state
 from app.course_materials.schemas import (
     CourseMaterialAnswerCitation,
     CourseMaterialAnswerResponse,
@@ -170,18 +171,14 @@ class CourseMaterialService:
             )
 
             ss_doc_id = doc_res.get("id")
-            ss_status = doc_res.get("status", "QUEUED")
-            mapped_status = (
-                CourseMaterialStatus.READY
-                if ss_status == "READY"
-                else CourseMaterialStatus.PROCESSING
-            )
+            mapped_status, processing_error = processing_state(doc_res.get("status"))
 
             updated = await crud.update_course_material_status(
                 session=session,
                 material_id=material.id,
                 status=mapped_status,
                 search_sphere_document_id=ss_doc_id,
+                processing_error=processing_error,
             )
             return CourseMaterialResponse.model_validate(updated)
 
@@ -230,14 +227,7 @@ class CourseMaterialService:
                 document_id=material.searchSphereDocumentId,
                 tenant_id=tenant_id,
             )
-            raw_status = doc_info.get("status", "PROCESSING")
-            raw_error = doc_info.get("processing_error")
-
-            mapped_status = CourseMaterialStatus.PROCESSING
-            if raw_status == "READY":
-                mapped_status = CourseMaterialStatus.READY
-            elif raw_status == "FAILED":
-                mapped_status = CourseMaterialStatus.FAILED
+            mapped_status, raw_error = processing_state(doc_info.get("status"))
 
             updated = await crud.update_course_material_status(
                 session=session,
@@ -265,13 +255,13 @@ class CourseMaterialService:
                 processing_error="Document record missing in Search-Sphere.",
             )
         except SearchSphereError as exc:
-            logger.warning("Could not refresh Search-Sphere status: %s", exc)
-            return CourseMaterialStatusRefreshResponse(
-                material_id=material.id,
-                status=material.status,
-                search_sphere_document_id=material.searchSphereDocumentId,
-                processing_error=material.processingError,
+            logger.warning(
+                "Could not refresh Search-Sphere status: %s", type(exc).__name__
             )
+            raise HTTPException(
+                status_code=503,
+                detail="Search-Sphere processing status is temporarily unavailable. Retry shortly.",
+            ) from exc
 
     async def delete_course_material(
         self,
