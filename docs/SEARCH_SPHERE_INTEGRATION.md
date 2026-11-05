@@ -113,3 +113,11 @@ This synthetic test:
 3. Polls until indexing status is `READY`
 4. Performs a semantic search for a known phrase
 5. Deletes the test document and cleans up
+
+## Processing-state contract
+
+Registration and refresh share one validated mapping: QUEUED/PENDING → UPLOADED,
+PROCESSING → PROCESSING, READY → READY and FAILED → FAILED. Unknown/missing states
+are upstream failures. Refresh returns HTTP 503 during an upstream outage and
+preserves local metadata for retry; it does not report a successful stale refresh.
+Successful processing clears a previous local processing error.

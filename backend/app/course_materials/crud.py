@@ -118,8 +118,7 @@ async def update_course_material_status(
     material.status = status
     if search_sphere_document_id is not None:
         material.searchSphereDocumentId = search_sphere_document_id
-    if processing_error is not None:
-        material.processingError = processing_error
+    material.processingError = processing_error
     material.updatedAt = utc_now()
 
     await session.commit()
