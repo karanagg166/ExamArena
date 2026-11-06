@@ -292,6 +292,11 @@ async def test_delete_course_material_upstream_failure_preserves_local_record(mo
 
 @pytest.mark.asyncio
 async def test_search_course_materials(mocker):
+    from types import SimpleNamespace
+    row = SimpleNamespace(id="mat_bio_1", searchSphereDocumentId="ss_doc_101", schoolId="sch_alpha",
+        classId=None, subject=Subject.SCIENCE, status=CourseMaterialStatus.READY,
+        originalFileName="biology.pdf", documentType=CourseMaterialDocumentType.TEXTBOOK)
+    mocker.patch("app.course_materials.crud.get_course_materials_by_ids", AsyncMock(return_value=[row]))
     mock_ss = MagicMock(spec=SearchSphereClient)
     mock_ss.search = AsyncMock(
         return_value={
@@ -317,6 +322,7 @@ async def test_search_course_materials(mocker):
 
     service = CourseMaterialService(search_sphere_client=mock_ss)
     res = await service.search_materials(
+        session=AsyncMock(),
         school_id="sch_alpha",
         query="photosynthesis",
         subject=Subject.SCIENCE,
@@ -364,6 +370,10 @@ async def test_answer_question_success():
     mock_session = AsyncMock()
     mock_material = MagicMock()
     mock_material.id = "mat_doc_1"
+    mock_material.classId = "cls_9"
+    mock_material.subject = Subject.SCIENCE
+    mock_material.status = CourseMaterialStatus.READY
+    mock_material.searchSphereDocumentId = "mat_doc_1"
     mock_material.schoolId = "sch_alpha"
     mock_material.title = "Class 9 Biology Textbook"
     mock_material.originalFileName = "biology_ch1.pdf"
@@ -474,6 +484,9 @@ async def test_answer_question_with_search_sphere_internal_doc_id(mocker):
     mock_session = AsyncMock()
     mock_material = MagicMock()
     mock_material.id = "mat_local_real_id"
+    mock_material.classId = None
+    mock_material.subject = Subject.SCIENCE
+    mock_material.status = CourseMaterialStatus.READY
     mock_material.searchSphereDocumentId = "ss_internal_doc_999"
     mock_material.schoolId = "sch_alpha"
     mock_material.title = "Cell Biology Guide"
@@ -537,15 +550,11 @@ async def test_answer_question_discards_cross_school_unverified_citation(mocker)
     )
 
     service = CourseMaterialService(search_sphere_client=mock_ss)
-    res = await service.answer_question(
-        session=mock_session,
-        school_id="sch_alpha",
-        query="What is the budget?",
-        subject=Subject.SCIENCE,
-    )
-
-    # Cross-school citation was discarded
-    assert len(res.citations) == 0
+    with pytest.raises(HTTPException) as failure:
+        await service.answer_question(
+            session=mock_session, school_id="sch_alpha", query="What is the budget?", subject=Subject.SCIENCE)
+    assert failure.value.status_code == 502
+    assert "Rogue answer" not in failure.value.detail
 
 
 @pytest.mark.asyncio

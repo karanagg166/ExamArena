@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
@@ -15,6 +16,7 @@ from app.core.models import (
     Subject,
 )
 from app.course_materials import crud
+from app.course_materials.evidence_access import authorized_materials
 from app.course_materials.processing_state import processing_state
 from app.course_materials.schemas import (
     CourseMaterialAnswerCitation,
@@ -307,6 +309,7 @@ class CourseMaterialService:
 
     async def search_materials(
         self,
+        session: AsyncSession,
         school_id: str,
         query: str,
         subject: Subject,
@@ -330,18 +333,18 @@ class CourseMaterialService:
             )
 
             results: list[CourseMaterialSearchResultItem] = []
-            for item in raw_res.get("results", []):
+            items = raw_res.get("results", [])
+            material_map = await authorized_materials(session, items, school_id, subject, class_id, document_type)
+            for item in items:
+                material = material_map[item["document_id"]]
                 results.append(
                     CourseMaterialSearchResultItem(
                         chunk_id=item.get("chunk_id", ""),
+                        version_id=item.get("version_id"),
                         search_sphere_document_id=item.get("document_id", ""),
-                        material_id=item.get("metadata", {}).get(
-                            "exam_arena_material_id"
-                        )
-                        if isinstance(item.get("metadata"), dict)
-                        else None,
-                        file_name=item.get("file_name"),
-                        document_type=item.get("document_type"),
+                        material_id=material.id,
+                        file_name=material.originalFileName,
+                        document_type=material.documentType.value,
                         text=item.get("text", ""),
                         score=float(item.get("score", 0.0)),
                         rank=int(item.get("rank", 0)),
@@ -352,7 +355,7 @@ class CourseMaterialService:
 
             return CourseMaterialSearchResponse(
                 query=raw_res.get("query", query),
-                total=raw_res.get("total", len(results)),
+                total=len(results),
                 results=results,
                 duration_ms=float(raw_res.get("duration_ms", 0.0)),
             )
@@ -390,37 +393,15 @@ class CourseMaterialService:
             )
 
             raw_citations = raw_res.get("citations", [])
-            doc_ids = [
-                c.get("document_id") for c in raw_citations if c.get("document_id")
-            ]
-            material_map = {}
-            cross_school_ids = set()
-            if doc_ids:
-                materials = await crud.get_course_materials_by_ids(session, doc_ids)
-                for m in materials:
-                    if m.schoolId == school_id:
-                        material_map[m.id] = m
-                        if m.searchSphereDocumentId:
-                            material_map[m.searchSphereDocumentId] = m
-                    else:
-                        cross_school_ids.add(m.id)
-                        if m.searchSphereDocumentId:
-                            cross_school_ids.add(m.searchSphereDocumentId)
+            material_map = await authorized_materials(session, raw_citations, school_id, subject, class_id, document_type)
 
             citations: list[CourseMaterialAnswerCitation] = []
             for c in raw_citations:
                 doc_id = c.get("document_id")
-                # Multi-tenant security isolation: strictly reject citations belonging to a different school
-                if doc_id and doc_id in cross_school_ids:
-                    logger.warning(
-                        "Search-Sphere citation %s discarded: belongs to a different school (school_id mismatch)",
-                        doc_id,
-                    )
-                    continue
-
-                mat = material_map.get(doc_id)
+                mat = material_map[doc_id]
                 citations.append(
                     CourseMaterialAnswerCitation(
+                        chunk_id=c.get("chunk_id"), version_id=c.get("version_id"),
                         citation_number=int(
                             c.get("citation_number", len(citations) + 1)
                         ),
@@ -435,16 +416,20 @@ class CourseMaterialService:
                     )
                 )
 
-            answer_text = (
-                raw_res.get("answer")
-                or "I couldn't find enough information in the uploaded course materials to answer this reliably."
-            )
+            answer_text = raw_res.get("answer") or ""
+            if citations:
+                numbers = [citation.citation_number for citation in citations]
+                used = {int(value) for value in re.findall(r"\[(\d+)\]", answer_text)}
+                if len(set(numbers)) != len(numbers) or any(number < 1 for number in numbers) or not used or not used.issubset(numbers):
+                    raise HTTPException(502, "Answer citations could not be verified.")
+            if not citations:
+                answer_text = "I couldn't find enough information in the uploaded course materials to answer this reliably."
 
             return CourseMaterialAnswerResponse(
                 answer=answer_text,
                 citations=citations,
                 retrieved_chunk_count=int(
-                    raw_res.get("retrieved_chunk_count", len(raw_citations))
+                    raw_res.get("retrieved_chunk_count", len(raw_citations)) if citations else 0
                 ),
                 warnings=raw_res.get("warnings", []),
                 duration_ms=float(raw_res.get("duration_ms", 0.0)),

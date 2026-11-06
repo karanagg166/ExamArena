@@ -60,6 +60,7 @@ class CourseMaterialSearchRequest(BaseModel):
 
 class CourseMaterialSearchResultItem(BaseModel):
     chunk_id: str
+    version_id: str | None = None
     search_sphere_document_id: str
     material_id: str | None = None
     file_name: str | None = None
@@ -103,6 +104,8 @@ class CourseMaterialAnswerCitation(BaseModel):
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
     citation_number: int = Field(..., alias="citationNumber")
+    chunk_id: str | None = Field(None, alias="chunkId")
+    version_id: str | None = Field(None, alias="versionId")
     file_name: str | None = Field(None, alias="fileName")
     title: str | None = None
     page_number: int | None = Field(None, alias="pageNumber")

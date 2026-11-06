@@ -153,6 +153,6 @@ async def get_course_materials_by_ids(
             CourseMaterial.id.in_(material_ids),
             CourseMaterial.searchSphereDocumentId.in_(material_ids),
         )
-    )
+    ).execution_options(populate_existing=True)
     res = await session.execute(stmt)
     return res.scalars().all()
