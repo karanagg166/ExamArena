@@ -98,7 +98,11 @@ def wait_for_api_health() -> dict[str, Any]:
             status, _, payload = http(f"{API_URL}/api/health", timeout=12)
             if status == 200 and isinstance(payload, dict) and payload.get("status") == "ok":
                 commit = str(payload.get("git_commit", ""))
-                commit_info = f"commit {commit[:10]}" if commit else "live"
+                if commit.lower() != EXPECTED_SHA:
+                    last_err = "API is serving a different or unknown revision"
+                    time.sleep(3)
+                    continue
+                commit_info = f"commit {commit[:10]}"
                 record("FastAPI Health", "PASS", f"liveness OK, service={payload.get('service')}, {commit_info}")
                 return payload
             last_err = f"HTTP {status}: {payload}"
@@ -221,6 +225,8 @@ def main() -> int:
     print(f"API URL:      {API_URL}\n")
 
     try:
+        if not re.fullmatch(r"[0-9a-f]{40}", EXPECTED_SHA):
+            fail("Expected revision", "EXPECTED_SHA must be the full deployed main revision")
         wait_for_frontend()
         wait_for_api_health()
         check_infrastructure_readiness()
@@ -234,7 +240,7 @@ def main() -> int:
             return 1
 
         print("\n\033[32m======================================================\033[0m")
-        print("\033[32m🎉 ALL EXAM ARENA PRODUCTION TESTS PASSED\033[0m")
+        print("\033[32m🎉 EXAM ARENA DEPLOYMENT CONTRACTS PASSED; SEARCH JOURNEY IS SEPARATE\033[0m")
         print("\033[32m======================================================\033[0m")
         return 0
     except (AssertionError, urllib.error.URLError, TimeoutError, OSError) as exc:
