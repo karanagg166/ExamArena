@@ -213,6 +213,7 @@ async def search_course_materials(
         current_user, requested_class_id=body.class_id, session=db
     )
     return await service.search_materials(
+        session=db,
         school_id=school_id,
         query=body.query,
         subject=body.subject,

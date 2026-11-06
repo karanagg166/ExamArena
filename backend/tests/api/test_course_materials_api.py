@@ -76,6 +76,16 @@ async def setup_schools(db_session):
     }
 
 
+async def seed_material(db, schools, identifier, *, school="a", class_id=None, filename="public.pdf"):
+    row = CourseMaterial(id=identifier, schoolId=schools[f"school_{school}"].id, subject=Subject.SCIENCE,
+        classId=class_id, uploadedBy=schools[f"teacher_{school}_user"].id, title="Public synthetic material",
+        originalFileName=filename, fileSize=100, mimeType="application/pdf", documentType=CourseMaterialDocumentType.TEXTBOOK,
+        searchSphereDocumentId=identifier, searchSphereCollectionId="subject_science", status=CourseMaterialStatus.READY)
+    db.add(row)
+    await db.commit()
+    return row
+
+
 @pytest.mark.asyncio
 async def test_unauthenticated_cannot_access_course_materials(client):
     res = await client.get("/api/v1/course-materials")
@@ -360,7 +370,8 @@ async def test_unauthenticated_cannot_ask_answer(client):
 
 
 @pytest.mark.asyncio
-async def test_teacher_answer_question_valid_request(auth_client_factory, setup_schools, monkeypatch):
+async def test_teacher_answer_question_valid_request(auth_client_factory, setup_schools, monkeypatch, db_session):
+    await seed_material(db_session, setup_schools, "doc_ohm", filename="ohms_law.pdf")
     captured_headers: list[httpx.Headers] = []
     captured_payloads: list[dict] = []
 
@@ -417,7 +428,8 @@ async def test_teacher_answer_question_valid_request(auth_client_factory, setup_
 
 
 @pytest.mark.asyncio
-async def test_student_answer_question_authorization(auth_client_factory, setup_schools, monkeypatch):
+async def test_student_answer_question_authorization(auth_client_factory, setup_schools, monkeypatch, db_session):
+    await seed_material(db_session, setup_schools, "doc_photo", class_id=setup_schools["class_a"].id, filename="bio.pdf")
     captured_headers: list[httpx.Headers] = []
     captured_payloads: list[dict] = []
 
@@ -548,4 +560,36 @@ async def test_answer_upstream_error_and_timeout(auth_client_factory, setup_scho
     )
     assert res_timeout.status_code == 502
     assert "Timed out while generating grounded answer" in res_timeout.json()["detail"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("authorized", [False, True])
+async def test_search_sources_are_rechecked_against_local_catalog(auth_client_factory, setup_schools, monkeypatch, db_session, authorized):
+    row = await seed_material(db_session, setup_schools, "public-source", school="a" if authorized else "b")
+    def response(request):
+        return httpx.Response(200, json={"query": "synthetic", "total": 1, "duration_ms": 1, "results": [{
+            "document_id": row.id, "chunk_id": "public-chunk", "text": "PUBLIC SYNTHETIC EVIDENCE", "score": 0.9, "rank": 1,
+            "metadata": {"exam_arena_material_id": "spoofed-material"}}]})
+    transport = httpx.MockTransport(response)
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _orig_async_client(transport=transport, **kwargs))
+    caller = await auth_client_factory(setup_schools["teacher_a_user"])
+    result = await caller.post("/api/v1/course-materials/search", json={"query": "synthetic", "subject": "SCIENCE"})
+    assert result.status_code == (200 if authorized else 502)
+    if authorized:
+        assert result.json()["results"][0]["material_id"] == row.id
+    else:
+        assert "PUBLIC SYNTHETIC EVIDENCE" not in result.text
+
+
+@pytest.mark.asyncio
+async def test_cross_school_citation_rejects_answer_text(auth_client_factory, setup_schools, monkeypatch, db_session):
+    row = await seed_material(db_session, setup_schools, "other-school-source", school="b")
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, json={
+        "answer": "UNAUTHORIZED SYNTHETIC ANSWER [1]", "retrieved_chunk_count": 1,
+        "citations": [{"document_id": row.id, "chunk_id": "public-chunk", "citation_number": 1,
+                       "page_number": 1, "text_snippet": "UNAUTHORIZED SYNTHETIC ANSWER"}]}))
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: _orig_async_client(transport=transport, **kwargs))
+    caller = await auth_client_factory(setup_schools["teacher_a_user"])
+    result = await caller.post("/api/v1/course-materials/answer", json={"query": "synthetic", "subject": "SCIENCE"})
+    assert result.status_code == 502 and "UNAUTHORIZED" not in result.text
 
