@@ -36,12 +36,30 @@ def test_wait_for_frontend_failure(monkeypatch):
             smoke.wait_for_frontend()
 
 
-def test_wait_for_api_health_success():
-    payload = {"status": "ok", "service": "exam-arena-api", "git_commit": "abc1234567"}
+def test_wait_for_api_health_success(monkeypatch):
+    sha = "a" * 40
+    monkeypatch.setattr(smoke, "EXPECTED_SHA", sha)
+    payload = {"status": "ok", "service": "exam-arena-api", "git_commit": sha}
     with patch.object(smoke, "http", return_value=(200, {}, payload)):
         result = smoke.wait_for_api_health()
     assert result["status"] == "ok"
     assert any(name == "FastAPI Health" and status == "PASS" for name, status, _ in smoke.RESULTS)
+
+
+def test_stale_api_revision_cannot_pass(monkeypatch):
+    monkeypatch.setattr(smoke, "EXPECTED_SHA", "a" * 40)
+    monkeypatch.setattr(smoke, "WAIT_SECONDS", 0.01)
+    payload = {"status": "ok", "git_commit": "b" * 40}
+    with patch.object(smoke, "http", return_value=(200, {}, payload)), patch("time.sleep"):
+        with pytest.raises(AssertionError, match="different or unknown revision"):
+            smoke.wait_for_api_health()
+
+
+def test_missing_expected_revision_fails_before_http(monkeypatch):
+    monkeypatch.setattr(smoke, "EXPECTED_SHA", "")
+    with patch.object(smoke, "http") as http:
+        assert smoke.main() == 1
+        http.assert_not_called()
 
 
 def test_check_infrastructure_readiness_success():

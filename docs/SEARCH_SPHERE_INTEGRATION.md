@@ -121,3 +121,14 @@ PROCESSING → PROCESSING, READY → READY and FAILED → FAILED. Unknown/missin
 are upstream failures. Refresh returns HTTP 503 during an upstream outage and
 preserves local metadata for retry; it does not report a successful stale refresh.
 Successful processing clears a previous local processing error.
+
+
+## Deployment contract gate
+
+The post-deploy workflow runs only by trusted `main` dispatch after deployment, with
+a required full `expected_sha`. The `search-sphere-release` environment permits only
+`main`. API health must report that exact revision. Pre-deploy CI stays separate.
+These health/API checks do not establish the authenticated upload, indexing, retrieval,
+grounded-answer, school/class-isolation, or physical-cleanup journey. The required
+Search Sphere release journey remains a separate open rollout phase. Optional exam
+listing checks in this general diagnostics script are not a substitute for it.
