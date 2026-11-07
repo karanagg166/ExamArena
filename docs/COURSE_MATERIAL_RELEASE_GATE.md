@@ -63,3 +63,18 @@ Six restoration cases pass in addition to the fifteen controller and eleven
 transport/provenance cases. Full production acceptance remains open until scoped
 server configuration is installed and the authenticated workflow actually passes.
 
+## Cold service read recovery
+
+Before this repair, protected run [42409361800](https://github.com/karanagg166/ExamArena/actions/runs/42409361800)
+failed during exact-revision health verification with a 15-second TimeoutError,
+before login or upload. A separate deployed synthetic upload probe returned 502
+and identified missing server `SEARCH_SPHERE_API_KEY`; its metadata check found no
+created document. Vercel management still returns 403, so that configuration step
+and the full authenticated journey remain open.
+
+Plan: give only health/readiness GET probes four bounded attempts for transient
+timeouts and 502/503/504, verify the exact SHA and readiness before login, and fail
+immediately on a wrong revision or malformed response. Do not retry login, uploads,
+answers or cleanup assertions. Test cold recovery and exhaustion without contacting
+a provider; this does not establish a forced-restart production recovery journey.
+

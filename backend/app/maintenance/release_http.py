@@ -2,6 +2,7 @@
 
 import http.cookiejar
 import json
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -16,6 +17,34 @@ def require(condition, label):
 
 APP_URL = "https://exam-arena-mu.vercel.app"
 SEARCH_URL = "https://search-sphere-api.onrender.com"
+
+
+def wait_for_service(session, path, expected_sha, *, ready=False, sleep=time.sleep):
+    """Four read-only attempts; no mutation or model request is replayed."""
+    for attempt in range(4):
+        try:
+            code, value = session.request("GET", path)
+        except OSError:  # Includes network/SSL timeouts and urllib URLError.
+            code, value = 0, None
+        if code == 200:
+            require(isinstance(value, dict), "Malformed service health response")
+            require(
+                value.get("git_commit") == expected_sha, "Serving revision mismatch"
+            )
+            require(
+                value.get("status") == ("ready" if ready else "ok"),
+                "Service health not ready",
+            )
+            if ready:
+                require(
+                    value.get("database") == "connected", "Service database not ready"
+                )
+            return
+        require(code in (0, 502, 503, 504), "Unexpected service health status")
+        if attempt < 3:
+            print("WAIT bounded service health recovery", flush=True)
+            sleep(2)
+    raise AssertionError("Service did not recover within four health attempts")
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
