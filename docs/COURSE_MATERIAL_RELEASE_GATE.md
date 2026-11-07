@@ -46,3 +46,20 @@ credentials, wrong revisions, FAILED, provider errors, foreign evidence/citation
 lost upload responses and invalid physical cleanup. This controller does not yet
 run from production CI until the separate protected workflow/restoration change.
 
+The protected workflow and receipt-restoration increment runs from trusted main
+only, after deployment. It requires both exact revisions in main history with
+successful CI and the protected `EA_RELEASE_FIXTURE_CREDENTIALS` and
+`EA_RELEASE_FIXTURE_KEY` secrets. The workflow receives no database URL or Search
+Sphere server key. Its controller imports only standard-library release helpers.
+
+Before mutation, `release_receipts` downloads the previous same-workflow main
+artifact through GitHub's read-only CLI token, validates owner/signatures and
+restores pending cleanup. Only runs proven never to have entered the mutating step
+may be skipped. Missing/expired provenance from a mutating run requires operator
+reconciliation and cannot silently produce a later green run. Artifacts contain
+only signed synthetic IDs, scope labels and cleanup flags; they never contain
+logins, cookies, document text or Storage paths. Required missing receipts fail CI.
+Six restoration cases pass in addition to the fifteen controller and eleven
+transport/provenance cases. Full production acceptance remains open until scoped
+server configuration is installed and the authenticated workflow actually passes.
+
