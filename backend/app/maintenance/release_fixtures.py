@@ -193,7 +193,13 @@ async def inspect_state(db, key):
             if row is None:
                 snapshots.append([model.__tablename__, expected["id"], "absent"])
                 continue
-            if any(row[field] != value for field, value in expected.items()):
+            current = dict(row)
+            # Production's Prisma-era DOB column is timestamp without time zone.
+            # The fixture's fixed UTC midnight compares the same through either schema.
+            birth = current.get("dateOfBirth")
+            if model is User and isinstance(birth, datetime) and birth.tzinfo is None:
+                current["dateOfBirth"] = birth.replace(tzinfo=UTC)
+            if any(current[field] != value for field, value in expected.items()):
                 raise ValueError(
                     "Existing fixture ownership or grants changed; refusing to overwrite."
                 )

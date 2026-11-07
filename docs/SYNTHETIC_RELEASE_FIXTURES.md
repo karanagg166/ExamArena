@@ -79,3 +79,10 @@ the full fixture state, current old addresses, derived password ownership and ab
 of new-address collisions under locks. Preserve passwords and all authority grants.
 Then re-run verified bootstrap and real login checks before protecting credentials
 in CI. The regular bootstrap must continue refusing arbitrary changed identities.
+
+The production ownership precheck also exposed a schema difference: the existing
+Prisma-era birth-date column returns a naive timestamp, while the model/test schema
+returns timezone-aware values. Normalize only that fixed synthetic UTC date during
+comparison; do not change database values or weaken checks on other fields. A real
+PostgreSQL regression temporarily uses the legacy column type and restores it in
+`finally`, proving the same fixture can be verified and reused under both schemas.

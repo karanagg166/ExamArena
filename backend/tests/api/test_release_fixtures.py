@@ -5,7 +5,7 @@ import copy
 import time
 
 import pytest
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 
 from app.core.models import Role, School, SchoolClass, Student, Teacher, User
 from app.core.security import verify_password
@@ -29,6 +29,7 @@ async def test_dry_run_and_repeat_verified_apply_do_not_write(db_session):
     plan = await build_plan(TestAsyncSessionLocal, KEY)
     assert plan["state"] == "create" and plan["records"] == 13
     assert await counts() == before
+
     assert "fixtures.invalid" not in str(plan) and "password" not in str(plan)
     result = await apply_plan(TestAsyncSessionLocal, KEY, plan, digest(plan))
     assert result == {"result": "create", "records": 13}
@@ -169,3 +170,30 @@ async def test_late_insert_failure_rolls_back_all_fixture_records(
     with pytest.raises(IntegrityError):
         await apply_plan(TestAsyncSessionLocal, KEY, plan, digest(plan))
     assert await counts() == before
+
+
+@pytest.mark.asyncio
+async def test_legacy_naive_birth_column_preserves_verified_fixture_ownership(
+    db_session,
+):
+    plan = await build_plan(TestAsyncSessionLocal, KEY)
+    await apply_plan(TestAsyncSessionLocal, KEY, plan, digest(plan))
+    async with TestAsyncSessionLocal() as db, db.begin():
+        await db.execute(
+            text(
+                'ALTER TABLE "User" ALTER COLUMN "dateOfBirth" TYPE TIMESTAMP WITHOUT TIME ZONE USING "dateOfBirth" AT TIME ZONE \'UTC\''
+            )
+        )
+    try:
+        verified = await build_plan(TestAsyncSessionLocal, KEY)
+        assert verified["state"] == "verified_existing"
+        assert (
+            await apply_plan(TestAsyncSessionLocal, KEY, verified, digest(verified))
+        )["result"] == "verified_existing"
+    finally:
+        async with TestAsyncSessionLocal() as db, db.begin():
+            await db.execute(
+                text(
+                    'ALTER TABLE "User" ALTER COLUMN "dateOfBirth" TYPE TIMESTAMP WITH TIME ZONE USING "dateOfBirth" AT TIME ZONE \'UTC\''
+                )
+            )
