@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.models import CourseMaterialDocumentType, CourseMaterialStatus, Subject
 
@@ -35,6 +35,26 @@ class CourseMaterialResponse(BaseModel):
 class CourseMaterialListResponse(BaseModel):
     total: int
     items: list[CourseMaterialResponse]
+
+
+class CourseMaterialCleanupReceipt(BaseModel):
+    model_config = ConfigDict(strict=True)
+
+    document_id: str
+    status: Literal["pending", "complete"]
+    vectors_remaining: int = Field(ge=0)
+    derived_objects_remaining: int = Field(ge=0)
+    object_deleted: bool
+
+    @model_validator(mode="after")
+    def consistent_completion(self) -> Self:
+        if self.status == "complete" and (
+            self.vectors_remaining != 0
+            or self.derived_objects_remaining != 0
+            or not self.object_deleted
+        ):
+            raise ValueError("Incomplete physical cleanup.")
+        return self
 
 
 class CourseMaterialStatusRefreshResponse(BaseModel):

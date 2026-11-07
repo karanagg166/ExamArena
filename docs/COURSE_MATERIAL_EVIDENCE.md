@@ -50,3 +50,26 @@ reproduced the original list/read/upload failures and now pass with the existing
 course-material API suite (26 cases). Black/Ruff and permission/CRUD type checks
 pass. The broader domain mypy check has the same 17 existing diagnostics as main
 (Pydantic aliases and route parameter defaults); no new diagnostics were introduced.
+
+## Physical cleanup receipt
+
+Before this follow-up, deletion removes the local CourseMaterial after Search Sphere
+revokes it, but ExamArena cannot verify the eventual vector/private-object cleanup
+through its authenticated API. Add a staff-only read using the freshly resolved
+school tenant and stable external material ID. The upstream receipt survives local
+deletion and independently enforces that tenant. Preserve the existing staff
+school-wide policy; students cannot use this management endpoint. Accept only a
+validated receipt, never treat 503 or 404 as successful physical cleanup, and do not
+return raw upstream details. Reuse the existing client/permissions and Pydantic
+schemas; no migration, inference or dependency is required. Verify foreign-school
+denial, staff/student roles, pending/complete states and malformed receipts.
+
+`GET /api/v1/course-materials/{material_id}/cleanup` implements that contract. It
+resolves staff affiliation from the session, delegates `school_<id>` and the stable
+external material ID, and returns only strict validated receipt fields. A completed
+receipt requires zero vector/derived-object counts and a deleted original. Foreign
+scope/missing receipts return 404; malformed, inconsistent or unavailable receipts
+return unverified 503. Browser tenant headers are ignored and success responses are
+private/no-store. Fifty-seven PostgreSQL API/client cases passed across cleanup,
+catalog authorization and existing material behavior; Ruff, Black and targeted
+schema/client type checks passed. Production physical cleanup proof remains pending.
