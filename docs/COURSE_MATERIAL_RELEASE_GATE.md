@@ -34,3 +34,15 @@ bounds, PDF text visibility, receipt tampering, foreign owners, file permissions
 and interrupted receipt reuse. The authenticated controller and protected workflow
 remain follow-up changes; helper tests are not production acceptance.
 
+The authenticated controller is the next increment in `course_release` and
+`release_evidence`. It requires exact serving SHAs and HMAC-bound dedicated fixture
+logins, uploads three fresh PDFs, polls actual states, verifies marker retrieval and
+supported citations, checks school/class negatives, and requires deletion receipts
+with zero vectors/derived objects and deleted originals. It rechecks retrieval after
+deletion, recovers signed uploads with offset pagination and keeps the original
+failure even if final cleanup also fails. Only stage labels and HTTP status codes
+are printed. Fifteen offline controller cases cover success, missing/foreign
+credentials, wrong revisions, FAILED, provider errors, foreign evidence/citations,
+lost upload responses and invalid physical cleanup. This controller does not yet
+run from production CI until the separate protected workflow/restoration change.
+
