@@ -53,7 +53,7 @@ def credentials(key):
             result["accounts"][label] = {
                 "user_id": identifier(key, label),
                 "profile_id": identifier(key, "profile-" + label),
-                "email": "ss-release-" + token(key, label)[:24] + "@fixtures.invalid",
+                "email": "ss-release-" + token(key, label)[:24] + "@example.com",
                 "password": token(key, "password-" + label)[:48] + "!Aa7",
             }
     result["schools"]["a"]["other_class_id"] = identifier(key, "other-class-a")

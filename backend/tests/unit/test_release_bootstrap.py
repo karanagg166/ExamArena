@@ -8,6 +8,17 @@ import pytest
 from app.maintenance.release_bootstrap import private_output, read_private, write_output
 
 
+def test_generated_logins_pass_the_actual_login_schema():
+    from app.maintenance.release_fixtures import credentials
+    from app.users.schemas import LoginRequest
+
+    values = credentials("public-synthetic-bootstrap-schema-test-key-001")
+    for account in values["accounts"].values():
+        validated = LoginRequest(email=account["email"], password=account["password"])
+        assert str(validated.email) == account["email"]
+        assert account["email"].endswith("@example.com")
+
+
 def test_private_receipt_roundtrip_never_overwrites(tmp_path):
     path = tmp_path / "plan.json"
     value = {"public_fixture_marker": "synthetic only"}

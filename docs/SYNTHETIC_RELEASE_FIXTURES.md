@@ -10,7 +10,7 @@ open.
 Plan: add an operator-only, dry-run-first bootstrap for two wholly synthetic schools,
 two teacher logins, two enrolled student logins and an additional class in school A.
 Derive identifiers and credentials from a private release fixture key, reserve
-`.invalid` email identities, and create all records atomically through the existing
+reserved `example.com` email identities, and create all records atomically through the existing
 SQLAlchemy models. Do not run the broad development seed or create exams, invitations,
 notifications or external actions. Refuse partial fixtures, collisions and changed
 roles, school/class grants or passwords; never overwrite existing identities.
@@ -64,3 +64,18 @@ The PostgreSQL suite covers read-only dry runs, atomic creation, verified reuse,
 concurrency, changed role/school/class/password, partial state, stale/foreign plans
 and reserved-email collisions. File tests reject unsafe permissions, symlinks,
 oversize plans and FIFOs. Only synthetic identities are used in these tests.
+
+## Live login validation follow-up
+
+The first production bootstrap created the expected 13 owned synthetic records.
+All four real HTTP login attempts then failed at request validation with 422:
+`EmailStr` rejects the `.invalid` special-use domain. No authenticated journey or
+provider call occurred, and no unusable login secret was installed in CI.
+
+Plan before correction: keep login validation strict, use reserved `example.com`
+addresses, and verify every generated credential through the actual `LoginRequest`
+schema. Correct only the four proven-owned fixture email fields after verifying
+the full fixture state, current old addresses, derived password ownership and absence
+of new-address collisions under locks. Preserve passwords and all authority grants.
+Then re-run verified bootstrap and real login checks before protecting credentials
+in CI. The regular bootstrap must continue refusing arbitrary changed identities.
