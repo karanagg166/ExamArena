@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models import (
@@ -63,9 +63,21 @@ async def create_course_material(
 async def get_course_material_by_id(
     session: AsyncSession,
     material_id: str,
+    *,
+    school_id: str | None = None,
+    visible_class_id: str | None = None,
 ) -> CourseMaterial | None:
     """Fetch CourseMaterial by primary ID."""
     stmt = select(CourseMaterial).where(CourseMaterial.id == material_id)
+    if school_id is not None:
+        stmt = stmt.where(CourseMaterial.schoolId == school_id)
+    if visible_class_id is not None:
+        stmt = stmt.where(
+            or_(
+                CourseMaterial.classId.is_(None),
+                CourseMaterial.classId == visible_class_id,
+            )
+        )
     res = await session.execute(stmt)
     return res.scalar_one_or_none()
 
@@ -79,9 +91,17 @@ async def list_course_materials(
     document_type: CourseMaterialDocumentType | None = None,
     limit: int = 50,
     offset: int = 0,
+    visible_class_id: str | None = None,
 ) -> tuple[Sequence[CourseMaterial], int]:
     """List course materials scoped strictly to a school with pagination."""
     query = select(CourseMaterial).where(CourseMaterial.schoolId == school_id)
+    if visible_class_id is not None:
+        query = query.where(
+            or_(
+                CourseMaterial.classId.is_(None),
+                CourseMaterial.classId == visible_class_id,
+            )
+        )
 
     if subject:
         query = query.where(CourseMaterial.subject == subject)
@@ -146,13 +166,16 @@ async def get_course_materials_by_ids(
     """Fetch multiple CourseMaterials by their local IDs or searchSphereDocumentId."""
     if not material_ids:
         return []
-    from sqlalchemy import or_
 
-    stmt = select(CourseMaterial).where(
-        or_(
-            CourseMaterial.id.in_(material_ids),
-            CourseMaterial.searchSphereDocumentId.in_(material_ids),
+    stmt = (
+        select(CourseMaterial)
+        .where(
+            or_(
+                CourseMaterial.id.in_(material_ids),
+                CourseMaterial.searchSphereDocumentId.in_(material_ids),
+            )
         )
-    ).execution_options(populate_existing=True)
+        .execution_options(populate_existing=True)
+    )
     res = await session.execute(stmt)
     return res.scalars().all()
