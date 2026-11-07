@@ -60,8 +60,23 @@ class Session:
         )
 
     def request(
-        self, method, path, *, value=None, fields=None, pdf=None, filename=None
+        self,
+        method,
+        path,
+        *,
+        value=None,
+        fields=None,
+        pdf=None,
+        filename=None,
+        timeout=None,
     ):
+        deadline = timeout if timeout is not None else (45 if method == "POST" else 15)
+        if (
+            not isinstance(deadline, (int, float))
+            or isinstance(deadline, bool)
+            or not 0 < deadline <= 65
+        ):
+            raise ValueError("Invalid bounded release HTTP timeout.")
         headers = {
             "Accept": "application/json",
             "User-Agent": "ExamArenaSyntheticRelease/1",
@@ -86,7 +101,7 @@ class Session:
             self.base + path, method=method, data=body, headers=headers
         )
         try:
-            response = self.opener.open(request, timeout=45 if method == "POST" else 15)
+            response = self.opener.open(request, timeout=deadline)
         except urllib.error.HTTPError as error:
             response = error
         with response:

@@ -307,3 +307,19 @@ def test_foreign_credentials_cannot_be_used_for_the_gate(environment):
     environment["EA_RELEASE_FIXTURE_CREDENTIALS"] = json.dumps(value)
     with pytest.raises(AssertionError, match="Unowned synthetic login"):
         configuration(environment)
+
+
+@pytest.mark.parametrize("failure", ["cleanup_503", "vectors"])
+def test_cleanup_reports_only_owned_label_stage_and_status(
+    environment, tmp_path, capsys, failure
+):
+    http = FakeHttp(environment, failure=failure)
+    journey = Journey(
+        environment, session_factory=http.session, path=tmp_path / "receipts.json"
+    )
+    with pytest.raises(AssertionError):
+        journey.run()
+    output = capsys.readouterr().out
+    assert "FAIL owned cleanup label=a check=receipt http=" in output
+    assert "PRIVATE" not in output and KEY not in output
+    assert "PASS authenticated upload" not in output
