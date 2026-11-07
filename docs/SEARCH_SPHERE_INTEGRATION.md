@@ -132,3 +132,35 @@ These health/API checks do not establish the authenticated upload, indexing, ret
 grounded-answer, school/class-isolation, or physical-cleanup journey. The required
 Search Sphere release journey remains a separate open rollout phase. Optional exam
 listing checks in this general diagnostics script are not a substitute for it.
+
+## Answer deadline inventory before repair
+
+Protected production run 42417055080 passed three fresh PDF uploads/indexes and
+marker retrieval plus school/class isolation, then returned HTTP 502 on answer.
+Sanitized Vercel logs confirm the consumer's HTTP read timed out. Search Sphere's
+content-free telemetry shows embedding/reranking completed and hosted generation
+completed about 2.5 seconds after ExamArena had already returned its timeout.
+The client currently uses the same 30-second read timeout for answer generation
+and metadata operations, and the service collapses upstream provider categories
+into 502. These are partial upstream-failure/deadline contracts and are being
+repaired independently of the also-failed cleanup verification. No input or
+record contents were fetched for diagnosis.
+
+
+Answer generation now has an independent `SEARCH_SPHERE_ANSWER_TIMEOUT_SECONDS`
+(default 55 seconds, hard cap 55), including admission, transport and body reading.
+An explicitly supplied client timeout can narrow it. Metadata/search keep the
+existing timeout; there is one generation attempt and redirects remain disabled.
+This aligns the consumer wait with the multi-stage backend response without
+changing provider deadlines or sending a second inference request.
+
+Answer failure responses preserve availability/rate-limit statuses 429/503/504;
+other upstream integration failures remain 502. Messages are fixed server text.
+`X-Search-Sphere-Error-Code` carries only allowlisted provider enums (or
+`upstream_unavailable`), with no upstream diagnostics. Transport deadline expiry
+returns 504/provider_timeout. Forty-six unit cases pass, including total-deadline
+expiry, status/code mapping and private diagnostic suppression. The real PostgreSQL API/catalog/cleanup group has 47 passing distinct cases: 43
+existing checks plus the updated timeout and three new status/code checks. The
+old assertion expecting a timeout to be hidden as 502 was updated to require 504
+and the safe timeout code. Black/Ruff and targeted client/config/exception mypy
+pass. Service mypy still reports ten pre-existing Pydantic alias constructor errors.

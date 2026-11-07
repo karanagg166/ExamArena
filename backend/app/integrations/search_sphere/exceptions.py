@@ -29,13 +29,31 @@ class SearchSphereError(Exception):
     """Base exception for Search-Sphere microservice errors."""
 
     def __init__(
-        self, message: str, status_code: int | None = None, details: Any = None
+        self,
+        message: str,
+        status_code: int | None = None,
+        details: Any = None,
+        *,
+        error_code: str | None = None,
     ):
         clean_msg = sanitize_sensitive_message(message)
         super().__init__(clean_msg)
         self.message = clean_msg
         self.status_code = status_code
         self.details = details
+        self.error_code = (
+            error_code
+            if error_code
+            in {
+                "provider_timeout",
+                "provider_quota",
+                "provider_rate_limit",
+                "provider_not_approved",
+                "provider_invalid_response",
+                "provider_unavailable",
+            }
+            else "upstream_unavailable"
+        )
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(message={self.message!r}, status_code={self.status_code})"

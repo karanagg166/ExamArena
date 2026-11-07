@@ -558,8 +558,9 @@ async def test_answer_upstream_error_and_timeout(auth_client_factory, setup_scho
         "/api/v1/course-materials/answer",
         json={"query": "Explain gravity", "subject": "SCIENCE"},
     )
-    assert res_timeout.status_code == 502
-    assert "Timed out while generating grounded answer" in res_timeout.json()["detail"]
+    assert res_timeout.status_code == 504
+    assert res_timeout.headers["X-Search-Sphere-Error-Code"] == "provider_timeout"
+    assert "Timeout reading stream" not in res_timeout.text
 
 
 @pytest.mark.asyncio
@@ -593,3 +594,19 @@ async def test_cross_school_citation_rejects_answer_text(auth_client_factory, se
     result = await caller.post("/api/v1/course-materials/answer", json={"query": "synthetic", "subject": "SCIENCE"})
     assert result.status_code == 502 and "UNAUTHORIZED" not in result.text
 
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("upstream_status,code", [(429,"provider_rate_limit"),(503,"provider_quota"),(504,"provider_timeout")])
+async def test_answer_preserves_safe_upstream_failure_contract(auth_client_factory, setup_schools, monkeypatch, upstream_status, code):
+    calls = []
+    def response(request):
+        calls.append(request)
+        return httpx.Response(upstream_status, json={"detail":"PRIVATE synthetic diagnostic", "error_code":code})
+    transport = httpx.MockTransport(response)
+    monkeypatch.setattr(httpx,"AsyncClient",lambda **kwargs:_orig_async_client(transport=transport,**kwargs))
+    caller = await auth_client_factory(setup_schools["teacher_a_user"])
+    result = await caller.post("/api/v1/course-materials/answer",json={"query":"Public fixture question","subject":"SCIENCE"})
+    assert result.status_code == upstream_status
+    assert result.headers["X-Search-Sphere-Error-Code"] == code
+    assert "PRIVATE" not in result.text and len(calls) == 1

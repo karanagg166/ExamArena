@@ -33,6 +33,7 @@ from app.integrations.search_sphere.client import (
 from app.integrations.search_sphere.exceptions import (
     SearchSphereError,
     SearchSphereNotFoundError,
+    SearchSphereTimeoutError,
 )
 from app.integrations.search_sphere.identifiers import (
     build_collection_id,
@@ -334,7 +335,9 @@ class CourseMaterialService:
 
             results: list[CourseMaterialSearchResultItem] = []
             items = raw_res.get("results", [])
-            material_map = await authorized_materials(session, items, school_id, subject, class_id, document_type)
+            material_map = await authorized_materials(
+                session, items, school_id, subject, class_id, document_type
+            )
             for item in items:
                 material = material_map[item["document_id"]]
                 results.append(
@@ -393,7 +396,9 @@ class CourseMaterialService:
             )
 
             raw_citations = raw_res.get("citations", [])
-            material_map = await authorized_materials(session, raw_citations, school_id, subject, class_id, document_type)
+            material_map = await authorized_materials(
+                session, raw_citations, school_id, subject, class_id, document_type
+            )
 
             citations: list[CourseMaterialAnswerCitation] = []
             for c in raw_citations:
@@ -401,7 +406,8 @@ class CourseMaterialService:
                 mat = material_map[doc_id]
                 citations.append(
                     CourseMaterialAnswerCitation(
-                        chunk_id=c.get("chunk_id"), version_id=c.get("version_id"),
+                        chunk_id=c.get("chunk_id"),
+                        version_id=c.get("version_id"),
                         citation_number=int(
                             c.get("citation_number", len(citations) + 1)
                         ),
@@ -410,9 +416,9 @@ class CourseMaterialService:
                         page_number=c.get("page_number"),
                         text_snippet=c.get("text_snippet", ""),
                         material_id=mat.id if mat else doc_id,
-                        document_type=mat.documentType.value
-                        if mat
-                        else c.get("document_type"),
+                        document_type=(
+                            mat.documentType.value if mat else c.get("document_type")
+                        ),
                     )
                 )
 
@@ -420,7 +426,12 @@ class CourseMaterialService:
             if citations:
                 numbers = [citation.citation_number for citation in citations]
                 used = {int(value) for value in re.findall(r"\[(\d+)\]", answer_text)}
-                if len(set(numbers)) != len(numbers) or any(number < 1 for number in numbers) or not used or not used.issubset(numbers):
+                if (
+                    len(set(numbers)) != len(numbers)
+                    or any(number < 1 for number in numbers)
+                    or not used
+                    or not used.issubset(numbers)
+                ):
                     raise HTTPException(502, "Answer citations could not be verified.")
             if not citations:
                 answer_text = "I couldn't find enough information in the uploaded course materials to answer this reliably."
@@ -429,14 +440,28 @@ class CourseMaterialService:
                 answer=answer_text,
                 citations=citations,
                 retrieved_chunk_count=int(
-                    raw_res.get("retrieved_chunk_count", len(raw_citations)) if citations else 0
+                    raw_res.get("retrieved_chunk_count", len(raw_citations))
+                    if citations
+                    else 0
                 ),
                 warnings=raw_res.get("warnings", []),
                 duration_ms=float(raw_res.get("duration_ms", 0.0)),
             )
         except SearchSphereError as exc:
-            logger.error("Search-Sphere answer generation failed: %s", exc)
+            code = (
+                504
+                if isinstance(exc, SearchSphereTimeoutError)
+                else (exc.status_code if exc.status_code in {429, 503, 504} else 502)
+            )
+            logger.warning("Search-Sphere answer unavailable status=%d", code)
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Grounded answer generation service error: {exc.message}",
-            ) from exc
+                status_code=code,
+                detail="Grounded answer generation service error. Please try again later.",
+                headers={
+                    "X-Search-Sphere-Error-Code": (
+                        "provider_timeout"
+                        if isinstance(exc, SearchSphereTimeoutError)
+                        else exc.error_code
+                    )
+                },
+            ) from None
