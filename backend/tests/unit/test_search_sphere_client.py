@@ -40,14 +40,18 @@ def mock_async_client(monkeypatch, transport: httpx.MockTransport):
 @pytest.mark.asyncio
 async def test_client_configuration_error_missing_key():
     client = SearchSphereClient(base_url="http://mock-ss:8000", api_key="")
-    with pytest.raises(SearchSphereConfigurationError, match="SEARCH_SPHERE_API_KEY is not configured"):
+    with pytest.raises(
+        SearchSphereConfigurationError, match="SEARCH_SPHERE_API_KEY is not configured"
+    ):
         await client.get_collection("coll_1", tenant_id="school_1")
 
 
 @pytest.mark.asyncio
 async def test_client_configuration_error_missing_url():
     client = SearchSphereClient(base_url="", api_key="ss_live_valid_key")
-    with pytest.raises(SearchSphereConfigurationError, match="SEARCH_SPHERE_URL is not configured"):
+    with pytest.raises(
+        SearchSphereConfigurationError, match="SEARCH_SPHERE_URL is not configured"
+    ):
         await client.get_collection("coll_1", tenant_id="school_1")
 
 
@@ -71,7 +75,9 @@ async def test_client_request_headers_and_correlation(monkeypatch):
 
     set_current_request_id("req_trace_98765")
 
-    res = await client.get_collection(collection_id="coll_science", tenant_id="school_sch_101")
+    res = await client.get_collection(
+        collection_id="coll_science", tenant_id="school_sch_101"
+    )
     assert res["id"] == "coll_science"
     assert len(captured_requests) == 1
 
@@ -96,7 +102,10 @@ async def test_client_error_mappings(monkeypatch):
     ]
 
     for status_code, expected_exc in status_to_test:
-        def mock_handler(request: httpx.Request, code: int = status_code) -> httpx.Response:
+
+        def mock_handler(
+            request: httpx.Request, code: int = status_code
+        ) -> httpx.Response:
             return httpx.Response(
                 code,
                 json={"detail": f"Upstream error for {code}"},
@@ -160,7 +169,9 @@ async def test_client_ensure_collection_conflict_resolves_via_get(monkeypatch):
         calls.append(f"{request.method} {request.url.path}")
         if request.method == "POST":
             return httpx.Response(409, json={"detail": "Collection already exists"})
-        return httpx.Response(200, json={"collection_id": "c_chem", "name": "Chemistry"})
+        return httpx.Response(
+            200, json={"collection_id": "c_chem", "name": "Chemistry"}
+        )
 
     transport = httpx.MockTransport(mock_handler)
     mock_async_client(monkeypatch, transport)
@@ -200,7 +211,9 @@ async def test_client_upload_and_register_document(monkeypatch):
         if request.url.path == "/api/v1/documents":
             payload = json.loads(request.content.decode("utf-8"))
             assert payload["external_document_id"] == "mat_1"
-            assert payload["storage_key"] == "docs/exam_arena/school_1/c_1/mat_1/notes.pdf"
+            assert (
+                payload["storage_key"] == "docs/exam_arena/school_1/c_1/mat_1/notes.pdf"
+            )
             return httpx.Response(
                 202,
                 json={
@@ -301,7 +314,9 @@ async def test_client_delete_collection(monkeypatch):
 
     def mock_handler(request: httpx.Request) -> httpx.Response:
         captured_requests.append(request)
-        return httpx.Response(200, json={"success": True, "message": "Collection deleted"})
+        return httpx.Response(
+            200, json={"success": True, "message": "Collection deleted"}
+        )
 
     transport = httpx.MockTransport(mock_handler)
     mock_async_client(monkeypatch, transport)
@@ -428,6 +443,7 @@ async def test_client_generate_answer_error_mappings(monkeypatch):
     ]
 
     for status_code, expected_exc in status_to_test:
+
         def mock_handler(request: httpx.Request, sc=status_code) -> httpx.Response:
             return httpx.Response(sc, json={"detail": f"Upstream error {sc}"})
 
@@ -446,3 +462,96 @@ async def test_client_generate_answer_error_mappings(monkeypatch):
                 collection_id="subject_physics",
             )
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "configured,expected", [(None, 55.0), (5.0, 5.0), (500.0, 55.0)]
+)
+async def test_answer_has_bounded_separate_deadline_and_never_retries(
+    monkeypatch, configured, expected
+):
+    calls = []
+
+    def handle(request):
+        calls.append(request)
+        return httpx.Response(
+            200, json={"answer": "Public synthetic answer", "citations": []}
+        )
+
+    mock_async_client(monkeypatch, httpx.MockTransport(handle))
+    client = SearchSphereClient(
+        base_url="https://synthetic.example.com",
+        api_key="synthetic-key",
+        timeout_seconds=configured,
+    )
+    await client.generate_answer(
+        "Public synthetic question", "school_fixture", "subject_science"
+    )
+    assert len(calls) == 1
+    assert calls[0].extensions["timeout"]["read"] == expected
+    assert calls[0].extensions["timeout"]["connect"] <= 5
+
+
+@pytest.mark.asyncio
+async def test_answer_total_deadline_includes_transport_and_body(monkeypatch):
+    import asyncio
+
+    calls = []
+
+    def client_factory(**kwargs):
+        calls.append(kwargs)
+
+        class StalledClient:
+            async def __aenter__(self):
+                await asyncio.sleep(0.02)
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+        return StalledClient()
+
+    monkeypatch.setattr(httpx, "AsyncClient", client_factory)
+    # Substitute a fast absolute deadline while exercising the real asyncio timeout.
+    original = asyncio.timeout
+    monkeypatch.setattr(asyncio, "timeout", lambda seconds: original(0.001))
+    client = SearchSphereClient(
+        base_url="https://synthetic.example.com", api_key="synthetic-key"
+    )
+    with pytest.raises(SearchSphereTimeoutError) as error:
+        await client.generate_answer(
+            "Public synthetic question", "school_fixture", "subject_science"
+        )
+    assert error.value.status_code == 504 and len(calls) == 1
+    assert calls[0]["follow_redirects"] is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "status,code,expected",
+    [
+        (503, "provider_quota", "provider_quota"),
+        (504, "provider_timeout", "provider_timeout"),
+        (429, "provider_rate_limit", "provider_rate_limit"),
+        (503, "PRIVATE upstream diagnostic", "upstream_unavailable"),
+        (503, {"bad": "value"}, "upstream_unavailable"),
+    ],
+)
+async def test_answer_failure_preserves_only_allowlisted_codes(
+    monkeypatch, status, code, expected
+):
+    def handle(request):
+        return httpx.Response(
+            status, json={"detail": "PRIVATE record contents", "error_code": code}
+        )
+
+    mock_async_client(monkeypatch, httpx.MockTransport(handle))
+    client = SearchSphereClient(
+        base_url="https://synthetic.example.com", api_key="synthetic-key"
+    )
+    with pytest.raises(SearchSphereUnavailableError) as error:
+        await client.generate_answer(
+            "Public question", "school_fixture", "subject_science"
+        )
+    assert error.value.error_code == expected and error.value.status_code == status
+    assert "PRIVATE" not in str(error.value)

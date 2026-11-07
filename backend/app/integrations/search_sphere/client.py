@@ -10,6 +10,7 @@ Encapsulates:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -53,6 +54,11 @@ class SearchSphereClient:
             api_key if api_key is not None else settings.SEARCH_SPHERE_API_KEY
         )
         self._client_id = client_id or build_client_id()
+        self._answer_timeout_seconds = (
+            timeout_seconds
+            if timeout_seconds is not None
+            else settings.SEARCH_SPHERE_ANSWER_TIMEOUT_SECONDS
+        )
         self._timeout_seconds = (
             timeout_seconds
             if timeout_seconds is not None
@@ -112,10 +118,16 @@ class SearchSphereClient:
 
         # Extract upstream detail safely if JSON
         detail = ""
+        error_code = None
         try:
             body = response.json()
             if isinstance(body, dict):
                 detail = str(body.get("detail") or body.get("message") or "")
+                error_code = (
+                    body.get("error_code")
+                    if isinstance(body.get("error_code"), str)
+                    else None
+                )
         except Exception:
             detail = response.text[:200]
 
@@ -144,13 +156,15 @@ class SearchSphereClient:
                 f"Search-Sphere validation rejected: {detail or 'Invalid payload'}",
                 status_code=response.status_code,
             )
-        if response.status_code >= 500:
+        if response.status_code == 429 or response.status_code >= 500:
             logger.error(
-                "Search-Sphere upstream 5xx response code=%d", response.status_code
+                "Search-Sphere upstream unavailable response code=%d",
+                response.status_code,
             )
             raise SearchSphereUnavailableError(
                 "Search-Sphere service temporarily unavailable.",
                 status_code=response.status_code,
+                error_code=error_code,
             )
 
         raise SearchSphereError(
@@ -476,12 +490,21 @@ class SearchSphereClient:
             payload["metadata_filters"] = metadata_filters
 
         try:
-            async with httpx.AsyncClient(timeout=self._get_timeout()) as client:
-                resp = await client.post(url, json=payload, headers=headers)
-                return self._handle_response(resp)
-        except httpx.TimeoutException as exc:
+            # Retrieval, SQL authorization and hosted generation all precede the
+            # first response byte. Bound the complete request, including admission
+            # and body reading, rather than timing out after generation alone.
+            deadline = min(max(float(self._answer_timeout_seconds), 1.0), 55.0)
+            async with asyncio.timeout(deadline):
+                async with httpx.AsyncClient(
+                    timeout=httpx.Timeout(deadline, connect=min(5.0, deadline)),
+                    follow_redirects=False,
+                ) as client:
+                    resp = await client.post(url, json=payload, headers=headers)
+                    return self._handle_response(resp)
+        except (TimeoutError, httpx.TimeoutException) as exc:
             raise SearchSphereTimeoutError(
-                "Timed out while generating grounded answer in Search-Sphere."
+                "Timed out while generating grounded answer in Search-Sphere.",
+                status_code=504,
             ) from exc
         except httpx.RequestError as exc:
             raise SearchSphereUnavailableError(

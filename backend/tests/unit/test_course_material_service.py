@@ -293,10 +293,21 @@ async def test_delete_course_material_upstream_failure_preserves_local_record(mo
 @pytest.mark.asyncio
 async def test_search_course_materials(mocker):
     from types import SimpleNamespace
-    row = SimpleNamespace(id="mat_bio_1", searchSphereDocumentId="ss_doc_101", schoolId="sch_alpha",
-        classId=None, subject=Subject.SCIENCE, status=CourseMaterialStatus.READY,
-        originalFileName="biology.pdf", documentType=CourseMaterialDocumentType.TEXTBOOK)
-    mocker.patch("app.course_materials.crud.get_course_materials_by_ids", AsyncMock(return_value=[row]))
+
+    row = SimpleNamespace(
+        id="mat_bio_1",
+        searchSphereDocumentId="ss_doc_101",
+        schoolId="sch_alpha",
+        classId=None,
+        subject=Subject.SCIENCE,
+        status=CourseMaterialStatus.READY,
+        originalFileName="biology.pdf",
+        documentType=CourseMaterialDocumentType.TEXTBOOK,
+    )
+    mocker.patch(
+        "app.course_materials.crud.get_course_materials_by_ids",
+        AsyncMock(return_value=[row]),
+    )
     mock_ss = MagicMock(spec=SearchSphereClient)
     mock_ss.search = AsyncMock(
         return_value={
@@ -552,7 +563,11 @@ async def test_answer_question_discards_cross_school_unverified_citation(mocker)
     service = CourseMaterialService(search_sphere_client=mock_ss)
     with pytest.raises(HTTPException) as failure:
         await service.answer_question(
-            session=mock_session, school_id="sch_alpha", query="What is the budget?", subject=Subject.SCIENCE)
+            session=mock_session,
+            school_id="sch_alpha",
+            query="What is the budget?",
+            subject=Subject.SCIENCE,
+        )
     assert failure.value.status_code == 502
     assert "Rogue answer" not in failure.value.detail
 
@@ -586,3 +601,44 @@ async def test_status_outage_or_invalid_state_is_not_reported_as_success(
         await service.refresh_status(AsyncMock(), material.id, material.schoolId)
     assert error.value.status_code == 503
     update.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "upstream_status,expected",
+    [(429, 429), (503, 503), (504, 504), (500, 502), (401, 502)],
+)
+async def test_answer_preserves_upstream_availability_without_private_diagnostics(
+    upstream_status, expected
+):
+    client = MagicMock(spec=SearchSphereClient)
+    client.generate_answer = AsyncMock(
+        side_effect=SearchSphereError(
+            "PRIVATE upstream record contents",
+            status_code=upstream_status,
+            error_code="provider_quota",
+        )
+    )
+    with pytest.raises(HTTPException) as error:
+        await CourseMaterialService(client).answer_question(
+            AsyncMock(), "synthetic-school", "Public question", Subject.SCIENCE
+        )
+    assert error.value.status_code == expected
+    assert error.value.headers["X-Search-Sphere-Error-Code"] == "provider_quota"
+    assert "PRIVATE" not in str(error.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_answer_transport_timeout_is_504_without_retry():
+    from app.integrations.search_sphere.exceptions import SearchSphereTimeoutError
+
+    client = MagicMock(spec=SearchSphereClient)
+    client.generate_answer = AsyncMock(
+        side_effect=SearchSphereTimeoutError("PRIVATE network diagnostic")
+    )
+    with pytest.raises(HTTPException) as error:
+        await CourseMaterialService(client).answer_question(
+            AsyncMock(), "synthetic-school", "Public question", Subject.SCIENCE
+        )
+    assert error.value.status_code == 504 and "PRIVATE" not in str(error.value.detail)
+    client.generate_answer.assert_awaited_once()

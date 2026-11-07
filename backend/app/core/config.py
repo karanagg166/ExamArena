@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     SEARCH_SPHERE_API_KEY: str | None = None
     SEARCH_SPHERE_CLIENT_ID: str = "exam_arena"
     SEARCH_SPHERE_TIMEOUT_SECONDS: float = 30.0
+    SEARCH_SPHERE_ANSWER_TIMEOUT_SECONDS: float = 55.0
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"), env_file_encoding="utf-8", extra="ignore"
