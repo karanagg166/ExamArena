@@ -62,17 +62,25 @@ class FakeHttp:
 
             def request(self, method, path, **kwargs):
                 state.calls.append((method, path, self.actor))
+                if path == "/ready":
+                    return 200, {
+                        "status": "ready",
+                        "database": "connected",
+                        "git_commit": state.environment["EXPECTED_SEARCH_SPHERE_SHA"],
+                    }
                 if path == "/health":
                     return 200, {
-                        "git_commit": state.environment["EXPECTED_SEARCH_SPHERE_SHA"]
+                        "status": "ok",
+                        "git_commit": state.environment["EXPECTED_SEARCH_SPHERE_SHA"],
                     }
                 if path == "/api/health":
                     return 200, {
+                        "status": "ok",
                         "git_commit": (
                             "c" * 40
                             if state.failure == "revision"
                             else state.environment["EXPECTED_SHA"]
-                        )
+                        ),
                     }
                 if path == "/api/v1/auth/login":
                     for label, account in state.identity["accounts"].items():

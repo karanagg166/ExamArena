@@ -10,7 +10,13 @@ import time
 import uuid
 
 from app.maintenance.release_evidence import verify_evidence
-from app.maintenance.release_http import ROOT, SEARCH_URL, Session, require
+from app.maintenance.release_http import (
+    ROOT,
+    SEARCH_URL,
+    Session,
+    require,
+    wait_for_service,
+)
 from app.maintenance.release_journal import Journal, owned_title
 
 JOURNAL_PATH = ".ea_release_receipts.json"
@@ -117,16 +123,21 @@ class Journey:
 
     def preflight(self):
         self.step("exact deployed revisions")
-        code, value = self.public.request("GET", "/api/health")
-        require(
-            code == 200 and value.get("git_commit") == self.expected["EXPECTED_SHA"],
-            "Consumer revision mismatch",
+        wait_for_service(
+            self.public, "/api/health", self.expected["EXPECTED_SHA"], sleep=self.sleep
         )
-        code, value = self.search.request("GET", "/health")
-        require(
-            code == 200
-            and value.get("git_commit") == self.expected["EXPECTED_SEARCH_SPHERE_SHA"],
-            "Search Sphere revision mismatch",
+        wait_for_service(
+            self.search,
+            "/health",
+            self.expected["EXPECTED_SEARCH_SPHERE_SHA"],
+            sleep=self.sleep,
+        )
+        wait_for_service(
+            self.search,
+            "/ready",
+            self.expected["EXPECTED_SEARCH_SPHERE_SHA"],
+            ready=True,
+            sleep=self.sleep,
         )
         self.step("synthetic login and roles")
         for label, account in self.identity["accounts"].items():
