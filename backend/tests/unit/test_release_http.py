@@ -81,3 +81,34 @@ def test_generated_pdf_has_visible_marker_and_supported_fact():
     reader = PdfReader(io.BytesIO(synthetic_pdf(statement)))
     assert len(reader.pages) == 1
     assert statement in reader.pages[0].extract_text()
+
+
+@pytest.mark.parametrize("timeout", [0, -1, 66, True, "65", float("inf"), float("nan")])
+def test_release_http_rejects_unbounded_or_invalid_deadlines(timeout):
+    with pytest.raises(ValueError):
+        Session("https://synthetic.example.com").request(
+            "GET", "/health", timeout=timeout
+        )
+
+
+def test_release_http_uses_explicit_answer_deadline_and_preserves_other_defaults(
+    monkeypatch,
+):
+    import io
+
+    calls = []
+
+    class Response(io.BytesIO):
+        status = 200
+
+    session = Session("https://synthetic.example.com")
+
+    def opening(request, timeout):
+        calls.append(timeout)
+        return Response(b"{}")
+
+    monkeypatch.setattr(session.opener, "open", opening)
+    session.request("POST", "/api/v1/course-materials/answer", value={}, timeout=65)
+    session.request("POST", "/other", value={})
+    session.request("GET", "/health")
+    assert calls == [65, 45, 15]

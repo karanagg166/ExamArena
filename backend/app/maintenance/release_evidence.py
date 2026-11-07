@@ -111,6 +111,7 @@ def verify_evidence(journey):
     code, value = journey.sessions["student-a"].request(
         "POST",
         ROOT + "/answer",
+        timeout=65,
         value={
             "query": "For " + markers["a"] + ", what is the synthetic atlas color?",
             "subject": "SCIENCE",

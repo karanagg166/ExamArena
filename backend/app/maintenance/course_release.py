@@ -204,15 +204,18 @@ class Journey:
         for entry in list(self.journal.entries.values()):
             if entry["complete"]:
                 continue
+            check, code = "delete", None
             try:
                 session = self.teacher(entry["label"])
                 path = ROOT + "/" + entry["id"]
                 code, _ = session.request("DELETE", path)
                 require(code in (200, 404), "Fixture deletion unavailable")
+                check = "metadata"
                 code, _ = session.request("GET", path)
                 require(code == 404, "Deleted metadata remains accessible")
                 deadline = self.clock() + 120
                 while True:
+                    check = "receipt"
                     code, value = session.request("GET", path + "/cleanup")
                     require(
                         code == 200 and value.get("document_id") == entry["id"],
@@ -231,6 +234,7 @@ class Journey:
                             and value.get("object_deleted") is True,
                             "Physical cleanup incomplete",
                         )
+                        check = "retrieval"
                         code, results = session.request(
                             "POST",
                             ROOT + "/search",
@@ -254,7 +258,26 @@ class Journey:
                     require(self.clock() < deadline, "Physical cleanup timed out")
                     self.sleep(2)
             except Exception as error:
-                errors.append(type(error).__name__)
+                category = (
+                    type(error).__name__
+                    if isinstance(error, (AssertionError, OSError, ValueError))
+                    else "Error"
+                )
+                status = (
+                    str(code) if type(code) is int and 100 <= code < 600 else "unknown"
+                )
+                print(
+                    "FAIL owned cleanup label="
+                    + entry["label"]
+                    + " check="
+                    + check
+                    + " http="
+                    + status
+                    + " category="
+                    + category,
+                    flush=True,
+                )
+                errors.append(category)
         require(not errors, "One or more owned physical cleanups failed")
 
     def exercise(self):

@@ -78,3 +78,19 @@ immediately on a wrong revision or malformed response. Do not retry login, uploa
 answers or cleanup assertions. Test cold recovery and exhaustion without contacting
 a provider; this does not establish a forced-restart production recovery journey.
 
+
+## Bounded answer wait and cleanup diagnostics
+
+The deployed controller's 45-second default POST wait was shorter than the repaired
+consumer's 55-second total answer deadline. The answer assertion now explicitly
+waits at most 65 seconds, covering consumer authorization and its one upstream
+attempt. Other GET/POST defaults remain 15/45 seconds, and caller-supplied release
+HTTP deadlines outside (0, 65] are rejected. This changes the test driver's wait,
+not the provider deadline, grounding requirements or production API behavior.
+
+A failed owned cleanup now reports only its signed fixture label, step (delete,
+metadata, receipt or retrieval), last HTTP status and exception category. It still
+fails on 503, invalid counts or missing evidence checks and preserves the receipt.
+No response body, URL, storage path, login or key is logged. Fifty focused release
+transport/controller/journal/provenance/cold-read checks pass, including ten new
+deadline/diagnostic cases. Full production acceptance remains a separate live run.
