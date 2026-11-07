@@ -371,6 +371,27 @@ class SearchSphereClient:
                 "Unable to connect to Search-Sphere microservice during deletion."
             ) from exc
 
+    async def get_document_cleanup(
+        self, document_id: str, tenant_id: str
+    ) -> dict[str, Any]:
+        """Read a tenant-scoped receipt after deletion; never infer success from 404."""
+        clean_id = validate_identifier_token(document_id, "document_id")
+        headers = self._get_headers(tenant_id=tenant_id)
+        headers["Cache-Control"] = "no-store"
+        url = f"{self._base_url}/api/v1/documents/{clean_id}/cleanup"
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(10.0, connect=3.0), follow_redirects=False
+            ) as client:
+                response = await client.get(url, headers=headers)
+                return self._handle_response(response)
+        except httpx.TimeoutException as exc:
+            raise SearchSphereTimeoutError("Cleanup verification timed out.") from exc
+        except (httpx.RequestError, ValueError) as exc:
+            raise SearchSphereUnavailableError(
+                "Cleanup verification is unavailable."
+            ) from exc
+
     # ─────────────────────────────────────────────────────────────
     # Semantic Search API
     # ─────────────────────────────────────────────────────────────

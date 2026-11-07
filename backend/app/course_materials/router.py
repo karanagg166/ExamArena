@@ -12,6 +12,7 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
+    Response,
     UploadFile,
     status,
 )
@@ -34,6 +35,7 @@ from app.course_materials.permissions import (
 from app.course_materials.schemas import (
     CourseMaterialAnswerRequest,
     CourseMaterialAnswerResponse,
+    CourseMaterialCleanupReceipt,
     CourseMaterialListResponse,
     CourseMaterialResponse,
     CourseMaterialSearchRequest,
@@ -41,6 +43,15 @@ from app.course_materials.schemas import (
     CourseMaterialStatusRefreshResponse,
 )
 from app.course_materials.service import CourseMaterialService
+from app.integrations.search_sphere.client import (
+    SearchSphereClient,
+    get_search_sphere_client,
+)
+from app.integrations.search_sphere.exceptions import SearchSphereError
+from app.integrations.search_sphere.identifiers import (
+    build_external_document_id,
+    build_tenant_id,
+)
 from app.users.schemas import UserResponse
 
 logger = logging.getLogger("exam_arena.course_materials.router")
@@ -197,6 +208,35 @@ async def delete_course_material(
         "success": success,
         "message": f"Course material '{material_id}' deleted successfully.",
     }
+
+
+@router.get("/{material_id}/cleanup", response_model=CourseMaterialCleanupReceipt)
+async def get_course_material_cleanup(
+    material_id: str,
+    response: Response,
+    current_user: Annotated[UserResponse, Depends(get_current_user)],
+    db: AsyncSession = Depends(get_db),
+    client: SearchSphereClient = Depends(get_search_sphere_client),
+) -> CourseMaterialCleanupReceipt:
+    """Staff can verify physical cleanup after local metadata was removed."""
+    response.headers["Cache-Control"] = "private, no-store"
+    school_id, _ = await resolve_teacher_school_affiliation(current_user, session=db)
+    try:
+        document_id = build_external_document_id(material_id)
+        value = await client.get_document_cleanup(
+            document_id=document_id, tenant_id=build_tenant_id(school_id)
+        )
+        receipt = CourseMaterialCleanupReceipt.model_validate(value)
+        if receipt.document_id != document_id:
+            raise ValueError("Cleanup identity mismatch.")
+        return receipt
+    except SearchSphereError as exc:
+        code = 404 if exc.status_code in {403, 404} else 503
+        raise HTTPException(code, detail="Document cleanup is not verified.") from None
+    except ValueError:
+        raise HTTPException(
+            503, detail="Document cleanup receipt is invalid."
+        ) from None
 
 
 @router.post(
