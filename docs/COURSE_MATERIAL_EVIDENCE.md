@@ -20,3 +20,33 @@ belong to Quick-Clinic; school enrollment and class access belong to ExamArena.
 The broader release ledger still tracks seeded production journeys and remaining
 permission checks. Unit tests use synthetic upstream adapters; HTTP tests exercise
 the actual routes and local PostgreSQL catalog, including cross-school evidence.
+
+## Catalog class scope follow-up
+
+Inventory before repair: `permissions.resolve_user_search_school_id` already checks
+school affiliation and rejects an explicitly requested different student class.
+`evidence_access.py` reauthorizes RAG evidence against its selected collection.
+However, the catalog list route without a class filter only restricts school, and
+the individual GET route only compares school IDs. A student can consequently read
+another class's catalog metadata in the same school. Upload also lacks a check that
+its supplied class belongs to the teacher's school.
+
+Plan: retain the existing staff school-wide policy, resolve the student's current
+enrolled class from PostgreSQL, and apply it to both catalog rows and pagination
+counts. School-wide materials remain visible alongside the enrolled class. Reject
+other-class individual reads and cross-school class uploads before calling Search
+Sphere. Reuse the existing permissions/CRUD/router layers and existing SchoolClass
+and Student tables; no migration or new dependency is needed. Add real PostgreSQL
+HTTP regressions for permitted and denied catalog reads, bounded pagination and
+rejected uploads with zero upstream calls before changing behavior.
+
+The repair applies the school and enrolled-class predicates in SQL to both rows
+and counts, before pagination. Students can read school-wide and their own class's
+metadata; another class's individual material returns 404. Missing enrollment fails
+closed rather than becoming an unrestricted staff scope. Staff keep the existing
+school-wide policy. Supplied classes must belong to the authorized school, including
+on upload before storage or provider work. Synthetic PostgreSQL HTTP regressions
+reproduced the original list/read/upload failures and now pass with the existing
+course-material API suite (26 cases). Black/Ruff and permission/CRUD type checks
+pass. The broader domain mypy check has the same 17 existing diagnostics as main
+(Pydantic aliases and route parameter defaults); no new diagnostics were introduced.

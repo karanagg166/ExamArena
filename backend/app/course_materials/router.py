@@ -26,7 +26,9 @@ from app.core.models import (
 )
 from app.course_materials import crud
 from app.course_materials.permissions import (
+    require_school_class,
     resolve_teacher_school_affiliation,
+    resolve_user_material_scope,
     resolve_user_search_school_id,
 )
 from app.course_materials.schemas import (
@@ -74,6 +76,7 @@ async def upload_course_material(
     File is ingested into Search-Sphere within the authenticated school tenant.
     """
     school_id, _ = await resolve_teacher_school_affiliation(current_user, session=db)
+    await require_school_class(school_id, class_id, db)
     return await service.upload_course_material(
         session=db,
         school_id=school_id,
@@ -108,7 +111,7 @@ async def list_course_materials(
     db: AsyncSession = Depends(get_db),
 ) -> CourseMaterialListResponse:
     """List materials scoped strictly to authenticated school tenant."""
-    school_id = await resolve_user_search_school_id(
+    school_id, visible_class_id = await resolve_user_material_scope(
         current_user, requested_class_id=class_id, session=db
     )
     items, total = await crud.list_course_materials(
@@ -120,6 +123,7 @@ async def list_course_materials(
         document_type=document_type,
         limit=limit,
         offset=offset,
+        visible_class_id=visible_class_id,
     )
     return CourseMaterialListResponse(
         total=total,
@@ -138,10 +142,12 @@ async def get_course_material(
     current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
     db: AsyncSession = Depends(get_db),
 ) -> CourseMaterialResponse:
-    school_id = await resolve_user_search_school_id(
+    school_id, visible_class_id = await resolve_user_material_scope(
         current_user, requested_class_id=None, session=db
     )
-    material = await crud.get_course_material_by_id(db, material_id)
+    material = await crud.get_course_material_by_id(
+        db, material_id, school_id=school_id, visible_class_id=visible_class_id
+    )
     if not material or material.schoolId != school_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
