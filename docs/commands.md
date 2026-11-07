@@ -1,5 +1,9 @@
 # Docker + Prisma + Lint Commands
 
+For the operator-only synthetic school/login bootstrap, use the private dry-run
+and reviewed apply commands in [SYNTHETIC_RELEASE_FIXTURES.md](SYNTHETIC_RELEASE_FIXTURES.md).
+The development setup/seed below must not be used against production.
+
 Use this guide to run the full stack with Docker and manage Prisma from backend only.
 
 ## 0. Quick Setup (Automated)
