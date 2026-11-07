@@ -1,0 +1,77 @@
+name: Authenticated Course-Material Release Journey
+
+# Run only after both exact revisions have deployed. This cannot gate deployment itself.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Full main revision already serving ExamArena
+        type: string
+        required: true
+      expected_search_sphere_sha:
+        description: Full main revision already serving Search Sphere
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: exam-arena-authenticated-course-release
+  cancel-in-progress: false
+
+jobs:
+  authenticated-journey:
+    if: github.ref == 'refs/heads/main' && github.repository == 'karanagg166/ExamArena'
+    environment: search-sphere-release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: backend
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
+      EXPECTED_SEARCH_SPHERE_SHA: ${{ inputs.expected_search_sphere_sha }}
+      EA_RELEASE_FIXTURE_CREDENTIALS: ${{ secrets.EA_RELEASE_FIXTURE_CREDENTIALS }}
+      EA_RELEASE_FIXTURE_KEY: ${{ secrets.EA_RELEASE_FIXTURE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Require protected fixtures and deployed main revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m app.maintenance.course_release --preflight
+          python - <<'PY'
+          import json, os, subprocess
+          subprocess.run(['git', 'merge-base', '--is-ancestor', os.environ['EXPECTED_SHA'], 'HEAD'], check=True)
+          def public_metadata(path):
+              result = subprocess.run(['gh', 'api', path], check=True, capture_output=True, text=True, timeout=30)
+              return json.loads(result.stdout)
+          backend = os.environ['EXPECTED_SEARCH_SPHERE_SHA']
+          comparison = public_metadata('repos/karanagg166/search-sphere/compare/' + backend + '...main')
+          assert comparison['status'] in ('ahead', 'identical'), 'Backend revision must belong to main history'
+          for repo, sha, workflow in [('ExamArena', os.environ['EXPECTED_SHA'], 'CI'), ('search-sphere', backend, 'Search Sphere CI')]:
+              result = public_metadata('repos/karanagg166/' + repo + '/actions/runs?head_sha=' + sha + '&event=push&branch=main&per_page=100')
+              runs = [run for run in result['workflow_runs'] if run['name'] == workflow]
+              assert runs and runs[0]['status'] == 'completed' and runs[0]['conclusion'] == 'success', 'Exact serving main revision requires successful pre-deploy CI'
+          PY
+      - name: Restore prior signed cleanup provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m app.maintenance.release_receipts
+      - name: Run authenticated synthetic course-material journey
+        run: python -m app.maintenance.course_release
+      - name: Preserve content-free signed synthetic cleanup receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: course-material-fixture-receipts-${{ github.run_id }}
+          path: .ea_release_receipts.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
