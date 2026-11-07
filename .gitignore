@@ -83,3 +83,6 @@ playwright-report/
 uploads/
 
 
+# Content-free synthetic release cleanup receipts are retained by protected CI.
+.ea_release_receipts.json
+.ea_release_receipts.json.*.tmp
