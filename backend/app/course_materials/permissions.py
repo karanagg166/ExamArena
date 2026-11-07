@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models import Role, SchoolClass, Student, Teacher
+from app.core.models import Role, SchoolClass, Student, Teacher, User
 from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
 
@@ -113,3 +113,41 @@ async def resolve_user_search_school_id(
         current_user, requested_class_id, session
     )
     return school_id
+
+
+async def assert_material_response_access(
+    current_user: UserResponse,
+    expected_school_id: str,
+    requested_class_id: str | None,
+    session: AsyncSession,
+) -> None:
+    """Re-read caller grants after upstream work, bypassing ORM identity caches."""
+    role = await session.scalar(select(User.role).where(User.id == current_user.id))
+    if role == current_user.role:
+        if role in (Role.TEACHER, Role.PRINCIPAL, Role.ADMIN):
+            school_id = await session.scalar(
+                select(Teacher.schoolId).where(Teacher.userId == current_user.id)
+            )
+            if school_id == expected_school_id:
+                await require_school_class(school_id, requested_class_id, session)
+                return
+        elif role == Role.STUDENT:
+            row = (
+                await session.execute(
+                    select(Student.schoolId, Student.classId).where(
+                        Student.userId == current_user.id
+                    )
+                )
+            ).one_or_none()
+            if (
+                row is not None
+                and row.schoolId == expected_school_id
+                and row.classId
+                and (requested_class_id is None or requested_class_id == row.classId)
+            ):
+                await require_school_class(row.schoolId, row.classId, session)
+                return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Course material access changed.",
+    )

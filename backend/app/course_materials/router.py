@@ -27,6 +27,7 @@ from app.core.models import (
 )
 from app.course_materials import crud
 from app.course_materials.permissions import (
+    assert_material_response_access,
     require_school_class,
     resolve_teacher_school_affiliation,
     resolve_user_material_scope,
@@ -229,6 +230,7 @@ async def get_course_material_cleanup(
         receipt = CourseMaterialCleanupReceipt.model_validate(value)
         if receipt.document_id != document_id:
             raise ValueError("Cleanup identity mismatch.")
+        await assert_material_response_access(current_user, school_id, None, db)
         return receipt
     except SearchSphereError as exc:
         code = 404 if exc.status_code in {403, 404} else 503
@@ -258,7 +260,7 @@ async def search_course_materials(
     school_id = await resolve_user_search_school_id(
         current_user, requested_class_id=body.class_id, session=db
     )
-    return await service.search_materials(
+    result = await service.search_materials(
         session=db,
         school_id=school_id,
         query=body.query,
@@ -267,6 +269,8 @@ async def search_course_materials(
         document_type=body.document_type,
         limit=body.limit,
     )
+    await assert_material_response_access(current_user, school_id, body.class_id, db)
+    return result
 
 
 @router.post(
@@ -288,7 +292,7 @@ async def answer_course_materials(
     school_id = await resolve_user_search_school_id(
         current_user, requested_class_id=body.class_id, session=db
     )
-    return await service.answer_question(
+    result = await service.answer_question(
         session=db,
         school_id=school_id,
         query=body.query,
@@ -297,3 +301,5 @@ async def answer_course_materials(
         document_type=body.document_type,
         limit=body.limit,
     )
+    await assert_material_response_access(current_user, school_id, body.class_id, db)
+    return result
