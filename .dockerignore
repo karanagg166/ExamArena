@@ -6,3 +6,11 @@ __pycache__
 .gitignore
 Dockerfile
 docker-compose.yml
+
+# Keep local environments, caches and credentials out of Python build contexts.
+**/.env*
+**/.venv
+**/venv
+**/__pycache__
+**/.pytest_cache
+**/.uv-cache

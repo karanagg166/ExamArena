@@ -619,7 +619,7 @@ FRONTEND_URL=http://localhost:3000
 - ❌ Never use `useEffect` with an async function directly — define async inside
 - ❌ Never commit `.env` files — always add to `.gitignore`
 - ❌ Never skip the planning step for multi-file tasks
-- ❌ Never suggest a new npm/pip package without flagging it with ⚠️
+- ❌ Never suggest a new pnpm/uv package without flagging it with ⚠️
 - ❌ Never write a page before its type and component dependencies exist
 - ❌ Never hardcode role checks in the frontend only — always enforce on backend too
 - ❌ Never copy-paste documentation examples directly — always adapt to project patterns

@@ -1,5 +1,7 @@
 # 🎓 ExamArena Backend API
 
+Use [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python environments and dependencies. Activate a project virtual environment before `uv pip install`; the committed requirements and constraints remain authoritative. Use `--system` only inside disposable containers or CI runners. JavaScript tooling uses pnpm.
+
 Complete backend API for ExamArena exam platform built with **FastAPI**, **SQLAlchemy ORM**, and **PostgreSQL**.
 
 ---
@@ -121,7 +123,7 @@ backend/
 
 - Python 3.8+
 - PostgreSQL 12+
-- pip (Python package manager)
+- uv (Python package and environment manager)
 - Git
 
 ### Step 1: Clone Repository
@@ -135,18 +137,18 @@ cd ExamArena/backend
 
 ```bash
 # Windows
-python -m venv venv
+uv venv --python 3.11 venv
 venv\Scripts\activate
 
 # macOS/Linux
-python3 -m venv venv
+uv venv --python 3.11 venv
 source venv/bin/activate
 ```
 
 ### Step 3: Install Dependencies
 
 ```bash
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ### Step 4: Configure Environment Variables
@@ -869,12 +871,12 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/examarena
 
 **Solution:**
 ```bash
-# Reinstall requirements
-pip install -r requirements.txt
-
 # Ensure virtual environment is activated
 source venv/bin/activate  # macOS/Linux
 venv\Scripts\activate     # Windows
+
+# Reinstall requirements
+uv pip install -r requirements.txt
 ```
 
 ### Issue: Port 8000 already in use
