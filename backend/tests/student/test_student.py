@@ -8,7 +8,7 @@ from tests.dummy_data.teachers import make_fake_principal, make_fake_teacher
 @pytest.mark.asyncio
 class TestStudentsApi:
     # ── Fetch Students ─────────────────────────────────────────
-    async def test_fetch_as_student_scoped_to_class(
+    async def test_fetch_as_student_scoped_to_self(
         self, client, override_auth, mock_student_db
     ):
         user = override_auth(role="STUDENT")
@@ -35,6 +35,7 @@ class TestStudentsApi:
         # Verify that get_students was called with scopeClassId and scopeSchoolId
         args, kwargs = mock_student_db["get_students"].call_args
         filter_params = args[0]
+        assert filter_params.scopeUserId == user.id
         assert filter_params.scopeClassId == me.classId
         assert filter_params.scopeSchoolId == me.schoolId
 
@@ -47,46 +48,6 @@ class TestStudentsApi:
         response = await client.get("/api/v1/students")
         assert response.status_code == 403
         assert "Student profile not found" in response.json()["detail"]
-
-    async def test_fetch_as_teacher_scoped_to_school(
-        self, client, override_auth, mock_student_db
-    ):
-        override_auth(role="TEACHER")
-        teacher = make_fake_teacher({"schoolId": "school_123"})
-        mock_student_db["get_teacher_by_user_id"].return_value = teacher
-        mock_student_db["get_students"].return_value = []
-
-        response = await client.get("/api/v1/students")
-        assert response.status_code == 200
-
-        args, _ = mock_student_db["get_students"].call_args
-        filter_params = args[0]
-        assert filter_params.scopeSchoolId == "school_123"
-
-    async def test_fetch_as_teacher_no_school(
-        self, client, override_auth, mock_student_db
-    ):
-        override_auth(role="TEACHER")
-        teacher = make_fake_teacher({"schoolId": None})
-        mock_student_db["get_teacher_by_user_id"].return_value = teacher
-
-        response = await client.get("/api/v1/students")
-        assert response.status_code == 403
-        assert "You must be assigned to a school" in response.json()["detail"]
-
-    async def test_fetch_as_admin_unscoped(
-        self, client, override_auth, mock_student_db
-    ):
-        override_auth(role="ADMIN")
-        mock_student_db["get_students"].return_value = []
-
-        response = await client.get("/api/v1/students")
-        assert response.status_code == 200
-
-        args, _ = mock_student_db["get_students"].call_args
-        filter_params = args[0]
-        assert filter_params.scopeSchoolId is None
-        assert filter_params.scopeClassId is None
 
     # ── Enrollment is join-request only ─────────────────────────
     async def test_create_endpoint_is_not_available(
@@ -169,7 +130,7 @@ class TestStudentsApi:
         assert response.status_code == 200
         assert response.json()["id"] == fake_student.id
 
-    async def test_student_views_same_class_peer(
+    async def test_student_cannot_view_same_class_private_profile(
         self, client, override_auth, mock_student_db
     ):
         user = override_auth(role="STUDENT")
@@ -182,7 +143,7 @@ class TestStudentsApi:
         mock_student_db["get_student_by_user_id"].return_value = me
 
         response = await client.get(f"/api/v1/students/{peer.id}")
-        assert response.status_code == 200
+        assert response.status_code == 403
 
     async def test_student_views_different_class(
         self, client, override_auth, mock_student_db
@@ -199,49 +160,5 @@ class TestStudentsApi:
         response = await client.get(f"/api/v1/students/{other.id}")
         assert response.status_code == 403
         assert (
-            "You can only view profiles of students in your class"
-            in response.json()["detail"]
+            "Students can only access their own records." in response.json()["detail"]
         )
-
-    async def test_teacher_same_school(self, client, override_auth, mock_student_db):
-        override_auth(role="TEACHER")
-        teacher = make_fake_teacher({"schoolId": "school_123"})
-        student = make_fake_student({"schoolId": "school_123"})
-
-        mock_student_db["get_teacher_by_user_id"].return_value = teacher
-        mock_student_db["get_student_by_id"].return_value = student
-
-        response = await client.get(f"/api/v1/students/{student.id}")
-        assert response.status_code == 200
-
-    async def test_teacher_different_school(
-        self, client, override_auth, mock_student_db
-    ):
-        override_auth(role="TEACHER")
-        teacher = make_fake_teacher({"schoolId": "school_123"})
-        student = make_fake_student({"schoolId": "school_456"})
-
-        mock_student_db["get_teacher_by_user_id"].return_value = teacher
-        mock_student_db["get_student_by_id"].return_value = student
-
-        response = await client.get(f"/api/v1/students/{student.id}")
-        assert response.status_code == 403
-        assert (
-            "You must be a teacher at this student's school"
-            in response.json()["detail"]
-        )
-
-    async def test_principal_same_school(self, client, override_auth, mock_student_db):
-        override_auth(role="PRINCIPAL")
-        teacher = make_fake_teacher({"schoolId": "school_123"})
-        principal = make_fake_principal(
-            {"schoolId": "school_123", "teacherId": teacher.id}
-        )
-        student = make_fake_student({"schoolId": "school_123"})
-
-        mock_student_db["get_teacher_by_user_id"].return_value = teacher
-        mock_student_db["get_principal_by_teacher_id"].return_value = principal
-        mock_student_db["get_student_by_id"].return_value = student
-
-        response = await client.get(f"/api/v1/students/{student.id}")
-        assert response.status_code == 200

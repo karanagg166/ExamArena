@@ -62,6 +62,7 @@ async def update_user(
 ) -> User | None:
     """Safely updates only the fields the user provided."""
     update_dict = user_data.model_dump(exclude_unset=True)
+    update_dict.pop("role", None)
     if "password" in update_dict and update_dict["password"]:
         update_dict["password"] = hash_password(update_dict["password"])
 

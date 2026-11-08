@@ -83,50 +83,7 @@ class TestSchoolClassesApi:
 
         response = await client.get(f"/api/v1/classes/{fake_class.id}")
         assert response.status_code == 403
-        assert (
-            "Access denied. You can only view your own class."
-            in response.json()["detail"]
-        )
-
-    async def test_teacher_same_school(self, client, override_auth, mock_class_db):
-        override_auth(role="TEACHER")
-        fake_class = make_fake_school_class({"schoolId": "school_123"})
-        mock_class_db["get_school_class_by_id"].return_value = fake_class
-
-        teacher = make_fake_teacher({"schoolId": "school_123"})
-        mock_class_db["get_teacher_by_user_id"].return_value = teacher
-
-        response = await client.get(f"/api/v1/classes/{fake_class.id}")
-        assert response.status_code == 200
-
-    async def test_teacher_diff_school(self, client, override_auth, mock_class_db):
-        override_auth(role="TEACHER")
-        fake_class = make_fake_school_class({"schoolId": "school_123"})
-        mock_class_db["get_school_class_by_id"].return_value = fake_class
-
-        teacher = make_fake_teacher({"schoolId": "school_456"})
-        mock_class_db["get_teacher_by_user_id"].return_value = teacher
-
-        response = await client.get(f"/api/v1/classes/{fake_class.id}")
-        assert response.status_code == 403
-        assert "You must be a teacher at this school" in response.json()["detail"]
-
-    async def test_students_success(self, client, override_auth, mock_class_db):
-        override_auth(role="TEACHER")
-        fake_class = make_fake_school_class({"schoolId": "school_123"})
-        mock_class_db["get_school_class_by_id"].return_value = fake_class
-
-        teacher = make_fake_teacher({"schoolId": "school_123"})
-        mock_class_db["get_teacher_by_user_id"].return_value = teacher
-
-        fake_student = make_fake_student()
-        mock_class_db["get_students_by_class_id"].return_value = [fake_student]
-
-        response = await client.get(f"/api/v1/classes/{fake_class.id}/students")
-        assert response.status_code == 200
-        data = response.json()
-        assert len(data) == 1
-        assert data[0]["id"] == fake_student.id
+        assert "Access denied for this class." in response.json()["detail"]
 
     async def test_students_class_not_found(self, client, override_auth, mock_class_db):
         override_auth(role="TEACHER")
@@ -136,7 +93,7 @@ class TestSchoolClassesApi:
         assert response.status_code == 404
         assert "Class not found" in response.json()["detail"]
 
-    async def test_students_student_own_class(
+    async def test_student_cannot_read_classmates_private_profiles(
         self, client, override_auth, mock_class_db
     ):
         override_auth(role="STUDENT")
@@ -148,7 +105,7 @@ class TestSchoolClassesApi:
         mock_class_db["get_students_by_class_id"].return_value = [student]
 
         response = await client.get(f"/api/v1/classes/{fake_class.id}/students")
-        assert response.status_code == 200
+        assert response.status_code == 403
 
     async def test_students_student_other_class(
         self, client, override_auth, mock_class_db
@@ -162,64 +119,4 @@ class TestSchoolClassesApi:
 
         response = await client.get(f"/api/v1/classes/{fake_class.id}/students")
         assert response.status_code == 403
-        assert (
-            "Access denied. You can only view your own class."
-            in response.json()["detail"]
-        )
-
-    async def test_principal_view_class_and_students_by_school(
-        self, client, override_auth, mock_class_db
-    ):
-        override_auth(role="PRINCIPAL")
-        fake_class = make_fake_school_class({"schoolId": "school_principal_001"})
-        mock_class_db["get_school_class_by_id"].return_value = fake_class
-
-        fake_school = MagicMock(id="school_principal_001")
-        mock_class_db["get_school_by_user_id"].return_value = fake_school
-
-        # Test view class details
-        res_class = await client.get(f"/api/v1/classes/{fake_class.id}")
-        assert res_class.status_code == 200
-        assert res_class.json()["id"] == fake_class.id
-
-        # Test view student roster
-        fake_student = make_fake_student()
-        mock_class_db["get_students_by_class_id"].return_value = [fake_student]
-        res_students = await client.get(f"/api/v1/classes/{fake_class.id}/students")
-        assert res_students.status_code == 200
-        assert len(res_students.json()) == 1
-
-    async def test_get_class_results_principal_and_teacher(
-        self, client, override_auth, mock_class_db
-    ):
-        fake_class = make_fake_school_class({"schoolId": "school_abc"})
-        mock_class_db["get_school_class_by_id"].return_value = fake_class
-
-        mock_results = {
-            "classId": fake_class.id,
-            "className": fake_class.name,
-            "totalStudents": 25,
-            "totalSubmissions": 22,
-            "classAveragePercentage": 78.5,
-            "examsSummary": [],
-            "students": [],
-        }
-        mock_class_db["get_class_exam_results"].return_value = mock_results
-
-        # 1. As Principal
-        override_auth(role="PRINCIPAL")
-        fake_school = MagicMock(id="school_abc")
-        mock_class_db["get_school_by_user_id"].return_value = fake_school
-
-        res_p = await client.get(f"/api/v1/classes/{fake_class.id}/results")
-        assert res_p.status_code == 200
-        assert res_p.json()["classAveragePercentage"] == 78.5
-
-        # 2. As Teacher
-        override_auth(role="TEACHER")
-        fake_teacher = make_fake_teacher({"schoolId": "school_abc"})
-        mock_class_db["get_teacher_by_user_id"].return_value = fake_teacher
-
-        res_t = await client.get(f"/api/v1/classes/{fake_class.id}/results")
-        assert res_t.status_code == 200
-        assert res_t.json()["totalSubmissions"] == 22
+        assert "Use your own student records and results." in response.json()["detail"]

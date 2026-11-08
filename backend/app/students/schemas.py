@@ -17,6 +17,8 @@ class StudentFilterParams(BaseModel):
     schoolCode: str | None = None
     scopeClassId: str | None = None
     scopeSchoolId: str | None = None
+    scopeUserId: str | None = None
+    scopeClassIds: tuple[str, ...] | None = None
 
 
 class StudentListItemResponse(BaseModel):
