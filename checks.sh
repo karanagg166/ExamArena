@@ -122,15 +122,15 @@ echo -e "${BOLD}[3/4] 🐍 Backend Lint (Ruff + Black)${NC}"
 
 run_check "Ruff lint" \
   docker compose exec -T backend \
-    sh -c "pip install -q ruff && ruff check app/"
+    sh -c "uv pip install --system -q ruff && ruff check app/"
 
 run_check "Black format check" \
   docker compose exec -T backend \
-    sh -c "pip install -q black && black --check app/"
+    sh -c "uv pip install --system -q black && black --check app/"
 
 echo ""
 echo -e "  ${YELLOW}💡 Auto-fix Black:${NC}"
-echo -e "     docker compose exec backend sh -c 'pip install -q black && black app/'"
+echo -e "     docker compose exec backend sh -c 'uv pip install --system -q black && black app/'"
 echo ""
 
 # ─────────────────────────────────────────────────────────────

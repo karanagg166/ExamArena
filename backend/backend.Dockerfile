@@ -1,10 +1,13 @@
 FROM python:3.11-slim AS base
 
+COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 /uv /uvx /usr/local/bin/
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_DEFAULT_TIMEOUT=100
+    UV_NO_CACHE=1 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_HTTP_TIMEOUT=100 \
+    UV_HTTP_RETRIES=10
 
 WORKDIR /app
 
@@ -20,8 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir setuptools wheel \
-    && pip install --no-cache-dir --no-build-isolation --retries 10 --timeout 100 --prefer-binary -r requirements.txt
+RUN uv pip install --system --no-cache setuptools wheel \
+    && uv pip install --system --no-cache --no-build-isolation -r requirements.txt
 
 # ── Dev Stage ─────────────────────────────────────────────────
 FROM base AS dev

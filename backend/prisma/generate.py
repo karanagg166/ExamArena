@@ -3,6 +3,7 @@ import site
 import subprocess
 import sys
 import sysconfig
+from pathlib import Path
 
 
 def run_command(cmd, env=None):
@@ -13,32 +14,33 @@ def run_command(cmd, env=None):
         sys.exit(result.returncode)
 
 
-def main():
-    # 1. Install prisma if not present
+def ensure_prisma():
+    # Install through uv only when the current environment can be modified safely.
     try:
         import prisma
 
         print("Prisma Python package is already installed.")
     except ImportError:
-        print("Prisma Python package not found. Installing...")
-        try:
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "prisma",
-                    "--break-system-packages",
-                ],
-                check=True,
+        # Never modify a host's system Python. CI and containers are disposable;
+        # local development must use the explicitly selected virtual environment.
+        disposable = Path("/.dockerenv").exists() or os.environ.get("CI") == "true"
+        if sys.prefix == sys.base_prefix and not disposable:
+            sys.exit(
+                "Prisma is missing. Create a virtual environment with "
+                "'uv venv --python 3.11 venv', then install Prisma with "
+                "'uv pip install --python venv/bin/python prisma' and rerun "
+                "this script with venv/bin/python."
             )
-        except subprocess.CalledProcessError:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "prisma"], check=True
-            )
+        print("Prisma Python package not found. Installing with uv...")
+        command = ["uv", "pip", "install", "--python", sys.executable]
+        if sys.prefix == sys.base_prefix:
+            command.append("--system")
+        subprocess.run([*command, "prisma"], check=True)
 
-    # 2. Collect potential script directories where prisma-client-py could be installed
+
+def main():
+    ensure_prisma()
+    # Collect potential script directories where prisma-client-py could be installed
     potential_dirs = []
 
     # Virtualenv / system prefix

@@ -32,18 +32,19 @@ npm install react-webcam
 ### Backend (Python / FastAPI)
 
 ```bash
+# Run inside an activated project virtual environment.
 # AI Integration & Document Parsing
-pip install openai langchain python-dotenv
-pip install PyPDF2 pdfplumber  # For reading uploaded PDFs
+uv pip install openai langchain python-dotenv
+uv pip install PyPDF2 pdfplumber  # For reading uploaded PDFs
 
 # Proctoring (Optional if analyzing feeds on backend)
-pip install opencv-python face_recognition
+uv pip install opencv-python face_recognition
 
 # Data processing & Exporting
-pip install pandas openpyxl reportlab
+uv pip install pandas openpyxl reportlab
 
 # Storage & Background Tasks
-pip install boto3 arq
+uv pip install boto3 arq
 ```
 **Rationale:**
 - `openai` & `langchain`: The core tools used to integrate ChatGPT/LLMs. They will analyze the "short answer" texts submitted by students and evaluate them against the teacher's rubric. They will also process syllabus guidelines to auto-generate question papers.
@@ -77,9 +78,9 @@ npm install
 **Backend:**
 ```bash
 cd backend
-python -m venv venv
+uv venv --python 3.11 venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ## 2. Configure Environment Variables
@@ -92,7 +93,7 @@ Update `DATABASE_URL` in `.env` with your database connection string, and add yo
 
 ## 3. Generate Prisma Client
 ```bash
-npx prisma generate
+pnpm exec prisma generate
 ```
 
 ## 4. Starting the Application (Using Docker)
