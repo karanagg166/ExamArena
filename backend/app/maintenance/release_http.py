@@ -19,13 +19,21 @@ APP_URL = "https://exam-arena-mu.vercel.app"
 SEARCH_URL = "https://search-sphere-api.onrender.com"
 
 
-def wait_for_service(session, path, expected_sha, *, ready=False, sleep=time.sleep):
-    """Four read-only attempts; no mutation or model request is replayed."""
-    for attempt in range(4):
+def wait_for_service(
+    session, path, expected_sha, *, ready=False, sleep=time.sleep, clock=time.monotonic
+):
+    """Allow 120 seconds of read-only health recovery without replaying app work."""
+    deadline = clock() + 120
+    for _ in range(25):
+        remaining = deadline - clock()
+        if remaining <= 0:
+            break
         try:
-            code, value = session.request("GET", path)
-        except OSError:  # Includes network/SSL timeouts and urllib URLError.
+            code, value = session.request("GET", path, timeout=min(15, remaining))
+        except OSError:
             code, value = 0, None
+        if clock() > deadline:
+            break
         if code == 200:
             require(isinstance(value, dict), "Malformed service health response")
             require(
@@ -41,10 +49,12 @@ def wait_for_service(session, path, expected_sha, *, ready=False, sleep=time.sle
                 )
             return
         require(code in (0, 502, 503, 504), "Unexpected service health status")
-        if attempt < 3:
-            print("WAIT bounded service health recovery", flush=True)
-            sleep(2)
-    raise AssertionError("Service did not recover within four health attempts")
+        remaining = deadline - clock()
+        if remaining <= 0:
+            break
+        print("WAIT bounded service health recovery", flush=True)
+        sleep(min(5, remaining))
+    raise AssertionError("Service did not recover within the 120-second health budget")
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):

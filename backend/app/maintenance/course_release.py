@@ -124,13 +124,18 @@ class Journey:
     def preflight(self):
         self.step("exact deployed revisions")
         wait_for_service(
-            self.public, "/api/health", self.expected["EXPECTED_SHA"], sleep=self.sleep
+            self.public,
+            "/api/health",
+            self.expected["EXPECTED_SHA"],
+            sleep=self.sleep,
+            clock=self.clock,
         )
         wait_for_service(
             self.search,
             "/health",
             self.expected["EXPECTED_SEARCH_SPHERE_SHA"],
             sleep=self.sleep,
+            clock=self.clock,
         )
         wait_for_service(
             self.search,
@@ -138,6 +143,7 @@ class Journey:
             self.expected["EXPECTED_SEARCH_SPHERE_SHA"],
             ready=True,
             sleep=self.sleep,
+            clock=self.clock,
         )
         self.step("synthetic login and roles")
         for label, account in self.identity["accounts"].items():

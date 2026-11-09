@@ -26,7 +26,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.repository == 'karanagg166/ExamArena'
     environment: search-sphere-release
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 22
     env:
       PYTHONPATH: backend
       EXPECTED_SHA: ${{ inputs.expected_sha }}

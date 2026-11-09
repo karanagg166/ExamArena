@@ -148,14 +148,14 @@ async def get_students_for_class(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Get all students for a specific class with RBAC."""
+    if current_user.role == Role.STUDENT:
+        raise HTTPException(403, "Use your own student records and results.")
     school_class = await get_school_class_by_id(class_id)
     if not school_class:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
-    if current_user.role == Role.STUDENT:
-        raise HTTPException(403, "Use your own student records and results.")
     await _check_class_access(current_user, school_class)
     return await get_students_by_class_id(class_id)
 
@@ -260,13 +260,13 @@ async def get_class_results_endpoint(
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
     """Get aggregated exam results, leaderboard, and student scores for a class."""
+    if current_user.role == Role.STUDENT:
+        raise HTTPException(403, "Use your own student records and results.")
     school_class = await get_school_class_by_id(class_id)
     if not school_class:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
-    if current_user.role == Role.STUDENT:
-        raise HTTPException(403, "Use your own student records and results.")
     await _check_class_access(current_user, school_class)
     return await get_class_exam_results(class_id)

@@ -49,7 +49,7 @@ async def fetch_students(
         schoolCode=schoolCode,
     )
     if current_user.role == Role.STUDENT:
-        me = await get_student_by_user_id(current_user.id)
+        me = await get_student_by_user_id(current_user.id, session=db)
         if not me:
             raise HTTPException(403, "Student profile not found.")
         filters.scopeUserId = current_user.id
@@ -60,7 +60,7 @@ async def fetch_students(
         filters.scopeSchoolId = access.school_id
         filters.scopeClassIds = access.class_ids
 
-    return await get_students(filters)
+    return await get_students(filters, session=db)
 
 
 @router.get("/me", response_model=StudentResponse)
@@ -109,7 +109,7 @@ async def get_student_by_id_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     """Get student data by primary ID with role-based access control"""
-    student = await get_student_by_id(student_id)
+    student = await get_student_by_id(student_id, session=db)
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Student not found"
@@ -152,7 +152,7 @@ async def get_student_exam_history_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     """Get complete exam history and scores for a student (Assigned teachers, school principals, or self)"""
-    student = await get_student_by_id(student_id)
+    student = await get_student_by_id(student_id, session=db)
     if not student:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Student not found"
@@ -160,7 +160,7 @@ async def get_student_exam_history_endpoint(
 
     await _require_student_access(current_user, student, db)
 
-    history = await get_student_exam_history(student_id)
+    history = await get_student_exam_history(student_id, session=db)
     if current_user.role == Role.STUDENT:
         redacted = []
         for item in history:
