@@ -102,3 +102,31 @@ checks precede new uploads and print only fixed check labels. Cleanup sends the
 original subject/class scope, first proving that shared-collection scope cannot
 read a class document's retained deletion receipt, then requiring the correctly
 scoped zero-vector/private-object receipt. Ordinary records are never used.
+
+## November 9 measured read and cold-start follow-up
+
+Authenticated production probes of `071bb99` verified self/assigned-teacher reads,
+foreign-school denial, and student roster denial using only signed synthetic
+accounts. The first bounded health probe failed before login; Render later logged
+startup completion at 09:53 UTC at the same b205832 revision. A subsequent probe
+reached private records but exceeded the 15-second GET timeout. Measured reads
+with a bounded 30-second client wait returned the expected 200/403 responses;
+teacher history reads took about 17.8 seconds. No upload or inference ran.
+
+The follow-up reuses the existing request session for student profile, list,
+authorization and history reads. A PostgreSQL connection-event regression
+reproduced four physical history connections before repair and proves at most
+two afterward, including authentication. Denied student roster/results requests
+now stop before loading class data, reducing connections from two to one.
+
+Health-only recovery now shares a 120-second monotonic budget, including request
+time and waits, with each GET timeout bounded by remaining time. Transient
+timeouts/502/503/504 can recover; wrong revisions, malformed health, and unexpected
+statuses fail immediately. This supersedes the earlier four-attempt rule. It
+does not retry uploads, model calls, answers or deletion verification.
+
+The new private-record assertions use a 30-second read bound. The full workflow
+allows 22 minutes to include these additional assertions and cold recovery;
+generation deadlines remain unchanged. All 128 focused PostgreSQL, authorization,
+HTTP, cold-recovery and controller checks pass. A forced in-flight production
+restart and the final full deployed journey remain separate acceptance checks.
