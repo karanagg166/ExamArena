@@ -27,6 +27,11 @@ paths. Principal self-service updates cannot move school authority; trusted scho
 creation retains its internal update schema. A teacher cannot transfer a student
 into a class to acquire access. Existing public exam ownership/grading rules are a
 separate contract and are not widened by this change.
+School ownership (`School.createdBy` with a current principal role) also grants
+authority for that school, including the existing onboarding path without a
+teacher profile. Revoking all principal access requires removing both school
+ownership and any principal/staff linkage; deleting only one independent grant
+does not revoke the other.
 
 Local validation: the initial student/class/analytics regression suite passed
 92 tests against disposable PostgreSQL. Additional role-escalation and principal

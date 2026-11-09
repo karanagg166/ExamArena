@@ -6,7 +6,15 @@ from fastapi import HTTPException
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models import Principal, Role, SchoolClass, Teacher, TeacherClass, User
+from app.core.models import (
+    Principal,
+    Role,
+    School,
+    SchoolClass,
+    Teacher,
+    TeacherClass,
+    User,
+)
 from app.users.schemas import UserResponse
 
 
@@ -29,7 +37,7 @@ async def resolve_staff_access(
     row = (
         await session.execute(
             select(User.role, Teacher.id, Teacher.schoolId)
-            .join(Teacher, Teacher.userId == User.id)
+            .outerjoin(Teacher, Teacher.userId == User.id)
             .where(User.id == user.id)
         )
     ).one_or_none()
@@ -37,15 +45,21 @@ async def resolve_staff_access(
         row is None
         or row.role != user.role
         or row.role not in (Role.TEACHER, Role.PRINCIPAL, Role.ADMIN)
-        or not row.schoolId
     ):
         raise HTTPException(403, "An active school staff affiliation is required.")
     if row.role == Role.PRINCIPAL:
+        owned_school = await session.scalar(
+            select(School.id).where(School.createdBy == user.id)
+        )
+        if owned_school is not None:
+            return SchoolAccess(owned_school, None)
         principal_school = await session.scalar(
             select(Principal.schoolId).where(Principal.teacherId == row.id)
         )
-        if principal_school != row.schoolId:
+        if not principal_school or principal_school != row.schoolId:
             raise HTTPException(403, "Principal school authority is required.")
+    if not row.schoolId:
+        raise HTTPException(403, "An active school staff affiliation is required.")
     if row.role in (Role.PRINCIPAL, Role.ADMIN):
         return SchoolAccess(row.schoolId, None)
 

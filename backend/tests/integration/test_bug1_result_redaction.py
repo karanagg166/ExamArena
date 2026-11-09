@@ -49,6 +49,8 @@ async def test_result_redaction_before_and_after_release(
         db_session, role=Role.TEACHER, email="teacher.redaction@test.examarena.dev"
     )
     teacher = await create_teacher_factory(db_session, user=teacher_user, school=school)
+    # Private history requires an actual teaching assignment, not school membership.
+    school_class.teacherId = teacher.id
 
     # Published exam with results not yet released
     exam = await create_exam_factory(
@@ -120,13 +122,17 @@ async def test_result_redaction_before_and_after_release(
             }
         ],
     }
-    submit_resp = await student_client.post("/api/v1/attempts/submit", json=submit_payload)
+    submit_resp = await student_client.post(
+        "/api/v1/attempts/submit", json=submit_payload
+    )
     assert submit_resp.status_code == 200
     submit_data = submit_resp.json()
 
     # Verify student response does NOT reveal sensitive grading information
     assert submit_data["status"] in ("SUBMITTED", "GRADED")
-    assert submit_data["marksObtained"] is None, "Student must not receive marksObtained before release"
+    assert (
+        submit_data["marksObtained"] is None
+    ), "Student must not receive marksObtained before release"
     assert submit_data["answers"][0]["marksAwarded"] is None
     assert submit_data["answers"][0]["isCorrect"] is None
     assert submit_data["answers"][0]["feedback"] is None
@@ -139,12 +145,16 @@ async def test_result_redaction_before_and_after_release(
         select(StudentExam)
         .where(StudentExam.id == attempt_id)
         .options(
-            selectinload(StudentExam.answers).selectinload(StudentExamAnswer.selectedOptions)
+            selectinload(StudentExam.answers).selectinload(
+                StudentExamAnswer.selectedOptions
+            )
         )
     )
     async with TestAsyncSessionLocal() as verify_session:
         db_exam_res = (await verify_session.execute(stmt)).scalar_one()
-        assert db_exam_res.marksObtained == 10.0, "Database must store actual graded marks"
+        assert (
+            db_exam_res.marksObtained == 10.0
+        ), "Database must store actual graded marks"
         assert db_exam_res.answers[0].marksAwarded == 10.0
         assert db_exam_res.answers[0].isCorrect == Correctness.FULLY_CORRECT
 
@@ -164,11 +174,17 @@ async def test_result_redaction_before_and_after_release(
     history_items = history_resp.json()
     assert len(history_items) == 1
     assert history_items[0]["isResultsReleased"] is False
-    assert history_items[0]["marksObtained"] is None, "Score must be redacted for student"
-    assert history_items[0]["percentage"] is None, "Percentage must be redacted for student"
+    assert (
+        history_items[0]["marksObtained"] is None
+    ), "Score must be redacted for student"
+    assert (
+        history_items[0]["percentage"] is None
+    ), "Percentage must be redacted for student"
 
     # Staff access before release preserves internal scores
-    teacher_history_resp = await teacher_client.get(f"/api/v1/students/{student_id}/exams")
+    teacher_history_resp = await teacher_client.get(
+        f"/api/v1/students/{student_id}/exams"
+    )
     assert teacher_history_resp.status_code == 200
     teacher_history_items = teacher_history_resp.json()
     assert teacher_history_items[0]["marksObtained"] == 10.0
@@ -303,7 +319,9 @@ async def test_result_redaction_incorrect_mcq_before_and_after_release(
             }
         ],
     }
-    submit_resp = await student_client.post("/api/v1/attempts/submit", json=submit_payload)
+    submit_resp = await student_client.post(
+        "/api/v1/attempts/submit", json=submit_payload
+    )
     assert submit_resp.status_code == 200
     submit_data = submit_resp.json()
 
@@ -321,7 +339,9 @@ async def test_result_redaction_incorrect_mcq_before_and_after_release(
         select(StudentExam)
         .where(StudentExam.id == attempt_id)
         .options(
-            selectinload(StudentExam.answers).selectinload(StudentExamAnswer.selectedOptions)
+            selectinload(StudentExam.answers).selectinload(
+                StudentExamAnswer.selectedOptions
+            )
         )
     )
     async with TestAsyncSessionLocal() as verify_session:
@@ -359,4 +379,3 @@ async def test_result_redaction_incorrect_mcq_before_and_after_release(
     assert after_data["answers"][0]["marksAwarded"] == -1.0
     assert after_data["answers"][0]["isCorrect"] == "INCORRECT"
     assert after_data["answers"][0]["gradingStatus"] is not None
-

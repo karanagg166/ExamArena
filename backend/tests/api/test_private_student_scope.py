@@ -1,9 +1,9 @@
 """Real PostgreSQL regression matrix for private student records and aliases."""
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
-from app.core.models import Principal, Role, Subject, Teacher, TeacherClass
+from app.core.models import Principal, Role, School, Subject, Teacher, TeacherClass
 from tests.factories.class_factory import create_class_factory
 from tests.factories.school_factory import create_school_factory
 from tests.factories.student_factory import create_student_factory
@@ -171,6 +171,11 @@ async def test_principal_link_revocation_denies_existing_login(
     assert (await client.get(path)).status_code == 200
     await db_session.execute(
         delete(Principal).where(Principal.schoolId == records["school"].id)
+    )
+    await db_session.execute(
+        update(School)
+        .where(School.id == records["school"].id)
+        .values(createdBy=records["no_grants"].id)
     )
     await db_session.commit()
     assert (await client.get(path)).status_code == 403

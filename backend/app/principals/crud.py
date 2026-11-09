@@ -8,6 +8,7 @@ from app.principals.schemas import PrincipalUpdate
 
 PRINCIPAL_OPTIONS = [
     selectinload(Principal.teacher).selectinload(Teacher.user),
+    selectinload(Principal.teacher).selectinload(Teacher.teaches),
     selectinload(Principal.school),
 ]
 
