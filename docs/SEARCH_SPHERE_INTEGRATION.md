@@ -173,13 +173,15 @@ read access for their currently assigned teachers and school principal. Shared
 course resources are different: enrolled students and assigned teachers can use
 their class resources plus explicitly school-wide resources.
 
-For `GET /api/v1/course-materials/{id}/cleanup`, teacher callers provide
+After local deletion, for `GET /api/v1/course-materials/{id}/cleanup`, teacher callers provide
 `?subject=SCIENCE&class_id=<original-class-id>` (or just `subject` for a shared
 school document). ExamArena reauthorizes this scope and binds `X-Collection-ID`
 when requesting Search Sphere's retained deletion receipt. Missing scope is an
 error, and a missing/denied/unavailable receipt never proves physical cleanup.
 The authenticated release journey tests both a wrong shared scope and the correct
 class scope after deleting every new synthetic PDF.
+Legacy requests can derive the scope from a still-existing authorized catalog row;
+missing metadata never authorizes a school-wide request.
 
 See [the access matrix](ACCESS_CONTROL.md) for existing behavior, repairs and
 remaining private student-document integration work. Cohere trial eligibility

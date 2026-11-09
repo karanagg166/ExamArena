@@ -28,6 +28,7 @@ from app.core.models import (
 from app.course_materials import crud
 from app.course_materials.permissions import (
     assert_material_response_access,
+    resolve_cleanup_scope,
     resolve_teacher_school_affiliation,
     resolve_user_material_scope,
     resolve_user_search_school_id,
@@ -49,7 +50,6 @@ from app.integrations.search_sphere.client import (
 )
 from app.integrations.search_sphere.exceptions import SearchSphereError
 from app.integrations.search_sphere.identifiers import (
-    build_collection_id,
     build_external_document_id,
     build_tenant_id,
 )
@@ -245,15 +245,8 @@ async def get_course_material_cleanup(
     """Staff can verify physical cleanup after local metadata was removed."""
     response.headers["Cache-Control"] = "private, no-store"
     school_id, _ = await resolve_teacher_school_affiliation(current_user, session=db)
-    if current_user.role == "TEACHER" and subject is None:
-        raise HTTPException(
-            422, "Cleanup verification requires the document subject and class scope."
-        )
-    await resolve_user_material_scope(current_user, class_id, db)
-    collection_id = (
-        build_collection_id(subject=subject, class_id=class_id)
-        if subject is not None
-        else None
+    collection_id, class_id = await resolve_cleanup_scope(
+        current_user, school_id, material_id, subject, class_id, db
     )
     try:
         document_id = build_external_document_id(material_id)

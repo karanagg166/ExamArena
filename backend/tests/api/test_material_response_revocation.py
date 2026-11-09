@@ -2,10 +2,10 @@
 
 import httpx
 import pytest
-from sqlalchemy import update
+from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.core.models import Role, Student, Teacher, User
+from app.core.models import Role, Student, Teacher, TeacherClass, User
 from tests.api import test_course_materials_api as material_support
 from tests.factories.class_factory import create_class_factory
 
@@ -22,14 +22,14 @@ _async_client = httpx.AsyncClient
         for endpoint in ("search", "answer")
         for change in ("teacher_school", "student_class", "role")
     ]
-    + [("cleanup", change) for change in ("teacher_school", "role")],
+    + [("cleanup", change) for change in ("teacher_school", "role", "teacher_class")],
 )
 async def test_changed_caller_grant_withholds_upstream_evidence(
     auth_client_factory, setup_schools, db_session, monkeypatch, endpoint, change
 ):
     schools = setup_schools
     student = change == "student_class"
-    class_id = schools["class_a"].id if student else None
+    class_id = schools["class_a"].id if student or change == "teacher_class" else None
     await material_support.seed_material(
         db_session, schools, "synthetic-doc", class_id=class_id
     )
@@ -54,6 +54,12 @@ async def test_changed_caller_grant_withholds_upstream_evidence(
                     update(Student)
                     .where(Student.id == schools["student_a"].id)
                     .values(classId=other_class.id)
+                )
+            elif change == "teacher_class":
+                await changed.execute(
+                    delete(TeacherClass).where(
+                        TeacherClass.teacherId == schools["teacher_a"].id
+                    )
                 )
             else:
                 await changed.execute(

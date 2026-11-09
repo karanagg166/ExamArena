@@ -9,8 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.core.database as database
-from app.core.models import Role, SchoolClass, Student, Teacher, User
+from app.core.models import Role, SchoolClass, Student, Subject, Teacher, User
 from app.core.school_access import resolve_staff_access
+from app.course_materials import crud
+from app.integrations.search_sphere.identifiers import build_collection_id
 from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
 
@@ -125,3 +127,36 @@ async def assert_material_response_access(
         if school_id == expected_school_id:
             return
     raise HTTPException(403, "Course material access changed.")
+
+
+async def resolve_cleanup_scope(
+    current_user: UserResponse,
+    school_id: str,
+    material_id: str,
+    subject: Subject | None,
+    class_id: str | None,
+    session: AsyncSession,
+) -> tuple[str | None, str | None]:
+    """Use current catalog authority when available, otherwise require bound scope."""
+    if subject is None and (current_user.role == Role.TEACHER or class_id is not None):
+        _, visible_classes = await resolve_user_material_scope(
+            current_user, None, session
+        )
+        material = await crud.get_course_material_by_id(
+            session, material_id, school_id=school_id, visible_class_ids=visible_classes
+        )
+        if material is None:
+            raise HTTPException(
+                422,
+                "Cleanup verification requires the document subject and class scope.",
+            )
+        if class_id is not None and class_id != material.classId:
+            raise HTTPException(403, "Cleanup scope conflicts with the document.")
+        subject, class_id = material.subject, material.classId
+    await resolve_user_material_scope(current_user, class_id, session)
+    collection_id = (
+        build_collection_id(subject=subject, class_id=class_id)
+        if subject is not None
+        else None
+    )
+    return collection_id, class_id

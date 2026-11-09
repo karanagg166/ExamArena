@@ -52,8 +52,10 @@ filters and evidence validation enforce this without changing the index identity
 
 Cleanup receipts use the existing Search Sphere deletion tombstone, retaining
 physical vector/object verification after the local catalog row is deleted.
-Teachers must supply the original `subject` and `class_id` query parameters;
-omit `class_id` only for intentionally school-wide material. The consumer checks
+After local deletion, teachers supply the original `subject` and `class_id` query parameters;
+omit `class_id` only for intentionally school-wide material. Legacy requests may
+derive scope from a still-existing, authorized catalog row; missing metadata never
+becomes unrestricted school access. The consumer checks
 the current assignment and sends the resulting `X-Collection-ID`. Search Sphere
 compares this with the retained tombstone. Claiming school-wide scope for a
 deleted class document cannot authorize its receipt. A principal/affiliated admin
