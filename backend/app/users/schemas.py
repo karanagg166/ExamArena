@@ -49,6 +49,13 @@ class UserRequest(BaseModel):
     dateOfBirth: datetime
     role: Roles
 
+    @field_validator("role")
+    @classmethod
+    def reject_public_administrator(cls, value: Roles) -> Roles:
+        if value == Roles.ADMIN:
+            raise ValueError("Administrator accounts require operator provisioning.")
+        return value
+
     @field_validator("phoneNo", mode="before")
     @classmethod
     def validate_phone(cls, v: str) -> str:
@@ -83,6 +90,11 @@ class UserUpdate(BaseModel):
     dateOfBirth: datetime | None = None
     role: Roles | None = None
     password: str | None = None
+
+    @field_validator("role")
+    @classmethod
+    def reject_self_service_role_change(cls, value):
+        raise ValueError("Role changes require an authorized administration flow.")
 
     @field_validator("phoneNo", mode="before")
     @classmethod

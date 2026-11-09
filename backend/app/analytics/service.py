@@ -49,6 +49,7 @@ from app.core.models import (
     Teacher,
     TeacherClass,
 )
+from app.core.school_access import require_staff_class
 from app.exams.crud import get_exam_by_id
 from app.exams.permissions import can_manage_exam
 from app.grading.crud import get_exam_grading_summary
@@ -880,30 +881,10 @@ class AnalyticsService:
         session: AsyncSession,
     ) -> Teacher | None:
         """Validates that current user is authorized to view analytics for this class."""
-        if current_user.role == Role.ADMIN:
-            return None
-
-        teacher = await get_teacher_by_user_id(current_user.id, session=session)
-        if not teacher:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Staff profile not found",
-            )
-
-        if not teacher.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Staff is not assigned to an active school",
-            )
-
-        # Cross-school tenant isolation: School A staff cannot view School B class
-        if teacher.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. Class belongs to a different school.",
-            )
-
-        return teacher
+        await require_staff_class(
+            current_user, school_class.schoolId, school_class.id, session
+        )
+        return await get_teacher_by_user_id(current_user.id, session=session)
 
     @staticmethod
     async def _verify_student_access(
@@ -912,29 +893,11 @@ class AnalyticsService:
         session: AsyncSession,
     ) -> Teacher | None:
         """Validates that current user is authorized to view student history and analytics."""
-        if current_user.role == Role.ADMIN:
-            return None
-
         if current_user.role == Role.STUDENT:
             if student.userId != current_user.id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Students can only view their own results.",
-                )
+                raise HTTPException(403, "Students can only view their own results.")
             return None
-
-        teacher = await get_teacher_by_user_id(current_user.id, session=session)
-        if not teacher or not teacher.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. Staff is not assigned to an active school.",
-            )
-
-        # Cross-school isolation: School A teacher cannot view School B student
-        if teacher.schoolId != student.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. Student belongs to a different school.",
-            )
-
-        return teacher
+        await require_staff_class(
+            current_user, student.schoolId, student.classId, session
+        )
+        return await get_teacher_by_user_id(current_user.id, session=session)

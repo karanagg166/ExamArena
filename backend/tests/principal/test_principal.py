@@ -7,7 +7,14 @@ from tests.dummy_data.teachers import make_fake_principal, make_fake_teacher
 
 @pytest.mark.asyncio
 class TestPrincipalsApi:
-    async def test_create_success(self, client, override_auth, mock_principal_db):
+    async def test_create_success(
+        self, client, override_auth, mock_principal_db, mocker
+    ):
+        from unittest.mock import AsyncMock
+
+        mocker.patch(
+            "app.principals.router.require_school_owner", new_callable=AsyncMock
+        )
         override_auth(role="PRINCIPAL")
         fake_teacher = make_fake_teacher()
         mock_principal_db["get_teacher_by_user_id"].return_value = fake_teacher

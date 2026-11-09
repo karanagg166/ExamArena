@@ -23,13 +23,5 @@ def mock_student_db(mocker):
             "app.students.router.update_student",
             new_callable=AsyncMock,
         ),
-        "get_teacher_by_user_id": mocker.patch(
-            "app.students.router.get_teacher_by_user_id",
-            new_callable=AsyncMock,
-        ),
-        "get_principal_by_teacher_id": mocker.patch(
-            "app.students.router.get_principal_by_teacher_id",
-            new_callable=AsyncMock,
-        ),
     }
     return patches

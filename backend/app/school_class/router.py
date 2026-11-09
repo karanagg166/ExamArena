@@ -3,10 +3,12 @@ from typing import Annotated  # noqa: I001
 
 from fastapi import APIRouter, Depends, HTTPException, status  # type: ignore
 
+import app.core.database as db
 from app.api.deps import get_current_user
 from app.audit.actions import AuditAction, AuditResourceType
 from app.audit.service import record_audit_event
 from app.core.models import Role
+from app.core.school_access import require_staff_class
 from app.principals.crud import get_principal_by_teacher_id
 from app.students.crud import get_student_by_user_id, get_students_by_class_id
 from app.students.schemas import StudentResponse
@@ -109,40 +111,18 @@ async def get_classes_for_school(
 async def _check_class_access(
     current_user: UserResponse, school_class: SchoolClassResponse
 ):
-    if current_user.role == Role.ADMIN:
-        return
     if current_user.role == Role.STUDENT:
         student = await get_student_by_user_id(current_user.id)
-        if not student or student.classId != school_class.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You can only view your own class.",
-            )
+        if (
+            not student
+            or student.classId != school_class.id
+            or student.schoolId != school_class.schoolId
+        ):
+            raise HTTPException(403, "Access denied for this class.")
         return
-    if current_user.role == Role.TEACHER:
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher or teacher.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You must be a teacher at this school.",
-            )
-        return
-    if current_user.role == Role.PRINCIPAL:
-        from app.school.crud import get_school_by_user_id
-
-        school = await get_school_by_user_id(current_user.id)
-        if school and school.id == school_class.schoolId:
-            return
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if teacher:
-            if teacher.schoolId == school_class.schoolId:
-                return
-            principal = await get_principal_by_teacher_id(teacher.id)
-            if principal and principal.schoolId == school_class.schoolId:
-                return
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied. You must be the principal of this school.",
+    async with db.get_session() as session:
+        await require_staff_class(
+            current_user, school_class.schoolId, school_class.id, session
         )
 
 
@@ -174,6 +154,8 @@ async def get_students_for_class(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
+    if current_user.role == Role.STUDENT:
+        raise HTTPException(403, "Use your own student records and results.")
     await _check_class_access(current_user, school_class)
     return await get_students_by_class_id(class_id)
 
@@ -204,11 +186,11 @@ async def assign_student_endpoint(
     payload: AssignStudentRequest,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
 ):
-    """Assign or transfer an enrolled student directly to this class (Staff only)"""
-    if current_user.role not in (Role.TEACHER, Role.PRINCIPAL, Role.ADMIN):
+    """School administrators transfer enrollment; teachers cannot self-grant access."""
+    if current_user.role not in (Role.PRINCIPAL, Role.ADMIN):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only staff can assign students to classes.",
+            detail="Only school principals or admins can assign students to classes.",
         )
 
     school_class = await get_school_class_by_id(class_id)
@@ -217,13 +199,7 @@ async def assign_student_endpoint(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
-    if current_user.role in (Role.TEACHER, Role.PRINCIPAL):
-        teacher = await get_teacher_by_user_id(current_user.id)
-        if not teacher or teacher.schoolId != school_class.schoolId:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied. You can only assign students to classes in your own school.",
-            )
+    await _check_class_access(current_user, school_class)
 
     success = await assign_student_to_class(class_id, payload.studentId)
     if not success:
@@ -290,5 +266,7 @@ async def get_class_results_endpoint(
             status_code=status.HTTP_404_NOT_FOUND, detail="Class not found"
         )
 
+    if current_user.role == Role.STUDENT:
+        raise HTTPException(403, "Use your own student records and results.")
     await _check_class_access(current_user, school_class)
     return await get_class_exam_results(class_id)

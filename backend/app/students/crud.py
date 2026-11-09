@@ -84,6 +84,10 @@ async def get_students(
             stmt = stmt.where(Student.schoolId == filters.scopeSchoolId)
         if filters.scopeClassId:
             stmt = stmt.where(Student.classId == filters.scopeClassId)
+        if filters.scopeClassIds is not None:
+            stmt = stmt.where(Student.classId.in_(filters.scopeClassIds))
+        if filters.scopeUserId is not None:
+            stmt = stmt.where(Student.userId == filters.scopeUserId)
         if filters.rollNo:
             stmt = stmt.where(Student.rollNo.ilike(f"%{filters.rollNo}%"))
 
@@ -146,7 +150,11 @@ async def get_students_by_class_id(class_id: str, session: AsyncSession | None =
         stmt = (
             select(Student)
             .where(Student.classId == class_id)
-            .options(selectinload(Student.user), selectinload(Student.schoolClass))
+            .options(
+                selectinload(Student.user),
+                selectinload(Student.schoolClass),
+                selectinload(Student.school),
+            )
         )
         students = (await s.execute(stmt)).scalars().all()
         return students
