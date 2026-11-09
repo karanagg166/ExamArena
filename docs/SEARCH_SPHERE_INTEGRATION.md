@@ -164,3 +164,23 @@ existing checks plus the updated timeout and three new status/code checks. The
 old assertion expecting a timeout to be hidden as 502 was updated to require 504
 and the safe timeout code. Black/Ruff and targeted client/config/exception mypy
 pass. Service mypy still reports ten pre-existing Pydantic alias constructor errors.
+# Access boundaries
+
+Search Sphere standalone documents are owner-private. ExamArena delegates only
+server-authorized school and collection scope; a browser-supplied tenant, role,
+student or class ID is not authority. Private student records are self-only, with
+read access for their currently assigned teachers and school principal. Shared
+course resources are different: enrolled students and assigned teachers can use
+their class resources plus explicitly school-wide resources.
+
+For `GET /api/v1/course-materials/{id}/cleanup`, teacher callers provide
+`?subject=SCIENCE&class_id=<original-class-id>` (or just `subject` for a shared
+school document). ExamArena reauthorizes this scope and binds `X-Collection-ID`
+when requesting Search Sphere's retained deletion receipt. Missing scope is an
+error, and a missing/denied/unavailable receipt never proves physical cleanup.
+The authenticated release journey tests both a wrong shared scope and the correct
+class scope after deleting every new synthetic PDF.
+
+See [the access matrix](ACCESS_CONTROL.md) for existing behavior, repairs and
+remaining private student-document integration work. Cohere trial eligibility
+remains a separate requirement; a role grant does not approve private inference.

@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -29,6 +30,7 @@ class FakeHttp:
         self.identity = json.loads(environment["EA_RELEASE_FIXTURE_CREDENTIALS"])
         self.environment, self.failure = environment, failure
         self.rows, self.deleted, self.calls = {}, set(), []
+        self.deleted_classes = {}
         self.last_marker = None
         self.class_by_id = {
             value["class_id"]: school
@@ -93,8 +95,6 @@ class FakeHttp:
                     return 401, {}
                 school = self.actor[-1]
                 if path.startswith(ROOT + "?"):
-                    from urllib.parse import parse_qs, urlsplit
-
                     offset = int(parse_qs(urlsplit(path).query)["offset"][0])
                     rows = [
                         row
@@ -189,8 +189,14 @@ class FakeHttp:
                             }
                         ],
                     }
-                if path.endswith("/cleanup"):
+                if path.split("?")[0].endswith("/cleanup"):
+                    params = parse_qs(urlsplit(path).query)
+                    assert params["subject"] == ["SCIENCE"]
                     identifier = path.split("/")[-2]
+                    if params.get("class_id") != [
+                        state.deleted_classes.get(identifier)
+                    ]:
+                        return 404, {}
                     return (503 if state.failure == "cleanup_503" else 200), {
                         "document_id": identifier,
                         "status": "complete",
@@ -202,6 +208,7 @@ class FakeHttp:
                 row = state.rows.get(identifier)
                 if method == "DELETE":
                     if row:
+                        state.deleted_classes[identifier] = row["classId"]
                         state.rows.pop(identifier)
                         state.deleted.add(identifier)
                         return 200, {"success": True}

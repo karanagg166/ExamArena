@@ -84,9 +84,9 @@ async def test_student_individual_catalog_reads_require_class_access(
 
 
 @pytest.mark.asyncio
-async def test_staff_retains_school_catalog_access(auth_client_factory, catalog):
+async def test_principal_retains_school_catalog_access(auth_client_factory, catalog):
     schools, rows = catalog
-    client = await auth_client_factory(schools["teacher_a_user"])
+    client = await auth_client_factory(schools["principal_a_user"])
     response = await client.get("/api/v1/course-materials")
     assert response.status_code == 200 and response.json()["total"] == 3
     assert {row["id"] for row in response.json()["items"]} == {

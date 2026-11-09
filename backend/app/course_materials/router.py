@@ -28,7 +28,6 @@ from app.core.models import (
 from app.course_materials import crud
 from app.course_materials.permissions import (
     assert_material_response_access,
-    require_school_class,
     resolve_teacher_school_affiliation,
     resolve_user_material_scope,
     resolve_user_search_school_id,
@@ -50,6 +49,7 @@ from app.integrations.search_sphere.client import (
 )
 from app.integrations.search_sphere.exceptions import SearchSphereError
 from app.integrations.search_sphere.identifiers import (
+    build_collection_id,
     build_external_document_id,
     build_tenant_id,
 )
@@ -88,8 +88,8 @@ async def upload_course_material(
     File is ingested into Search-Sphere within the authenticated school tenant.
     """
     school_id, _ = await resolve_teacher_school_affiliation(current_user, session=db)
-    await require_school_class(school_id, class_id, db)
-    return await service.upload_course_material(
+    await resolve_user_material_scope(current_user, class_id, db)
+    result = await service.upload_course_material(
         session=db,
         school_id=school_id,
         uploaded_by_user_id=current_user.id,
@@ -100,6 +100,9 @@ async def upload_course_material(
         class_id=class_id,
         description=description,
     )
+
+    await assert_material_response_access(current_user, school_id, class_id, db)
+    return result
 
 
 @router.get(
@@ -123,7 +126,7 @@ async def list_course_materials(
     db: AsyncSession = Depends(get_db),
 ) -> CourseMaterialListResponse:
     """List materials scoped strictly to authenticated school tenant."""
-    school_id, visible_class_id = await resolve_user_material_scope(
+    school_id, visible_class_ids = await resolve_user_material_scope(
         current_user, requested_class_id=class_id, session=db
     )
     items, total = await crud.list_course_materials(
@@ -135,7 +138,7 @@ async def list_course_materials(
         document_type=document_type,
         limit=limit,
         offset=offset,
-        visible_class_id=visible_class_id,
+        visible_class_ids=visible_class_ids,
     )
     return CourseMaterialListResponse(
         total=total,
@@ -154,11 +157,11 @@ async def get_course_material(
     current_user: Annotated[UserResponse, Depends(get_current_user)] = None,
     db: AsyncSession = Depends(get_db),
 ) -> CourseMaterialResponse:
-    school_id, visible_class_id = await resolve_user_material_scope(
+    school_id, visible_class_ids = await resolve_user_material_scope(
         current_user, requested_class_id=None, session=db
     )
     material = await crud.get_course_material_by_id(
-        db, material_id, school_id=school_id, visible_class_id=visible_class_id
+        db, material_id, school_id=school_id, visible_class_ids=visible_class_ids
     )
     if not material or material.schoolId != school_id:
         raise HTTPException(
@@ -181,11 +184,21 @@ async def refresh_course_material_status(
     service: CourseMaterialService = Depends(get_course_material_service),
 ) -> CourseMaterialStatusRefreshResponse:
     school_id, _ = await resolve_teacher_school_affiliation(current_user, session=db)
-    return await service.refresh_status(
+    _, visible_classes = await resolve_user_material_scope(current_user, None, db)
+    material = await crud.get_course_material_by_id(
+        db, material_id, school_id=school_id, visible_class_ids=visible_classes
+    )
+    if material is None:
+        raise HTTPException(404, "Course material not found.")
+    await resolve_user_material_scope(current_user, material.classId, db)
+    result = await service.refresh_status(
         session=db,
         material_id=material_id,
         school_id=school_id,
     )
+
+    await assert_material_response_access(current_user, school_id, material.classId, db)
+    return result
 
 
 @router.delete(
@@ -200,11 +213,19 @@ async def delete_course_material(
     service: CourseMaterialService = Depends(get_course_material_service),
 ) -> dict[str, Any]:
     school_id, _ = await resolve_teacher_school_affiliation(current_user, session=db)
+    _, visible_classes = await resolve_user_material_scope(current_user, None, db)
+    material = await crud.get_course_material_by_id(
+        db, material_id, school_id=school_id, visible_class_ids=visible_classes
+    )
+    if material is None:
+        raise HTTPException(404, "Course material not found.")
+    await resolve_user_material_scope(current_user, material.classId, db)
     success = await service.delete_course_material(
         session=db,
         material_id=material_id,
         school_id=school_id,
     )
+    await assert_material_response_access(current_user, school_id, material.classId, db)
     return {
         "success": success,
         "message": f"Course material '{material_id}' deleted successfully.",
@@ -216,21 +237,35 @@ async def get_course_material_cleanup(
     material_id: str,
     response: Response,
     current_user: Annotated[UserResponse, Depends(get_current_user)],
+    subject: Subject | None = Query(None),
+    class_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     client: SearchSphereClient = Depends(get_search_sphere_client),
 ) -> CourseMaterialCleanupReceipt:
     """Staff can verify physical cleanup after local metadata was removed."""
     response.headers["Cache-Control"] = "private, no-store"
     school_id, _ = await resolve_teacher_school_affiliation(current_user, session=db)
+    if current_user.role == "TEACHER" and subject is None:
+        raise HTTPException(
+            422, "Cleanup verification requires the document subject and class scope."
+        )
+    await resolve_user_material_scope(current_user, class_id, db)
+    collection_id = (
+        build_collection_id(subject=subject, class_id=class_id)
+        if subject is not None
+        else None
+    )
     try:
         document_id = build_external_document_id(material_id)
         value = await client.get_document_cleanup(
-            document_id=document_id, tenant_id=build_tenant_id(school_id)
+            document_id=document_id,
+            tenant_id=build_tenant_id(school_id),
+            collection_id=collection_id,
         )
         receipt = CourseMaterialCleanupReceipt.model_validate(value)
         if receipt.document_id != document_id:
             raise ValueError("Cleanup identity mismatch.")
-        await assert_material_response_access(current_user, school_id, None, db)
+        await assert_material_response_access(current_user, school_id, class_id, db)
         return receipt
     except SearchSphereError as exc:
         code = 404 if exc.status_code in {403, 404} else 503

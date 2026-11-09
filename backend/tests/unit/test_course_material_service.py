@@ -297,6 +297,7 @@ async def test_search_course_materials(mocker):
     row = SimpleNamespace(
         id="mat_bio_1",
         searchSphereDocumentId="ss_doc_101",
+        searchSphereCollectionId="subject_science",
         schoolId="sch_alpha",
         classId=None,
         subject=Subject.SCIENCE,
@@ -382,6 +383,7 @@ async def test_answer_question_success():
     mock_material = MagicMock()
     mock_material.id = "mat_doc_1"
     mock_material.classId = "cls_9"
+    mock_material.searchSphereCollectionId = "class_cls_9_subject_science"
     mock_material.subject = Subject.SCIENCE
     mock_material.status = CourseMaterialStatus.READY
     mock_material.searchSphereDocumentId = "mat_doc_1"
@@ -495,6 +497,7 @@ async def test_answer_question_with_search_sphere_internal_doc_id(mocker):
     mock_session = AsyncMock()
     mock_material = MagicMock()
     mock_material.id = "mat_local_real_id"
+    mock_material.searchSphereCollectionId = "subject_science"
     mock_material.classId = None
     mock_material.subject = Subject.SCIENCE
     mock_material.status = CourseMaterialStatus.READY

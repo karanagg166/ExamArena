@@ -213,10 +213,21 @@ class Journey:
                 check = "metadata"
                 code, _ = session.request("GET", path)
                 require(code == 404, "Deleted metadata remains accessible")
+                check = "receipt scope"
+                code, _ = session.request("GET", path + "/cleanup?subject=SCIENCE")
+                require(
+                    code in (403, 404),
+                    "Deleted class document accepted shared collection scope",
+                )
                 deadline = self.clock() + 120
                 while True:
                     check = "receipt"
-                    code, value = session.request("GET", path + "/cleanup")
+                    code, value = session.request(
+                        "GET",
+                        path
+                        + "/cleanup?subject=SCIENCE&class_id="
+                        + self.class_id(entry["label"]),
+                    )
                     require(
                         code == 200 and value.get("document_id") == entry["id"],
                         "Physical cleanup receipt unavailable",

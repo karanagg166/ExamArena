@@ -12,12 +12,12 @@ from app.course_materials.service import CourseMaterialService
 
 def material(**changes):
     return SimpleNamespace(**{**dict(id="public-material", searchSphereDocumentId="upstream-material", schoolId="school-a",
-        subject=Subject.SCIENCE, classId="class-a", status=CourseMaterialStatus.READY,
+        subject=Subject.SCIENCE, classId="class-a", status=CourseMaterialStatus.READY, searchSphereCollectionId="class_class-a_subject_science",
         documentType=CourseMaterialDocumentType.TEXTBOOK, title="Public synthetic textbook", originalFileName="public.pdf"), **changes})
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("changes", [{"schoolId": "school-b"}, {"classId": "class-b"}, {"subject": Subject.MATHS},
+@pytest.mark.parametrize("changes", [{"searchSphereCollectionId": "subject_science"}, {"schoolId": "school-b"}, {"classId": "class-b"}, {"subject": Subject.MATHS},
     {"status": CourseMaterialStatus.FAILED}, {"id": "unknown", "searchSphereDocumentId": "unknown-upstream"}])
 async def test_unverified_citation_rejects_the_entire_answer(mocker, changes):
     upstream = SimpleNamespace(generate_answer=AsyncMock(return_value={"answer": "UNAUTHORIZED SYNTHETIC EVIDENCE [1]",
