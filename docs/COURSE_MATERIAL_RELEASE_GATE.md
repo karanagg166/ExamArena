@@ -94,3 +94,11 @@ fails on 503, invalid counts or missing evidence checks and preserves the receip
 No response body, URL, storage path, login or key is logged. Fifty focused release
 transport/controller/journal/provenance/cold-read checks pass, including ten new
 deadline/diagnostic cases. Full production acceptance remains a separate live run.
+
+The class-authorization repair extends the gate with exact signed synthetic
+student profile/history checks: self and assigned teacher access must work,
+another school must be denied, and students cannot read full class rosters. These
+checks precede new uploads and print only fixed check labels. Cleanup sends the
+original subject/class scope, first proving that shared-collection scope cannot
+read a class document's retained deletion receipt, then requiring the correctly
+scoped zero-vector/private-object receipt. Ordinary records are never used.

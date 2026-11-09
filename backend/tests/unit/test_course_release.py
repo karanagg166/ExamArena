@@ -94,6 +94,14 @@ class FakeHttp:
                             }
                     return 401, {}
                 school = self.actor[-1]
+                if path.startswith("/api/v1/students/"):
+                    identifier = path.split("/")[4]
+                    own = state.identity["accounts"]["student-" + school]["profile_id"]
+                    if identifier != own:
+                        return (200 if state.failure == "student_records" else 403), {}
+                    return 200, [] if path.endswith("/exams") else {"id": identifier}
+                if path.startswith("/api/v1/classes/") and path.endswith("/students"):
+                    return 403, {}
                 if path.startswith(ROOT + "?"):
                     offset = int(parse_qs(urlsplit(path).query)["offset"][0])
                     rows = [
@@ -277,6 +285,18 @@ def test_revision_mismatch_stops_before_login_or_mutation(environment, tmp_path)
             environment, session_factory=http.session, path=tmp_path / "receipt"
         ).run()
     assert len(http.calls) == 1 and http.rows == {}
+
+
+def test_private_record_isolation_failure_stops_before_upload(
+    environment, tmp_path, capsys
+):
+    http = FakeHttp(environment, failure="student_records")
+    with pytest.raises(AssertionError):
+        Journey(
+            environment, session_factory=http.session, path=tmp_path / "receipt"
+        ).run()
+    assert not http.rows and not http.deleted
+    assert "PASS authenticated upload" not in capsys.readouterr().out
 
 
 def test_offset_pagination_sweeps_only_owned_fixtures(environment, tmp_path):

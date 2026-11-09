@@ -292,6 +292,9 @@ class Journey:
         require(not errors, "One or more owned physical cleanups failed")
 
     def exercise(self):
+        from app.maintenance.release_school_access import verify_private_school_records
+
+        verify_private_school_records(self)
         verify_evidence(self)
 
     def run(self):
