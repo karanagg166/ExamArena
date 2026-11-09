@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.models import (
@@ -65,17 +65,21 @@ async def get_course_material_by_id(
     material_id: str,
     *,
     school_id: str | None = None,
-    visible_class_id: str | None = None,
+    visible_class_ids: tuple[str, ...] | None = None,
 ) -> CourseMaterial | None:
     """Fetch CourseMaterial by primary ID."""
     stmt = select(CourseMaterial).where(CourseMaterial.id == material_id)
     if school_id is not None:
         stmt = stmt.where(CourseMaterial.schoolId == school_id)
-    if visible_class_id is not None:
+    if visible_class_ids is not None:
         stmt = stmt.where(
             or_(
-                CourseMaterial.classId.is_(None),
-                CourseMaterial.classId == visible_class_id,
+                and_(
+                    CourseMaterial.classId.is_(None),
+                    CourseMaterial.searchSphereCollectionId
+                    == "subject_" + func.lower(CourseMaterial.subject),
+                ),
+                CourseMaterial.classId.in_(visible_class_ids),
             )
         )
     res = await session.execute(stmt)
@@ -91,15 +95,19 @@ async def list_course_materials(
     document_type: CourseMaterialDocumentType | None = None,
     limit: int = 50,
     offset: int = 0,
-    visible_class_id: str | None = None,
+    visible_class_ids: tuple[str, ...] | None = None,
 ) -> tuple[Sequence[CourseMaterial], int]:
     """List course materials scoped strictly to a school with pagination."""
     query = select(CourseMaterial).where(CourseMaterial.schoolId == school_id)
-    if visible_class_id is not None:
+    if visible_class_ids is not None:
         query = query.where(
             or_(
-                CourseMaterial.classId.is_(None),
-                CourseMaterial.classId == visible_class_id,
+                and_(
+                    CourseMaterial.classId.is_(None),
+                    CourseMaterial.searchSphereCollectionId
+                    == "subject_" + func.lower(CourseMaterial.subject),
+                ),
+                CourseMaterial.classId.in_(visible_class_ids),
             )
         )
 

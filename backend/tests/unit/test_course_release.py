@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -29,6 +30,7 @@ class FakeHttp:
         self.identity = json.loads(environment["EA_RELEASE_FIXTURE_CREDENTIALS"])
         self.environment, self.failure = environment, failure
         self.rows, self.deleted, self.calls = {}, set(), []
+        self.deleted_classes = {}
         self.last_marker = None
         self.class_by_id = {
             value["class_id"]: school
@@ -92,9 +94,15 @@ class FakeHttp:
                             }
                     return 401, {}
                 school = self.actor[-1]
+                if path.startswith("/api/v1/students/"):
+                    identifier = path.split("/")[4]
+                    own = state.identity["accounts"]["student-" + school]["profile_id"]
+                    if identifier != own:
+                        return (200 if state.failure == "student_records" else 403), {}
+                    return 200, [] if path.endswith("/exams") else {"id": identifier}
+                if path.startswith("/api/v1/classes/") and path.endswith("/students"):
+                    return 403, {}
                 if path.startswith(ROOT + "?"):
-                    from urllib.parse import parse_qs, urlsplit
-
                     offset = int(parse_qs(urlsplit(path).query)["offset"][0])
                     rows = [
                         row
@@ -189,8 +197,14 @@ class FakeHttp:
                             }
                         ],
                     }
-                if path.endswith("/cleanup"):
+                if path.split("?")[0].endswith("/cleanup"):
+                    params = parse_qs(urlsplit(path).query)
+                    assert params["subject"] == ["SCIENCE"]
                     identifier = path.split("/")[-2]
+                    if params.get("class_id") != [
+                        state.deleted_classes.get(identifier)
+                    ]:
+                        return 404, {}
                     return (503 if state.failure == "cleanup_503" else 200), {
                         "document_id": identifier,
                         "status": "complete",
@@ -202,6 +216,7 @@ class FakeHttp:
                 row = state.rows.get(identifier)
                 if method == "DELETE":
                     if row:
+                        state.deleted_classes[identifier] = row["classId"]
                         state.rows.pop(identifier)
                         state.deleted.add(identifier)
                         return 200, {"success": True}
@@ -270,6 +285,18 @@ def test_revision_mismatch_stops_before_login_or_mutation(environment, tmp_path)
             environment, session_factory=http.session, path=tmp_path / "receipt"
         ).run()
     assert len(http.calls) == 1 and http.rows == {}
+
+
+def test_private_record_isolation_failure_stops_before_upload(
+    environment, tmp_path, capsys
+):
+    http = FakeHttp(environment, failure="student_records")
+    with pytest.raises(AssertionError):
+        Journey(
+            environment, session_factory=http.session, path=tmp_path / "receipt"
+        ).run()
+    assert not http.rows and not http.deleted
+    assert "PASS authenticated upload" not in capsys.readouterr().out
 
 
 def test_offset_pagination_sweeps_only_owned_fixtures(environment, tmp_path):

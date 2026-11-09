@@ -54,7 +54,7 @@ async def test_staff_reads_validated_receipt_without_local_metadata(
     )
     client = await auth_client_factory(setup_schools["teacher_a_user"])
     response = await client.get(
-        "/api/v1/course-materials/synthetic-material/cleanup",
+        "/api/v1/course-materials/synthetic-material/cleanup?subject=SCIENCE",
         headers={"X-Tenant-ID": "school_forged"},
     )
     assert response.status_code == 200
@@ -63,6 +63,7 @@ async def test_staff_reads_validated_receipt_without_local_metadata(
     assert len(calls) == 1
     assert calls[0].headers["x-tenant-id"] == "school_" + setup_schools["school_a"].id
     assert calls[0].url.path == "/api/v1/documents/synthetic-material/cleanup"
+    assert calls[0].headers["x-collection-id"] == "subject_science"
     assert calls[0].extensions["timeout"]["read"] == 10
     assert "PRIVATE" not in response.text and "ss_live" not in response.text
 
@@ -73,7 +74,9 @@ async def test_student_cannot_query_management_cleanup(
 ):
     calls = upstream(monkeypatch, value=receipt())
     client = await auth_client_factory(setup_schools["student_a_user"])
-    response = await client.get("/api/v1/course-materials/synthetic-material/cleanup")
+    response = await client.get(
+        "/api/v1/course-materials/synthetic-material/cleanup?subject=SCIENCE"
+    )
     assert response.status_code == 403 and calls == []
 
 
@@ -88,7 +91,9 @@ async def test_scope_denial_and_outage_cannot_verify_cleanup(
         value={"detail": "PRIVATE DIAGNOSTIC ss_live_do_not_expose"},
     )
     client = await auth_client_factory(setup_schools["teacher_a_user"])
-    response = await client.get("/api/v1/course-materials/synthetic-material/cleanup")
+    response = await client.get(
+        "/api/v1/course-materials/synthetic-material/cleanup?subject=SCIENCE"
+    )
     assert response.status_code == (404 if status in {403, 404} else 503)
     assert len(calls) == 1
     assert "PRIVATE" not in response.text and "ss_live" not in response.text
@@ -114,7 +119,9 @@ async def test_malformed_or_contradictory_receipts_are_unverified(
 ):
     upstream(monkeypatch, value=value)
     client = await auth_client_factory(setup_schools["teacher_a_user"])
-    response = await client.get("/api/v1/course-materials/synthetic-material/cleanup")
+    response = await client.get(
+        "/api/v1/course-materials/synthetic-material/cleanup?subject=SCIENCE"
+    )
     assert response.status_code == 503
     assert "vectors_remaining" not in response.json()
 
@@ -126,7 +133,9 @@ async def test_cleanup_network_failure_is_bounded_without_retries(
 ):
     calls = upstream(monkeypatch, failure=failure)
     client = await auth_client_factory(setup_schools["teacher_a_user"])
-    response = await client.get("/api/v1/course-materials/synthetic-material/cleanup")
+    response = await client.get(
+        "/api/v1/course-materials/synthetic-material/cleanup?subject=SCIENCE"
+    )
     assert response.status_code == 503 and len(calls) == 1
     assert "PRIVATE" not in response.text
 
@@ -140,7 +149,7 @@ async def test_other_school_gets_only_its_own_delegation(
     )
     client = await auth_client_factory(setup_schools["teacher_b_user"])
     response = await client.get(
-        "/api/v1/course-materials/synthetic-material/cleanup",
+        "/api/v1/course-materials/synthetic-material/cleanup?subject=SCIENCE",
         headers={"X-Tenant-ID": "school_" + setup_schools["school_a"].id},
     )
     assert response.status_code == 404

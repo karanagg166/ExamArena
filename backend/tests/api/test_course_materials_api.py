@@ -22,7 +22,9 @@ from app.core.models import (
     CourseMaterialStatus,
     Role,
     Subject,
+    TeacherClass,
 )
+from app.integrations.search_sphere.identifiers import build_collection_id
 from tests.factories.class_factory import create_class_factory
 from tests.factories.school_factory import create_school_factory
 from tests.factories.student_factory import create_student_factory
@@ -46,6 +48,7 @@ async def setup_schools(db_session):
     user_t_a = await create_user_factory(db_session, role=Role.TEACHER, email="teacher_a@school.local")
     teacher_a = await create_teacher_factory(db_session, user=user_t_a, school=school_a)
     class_a = await create_class_factory(db_session, school=school_a, name="Class 10A")
+    db_session.add(TeacherClass(teacherId=teacher_a.id, classId=class_a.id, subject=Subject.SCIENCE))
     user_s_a = await create_user_factory(db_session, role=Role.STUDENT, email="student_a@school.local")
     student_a = await create_student_factory(db_session, user=user_s_a, school=school_a, school_class=class_a)
 
@@ -55,6 +58,7 @@ async def setup_schools(db_session):
     user_t_b = await create_user_factory(db_session, role=Role.TEACHER, email="teacher_b@school.local")
     teacher_b = await create_teacher_factory(db_session, user=user_t_b, school=school_b)
     class_b = await create_class_factory(db_session, school=school_b, name="Class 10B")
+    db_session.add(TeacherClass(teacherId=teacher_b.id, classId=class_b.id, subject=Subject.SCIENCE))
     user_s_b = await create_user_factory(db_session, role=Role.STUDENT, email="student_b@school.local")
     student_b = await create_student_factory(db_session, user=user_s_b, school=school_b, school_class=class_b)
 
@@ -62,12 +66,14 @@ async def setup_schools(db_session):
 
     return {
         "school_a": school_a,
+        "principal_a_user": user_p_a,
         "teacher_a_user": user_t_a,
         "teacher_a": teacher_a,
         "student_a_user": user_s_a,
         "student_a": student_a,
         "class_a": class_a,
         "school_b": school_b,
+        "principal_b_user": user_p_b,
         "teacher_b_user": user_t_b,
         "teacher_b": teacher_b,
         "student_b_user": user_s_b,
@@ -80,7 +86,7 @@ async def seed_material(db, schools, identifier, *, school="a", class_id=None, f
     row = CourseMaterial(id=identifier, schoolId=schools[f"school_{school}"].id, subject=Subject.SCIENCE,
         classId=class_id, uploadedBy=schools[f"teacher_{school}_user"].id, title="Public synthetic material",
         originalFileName=filename, fileSize=100, mimeType="application/pdf", documentType=CourseMaterialDocumentType.TEXTBOOK,
-        searchSphereDocumentId=identifier, searchSphereCollectionId="subject_science", status=CourseMaterialStatus.READY)
+        searchSphereDocumentId=identifier, searchSphereCollectionId=build_collection_id(Subject.SCIENCE, class_id), status=CourseMaterialStatus.READY)
     db.add(row)
     await db.commit()
     return row

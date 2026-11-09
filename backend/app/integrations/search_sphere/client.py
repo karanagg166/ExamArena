@@ -386,11 +386,11 @@ class SearchSphereClient:
             ) from exc
 
     async def get_document_cleanup(
-        self, document_id: str, tenant_id: str
+        self, document_id: str, tenant_id: str, collection_id: str | None = None
     ) -> dict[str, Any]:
         """Read a tenant-scoped receipt after deletion; never infer success from 404."""
         clean_id = validate_identifier_token(document_id, "document_id")
-        headers = self._get_headers(tenant_id=tenant_id)
+        headers = self._get_headers(tenant_id=tenant_id, collection_id=collection_id)
         headers["Cache-Control"] = "no-store"
         url = f"{self._base_url}/api/v1/documents/{clean_id}/cleanup"
         try:

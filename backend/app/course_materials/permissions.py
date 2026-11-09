@@ -8,7 +8,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.models import Role, SchoolClass, Student, Teacher, User
+import app.core.database as database
+from app.core.models import Role, SchoolClass, Student, Subject, Teacher, User
+from app.core.school_access import resolve_staff_access
+from app.course_materials import crud
+from app.integrations.search_sphere.identifiers import build_collection_id
 from app.teachers.crud import get_teacher_by_user_id
 from app.users.schemas import UserResponse
 
@@ -18,7 +22,7 @@ logger = logging.getLogger("exam_arena.course_materials.permissions")
 async def resolve_teacher_school_affiliation(
     current_user: UserResponse,
     session: AsyncSession | None = None,
-) -> tuple[str, Teacher]:
+) -> tuple[str, Teacher | None]:
     """
     Resolve and verify authenticated teacher/principal's affiliated school ID.
     Raises 403 if the user is not a teacher/principal or not affiliated with a school.
@@ -29,14 +33,12 @@ async def resolve_teacher_school_affiliation(
             detail="Only teachers, principals, or administrators can manage course materials.",
         )
 
+    if session is None:
+        async with database.get_session() as db:
+            return await resolve_teacher_school_affiliation(current_user, db)
+    access = await resolve_staff_access(current_user, session)
     teacher = await get_teacher_by_user_id(current_user.id, session=session)
-    if not teacher or not teacher.schoolId:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is not affiliated with any active school.",
-        )
-
-    return teacher.schoolId, teacher
+    return access.school_id, teacher
 
 
 async def require_school_class(
@@ -57,23 +59,18 @@ async def resolve_user_material_scope(
     current_user: UserResponse,
     requested_class_id: str | None,
     session: AsyncSession,
-) -> tuple[str, str | None]:
-    """
-    Return the current school and optional enrolled-class read restriction.
-    Enforces that:
-    - Teachers search within their own school.
-    - Students search strictly within their enrolled school (and optionally enrolled class).
-    - Prevents cross-tenant queries.
-    """
+) -> tuple[str, tuple[str, ...] | None]:
+    """Return school and allowed classes; shared school resources remain visible."""
     if current_user.role in (Role.TEACHER, Role.PRINCIPAL, Role.ADMIN):
-        teacher = await get_teacher_by_user_id(current_user.id, session=session)
-        if not teacher or not teacher.schoolId:
+        access = await resolve_staff_access(current_user, session)
+        await require_school_class(access.school_id, requested_class_id, session)
+        if requested_class_id and not access.permits(
+            access.school_id, requested_class_id
+        ):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Teacher is not affiliated with any active school.",
+                403, "Course material access requires an assigned class."
             )
-        await require_school_class(teacher.schoolId, requested_class_id, session)
-        return teacher.schoolId, None
+        return access.school_id, access.class_ids
 
     if current_user.role == Role.STUDENT:
         stmt = (
@@ -96,7 +93,7 @@ async def resolve_user_material_scope(
             )
 
         await require_school_class(student.schoolId, student.classId, session)
-        return student.schoolId, student.classId
+        return student.schoolId, (student.classId,)
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -124,30 +121,42 @@ async def assert_material_response_access(
     """Re-read caller grants after upstream work, bypassing ORM identity caches."""
     role = await session.scalar(select(User.role).where(User.id == current_user.id))
     if role == current_user.role:
-        if role in (Role.TEACHER, Role.PRINCIPAL, Role.ADMIN):
-            school_id = await session.scalar(
-                select(Teacher.schoolId).where(Teacher.userId == current_user.id)
+        school_id, _ = await resolve_user_material_scope(
+            current_user, requested_class_id, session
+        )
+        if school_id == expected_school_id:
+            return
+    raise HTTPException(403, "Course material access changed.")
+
+
+async def resolve_cleanup_scope(
+    current_user: UserResponse,
+    school_id: str,
+    material_id: str,
+    subject: Subject | None,
+    class_id: str | None,
+    session: AsyncSession,
+) -> tuple[str | None, str | None]:
+    """Use current catalog authority when available, otherwise require bound scope."""
+    if subject is None and (current_user.role == Role.TEACHER or class_id is not None):
+        _, visible_classes = await resolve_user_material_scope(
+            current_user, None, session
+        )
+        material = await crud.get_course_material_by_id(
+            session, material_id, school_id=school_id, visible_class_ids=visible_classes
+        )
+        if material is None:
+            raise HTTPException(
+                422,
+                "Cleanup verification requires the document subject and class scope.",
             )
-            if school_id == expected_school_id:
-                await require_school_class(school_id, requested_class_id, session)
-                return
-        elif role == Role.STUDENT:
-            row = (
-                await session.execute(
-                    select(Student.schoolId, Student.classId).where(
-                        Student.userId == current_user.id
-                    )
-                )
-            ).one_or_none()
-            if (
-                row is not None
-                and row.schoolId == expected_school_id
-                and row.classId
-                and (requested_class_id is None or requested_class_id == row.classId)
-            ):
-                await require_school_class(row.schoolId, row.classId, session)
-                return
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Course material access changed.",
+        if class_id is not None and class_id != material.classId:
+            raise HTTPException(403, "Cleanup scope conflicts with the document.")
+        subject, class_id = material.subject, material.classId
+    await resolve_user_material_scope(current_user, class_id, session)
+    collection_id = (
+        build_collection_id(subject=subject, class_id=class_id)
+        if subject is not None
+        else None
     )
+    return collection_id, class_id

@@ -37,3 +37,36 @@ Local validation: the initial student/class/analytics regression suite passed
 92 tests against disposable PostgreSQL. Additional role-escalation and principal
 onboarding checks run before merge. These checks use synthetic records and no model
 inference. This is code-exposure evidence; it does not establish historical misuse.
+
+The course-material follow-up applies the same current assignments to upload,
+catalog counts/pagination, individual reads, status refresh, deletion, search and
+answers. An empty teaching assignment set grants only explicitly shared school
+materials. Student enrollment remains authoritative. Recheck role, school and
+class authority after upstream operations; do not return answers or citations
+after assignment revocation.
+
+The stored Search Sphere collection must agree with the local subject/class.
+In particular, a legacy class deletion that sets `CourseMaterial.classId` to null
+must not promote a `class_...` collection into shared school evidence. Catalog
+filters and evidence validation enforce this without changing the index identity.
+
+Cleanup receipts use the existing Search Sphere deletion tombstone, retaining
+physical vector/object verification after the local catalog row is deleted.
+After local deletion, teachers supply the original `subject` and `class_id` query parameters;
+omit `class_id` only for intentionally school-wide material. Legacy requests may
+derive scope from a still-existing, authorized catalog row; missing metadata never
+becomes unrestricted school access. The consumer checks
+the current assignment and sends the resulting `X-Collection-ID`. Search Sphere
+compares this with the retained tombstone. Claiming school-wide scope for a
+deleted class document cannot authorize its receipt. A principal/affiliated admin
+retains legacy school-scoped operational cleanup access. Receipts expose only
+cleanup state and counts, never source contents, storage keys or provider errors.
+
+Local follow-up validation: 76 HTTP/catalog/controller checks passed against
+PostgreSQL; a further 73 cleanup-binding, client, service, evidence and release
+controller checks passed after the final scope assertions. These include an empty
+assignment set, same-school unassigned teachers, revocation during search/answer,
+class deletion, missing cleanup scope, and a mismatched upstream collection.
+The release controller now requires wrong-scope cleanup denial before accepting
+the correctly scoped physical cleanup receipt. Live deployment checks remain
+required before declaring this repair rolled out.
